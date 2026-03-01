@@ -1,6 +1,5 @@
 import { CONFIG } from '../config';
 import type { SectorType, GovernmentState } from '../types';
-import { SECTORS } from '../types';
 import type { Agent } from './Agent';
 
 export class Government {

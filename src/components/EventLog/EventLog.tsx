@@ -8,7 +8,7 @@ interface Props {
   onAgentClick?: (name: string) => void;
 }
 
-export function EventLog({ events, activeRandomEvents, onAgentClick }: Props) {
+export function EventLog({ events, activeRandomEvents }: Props) {
   const logRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

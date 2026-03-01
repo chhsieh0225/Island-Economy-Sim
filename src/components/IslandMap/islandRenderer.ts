@@ -1,5 +1,5 @@
 import type { ActiveRandomEvent } from '../../types';
-import type { ZoneLayout, Point } from './agentAnimator';
+import type { ZoneLayout } from './agentAnimator';
 
 // Draw animated water background
 export function drawWater(ctx: CanvasRenderingContext2D, w: number, h: number, time: number): void {

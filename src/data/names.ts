@@ -1,22 +1,25 @@
-export const NAMES: string[] = [
-  '王明', '李芳', '張偉', '陳靜', '林志豪',
-  '黃美玲', '劉建國', '吳淑惠', '楊秀英', '蔡志明',
-  '許雅婷', '鄭家豪', '謝心怡', '郭俊傑', '洪雅琪',
-  '邱建宏', '曾美華', '廖文傑', '賴淑芬', '周怡君',
-  '徐志偉', '蘇雅玲', '葉俊宏', '呂佳蓉', '魏建志',
-  'James Chen', 'Emily Lin', 'Michael Wang', 'Sarah Lee', 'David Chang',
-  'Jessica Wu', 'Kevin Huang', 'Amy Liu', 'Brian Yang', 'Lisa Tsai',
-  '高美琴', '潘建成', '朱雅雯', '傅俊豪', '彭淑貞',
-  '江志豪', '何佳穎', '施建文', '沈美玲', '余俊賢',
-  'Alex Hsu', 'Rachel Cheng', 'Daniel Hsieh', 'Michelle Kuo', 'Steven Hong',
-  'Angela Chiu', 'Patrick Tseng', 'Grace Liao', 'Vincent Lai', 'Wendy Chou',
-  '田志明', '盧雅惠', '姚俊傑', '方美慧', '石建宏',
-  '董淑娟', '範志遠', '蕭雅芳', '韓俊豪', '唐美麗',
-  '鄧建中', '馬淑華', '宋志偉', '段雅琳', '雷俊明',
-  'Tony Tien', 'Nancy Lu', 'Frank Yao', 'Helen Fang', 'George Shih',
-  'Diana Tung', 'Peter Fan', 'Cindy Hsiao', 'Henry Han', 'Rose Tang',
-  '龔建宇', '溫美雲', '湯志成', '毛雅萍', '尤俊豪',
-  '甘淑芬', '莊建志', '嚴美玲', '邵志明', '翁雅惠',
-  'Chris Kung', 'Sandra Wen', 'Mark Tang', 'Julia Mao', 'Eric Yu',
-  'Iris Kan', 'Jason Chuang', 'Betty Yen', 'Andy Shao', 'Vivian Weng',
+import type { Gender } from '../types';
+import type { RNG } from '../engine/RNG';
+
+const SURNAMES = [
+  '王', '李', '張', '陳', '林', '黃', '劉', '吳', '楊', '蔡',
+  '許', '鄭', '謝', '郭', '洪', '邱', '曾', '廖', '賴', '周',
+  '徐', '蘇', '葉', '呂', '魏', '高', '潘', '朱', '傅', '彭',
+  '江', '何', '施', '沈', '余', '田', '盧', '姚', '方', '石',
 ];
+
+const GIVEN_NAMES_M = [
+  '志豪', '建宏', '俊傑', '建志', '志明', '俊豪', '建國', '志偉', '俊賢', '建文',
+  '家豪', '文傑', '志遠', '建中', '志成', '建宇', '俊明', '柏翰', '冠宇', '宗翰',
+];
+
+const GIVEN_NAMES_F = [
+  '美玲', '淑惠', '秀英', '雅婷', '心怡', '雅琪', '美華', '淑芬', '怡君', '雅玲',
+  '佳蓉', '雅雯', '佳穎', '美琴', '淑貞', '美慧', '淑娟', '雅芳', '美麗', '雅萍',
+];
+
+export function generateName(gender: Gender, rng: RNG): string {
+  const surname = rng.pick(SURNAMES);
+  const given = gender === 'M' ? rng.pick(GIVEN_NAMES_M) : rng.pick(GIVEN_NAMES_F);
+  return surname + given;
+}

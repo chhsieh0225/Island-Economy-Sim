@@ -12,7 +12,8 @@ export class Statistics {
     turn: number,
     agents: Agent[],
     market: Market,
-    government: Government
+    government: Government,
+    demographics?: { births: number; deaths: number }
   ): TurnSnapshot {
     const alive = agents.filter(a => a.alive);
     const snapshot: TurnSnapshot = {
@@ -25,6 +26,11 @@ export class Statistics {
       jobDistribution: this.computeJobDistribution(alive),
       market: market.toState(),
       government: government.toState(),
+      births: demographics?.births ?? 0,
+      deaths: demographics?.deaths ?? 0,
+      avgAge: alive.length > 0
+        ? Math.round(alive.reduce((s, a) => s + a.age, 0) / alive.length / 12 * 10) / 10
+        : 0,
     };
 
     this.history.push(snapshot);

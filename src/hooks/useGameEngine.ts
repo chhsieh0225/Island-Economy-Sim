@@ -15,10 +15,22 @@ export function useGameEngine() {
     setGameState(engineRef.current.getState());
   }, []);
 
+  const stopAutoPlayInternal = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setAutoPlaySpeed(null);
+  }, []);
+
   const advanceTurn = useCallback(() => {
     engineRef.current.advanceTurn();
     syncState();
-  }, [syncState]);
+    // Auto-stop if game ended
+    if (engineRef.current.gameOver) {
+      stopAutoPlayInternal();
+    }
+  }, [syncState, stopAutoPlayInternal]);
 
   const setTaxRate = useCallback((rate: number) => {
     engineRef.current.setTaxRate(rate);
@@ -41,14 +53,10 @@ export function useGameEngine() {
   }, [syncState]);
 
   const reset = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    setAutoPlaySpeed(null);
+    stopAutoPlayInternal();
     engineRef.current.reset();
     syncState();
-  }, [syncState]);
+  }, [syncState, stopAutoPlayInternal]);
 
   const startAutoPlay = useCallback((speed: 'slow' | 'medium' | 'fast') => {
     if (intervalRef.current) {
@@ -59,16 +67,22 @@ export function useGameEngine() {
     intervalRef.current = window.setInterval(() => {
       engineRef.current.advanceTurn();
       syncState();
+      // Auto-stop if game ended
+      if (engineRef.current.gameOver) {
+        stopAutoPlayInternal();
+      }
     }, ms);
-  }, [syncState]);
+  }, [syncState, stopAutoPlayInternal]);
 
   const stopAutoPlay = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    setAutoPlaySpeed(null);
-  }, []);
+    stopAutoPlayInternal();
+  }, [stopAutoPlayInternal]);
+
+  const endGame = useCallback(() => {
+    stopAutoPlayInternal();
+    engineRef.current.endGame();
+    syncState();
+  }, [syncState, stopAutoPlayInternal]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -90,5 +104,6 @@ export function useGameEngine() {
     reset,
     startAutoPlay,
     stopAutoPlay,
+    endGame,
   };
 }

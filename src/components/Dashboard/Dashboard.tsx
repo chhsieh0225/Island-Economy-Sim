@@ -17,6 +17,9 @@ export function Dashboard({ state }: Props) {
   const avgHp = latest?.avgHealth ?? 100;
   const gini = latest?.giniCoefficient ?? 0;
   const treasury = state.government.treasury;
+  const births = latest?.births ?? 0;
+  const deaths = latest?.deaths ?? 0;
+  const avgAge = latest?.avgAge ?? 0;
 
   const trend = (current: number, previous: number | undefined) => {
     if (previous === undefined) return <span className={`${styles.trend} ${styles.neutral}`}>--</span>;
@@ -70,6 +73,18 @@ export function Dashboard({ state }: Props) {
       <div className={styles.stat}>
         <div className={styles.label}>國庫 Treasury</div>
         <div className={styles.value}>${treasury.toFixed(0)}</div>
+      </div>
+      <div className={styles.stat}>
+        <div className={styles.label}>平均年齡 Avg Age</div>
+        <div className={styles.value}>{avgAge.toFixed(1)} 歲</div>
+      </div>
+      <div className={styles.stat}>
+        <div className={styles.label}>出生/死亡</div>
+        <div className={styles.value}>
+          <span style={{ color: '#4caf50' }}>+{births}</span>
+          {' / '}
+          <span style={{ color: '#f44336' }}>-{deaths}</span>
+        </div>
       </div>
     </div>
   );

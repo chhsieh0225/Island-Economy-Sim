@@ -45,6 +45,7 @@ export const CONFIG = {
   JOB_SWITCH_THRESHOLD_TURNS: 3,  // must be underperforming for 3 turns
   JOB_SWITCH_COST: 20,            // money cost to retrain
   JOB_SWITCH_PRODUCTIVITY_PENALTY: 0.5, // productivity halved for first 2 turns
+  JOB_SWITCH_RETURN_PENALTY: 2,   // extra turns required to return to a previous sector
 
   // Health & satisfaction
   HEALTH_DECAY_PER_UNMET_NEED: 4,
@@ -72,4 +73,36 @@ export const CONFIG = {
     medium: 1000,
     fast: 300,
   } as Record<string, number>,
+
+  // Demographics
+  BIRTH_BASE_PROBABILITY: 0.15,
+  BIRTH_CAPACITY_FACTOR: 150,
+  BIRTH_MIN_REPRO_AGE: 216,  // 18 years — minimum reproductive age
+  BIRTH_MAX_REPRO_AGE: 528,  // 44 years — maximum reproductive age
+  BIRTH_MAX_PER_TURN: 3,
+  MIN_STARTING_AGE: 216,     // 18 years in turns (months)
+  MAX_STARTING_AGE: 660,     // 55 years
+  MIN_LIFESPAN: 600,         // 50 years
+  MAX_LIFESPAN: 960,         // 80 years
+  AGE_HEALTH_DECAY_START: 540,  // 45 years
+  AGE_HEALTH_DECAY_RATE: 0.15,
+
+  // Intelligence
+  INTELLIGENCE_MEAN: 100,
+  INTELLIGENCE_STDDEV: 15,
+  INTELLIGENCE_MIN: 55,
+  INTELLIGENCE_MAX: 145,
+  INTELLIGENCE_PRODUCTIVITY_WEIGHT: 0.3,
+  INTELLIGENCE_JOB_EVAL_WEIGHT: 0.5,
+
+  // Luck
+  LUCK_BASE_MIN: -0.1,
+  LUCK_BASE_MAX: 0.1,
+  LUCK_TURN_RANGE: 0.2,
+  LUCK_PRODUCTION_WEIGHT: 0.15,
+
+  // Victory / End Conditions
+  VICTORY_GDP_THRESHOLD: 50000,       // cumulative GDP milestone
+  VICTORY_TREASURY_THRESHOLD: 10000,  // treasury milestone
+  MAX_TURNS: 600,                     // 50 years = 600 months
 } as const;

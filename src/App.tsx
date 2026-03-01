@@ -8,6 +8,8 @@ import { EventLog } from './components/EventLog/EventLog';
 import { AgentInspector } from './components/AgentInspector/AgentInspector';
 import { ControlBar } from './components/ControlBar/ControlBar';
 import { IslandMap } from './components/IslandMap/IslandMap';
+import { AgentRoster } from './components/AgentRoster/AgentRoster';
+import { GameOver } from './components/GameOver/GameOver';
 import type { AgentState } from './types';
 import styles from './App.module.css';
 
@@ -23,6 +25,7 @@ function App() {
     reset,
     startAutoPlay,
     stopAutoPlay,
+    endGame,
   } = useGameEngine();
 
   const [selectedAgent, setSelectedAgent] = useState<AgentState | null>(null);
@@ -45,10 +48,12 @@ function App() {
 
         <ControlBar
           autoPlaySpeed={autoPlaySpeed}
+          isGameOver={gameState.gameOver !== null}
           onAdvanceTurn={advanceTurn}
           onStartAutoPlay={startAutoPlay}
           onStopAutoPlay={stopAutoPlay}
           onReset={reset}
+          onEndGame={endGame}
         />
 
         <IslandMap
@@ -68,6 +73,11 @@ function App() {
               onSetPublicWorks={setPublicWorks}
             />
 
+            <AgentRoster
+              agents={gameState.agents}
+              onAgentClick={handleAgentClick}
+            />
+
             <JobsPanel state={gameState} />
           </div>
 
@@ -85,6 +95,13 @@ function App() {
         <AgentInspector
           agent={selectedAgent}
           onClose={() => setSelectedAgent(null)}
+        />
+      )}
+
+      {gameState.gameOver && (
+        <GameOver
+          gameOver={gameState.gameOver}
+          onRestart={reset}
         />
       )}
     </div>

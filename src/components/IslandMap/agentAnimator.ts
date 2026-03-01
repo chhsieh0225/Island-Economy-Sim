@@ -137,8 +137,13 @@ export function getAgentOpacity(agent: AgentState): number {
 
 export function getAgentSize(agent: AgentState): number {
   if (!agent.alive) return 2;
-  // Base size 4, slightly larger for high productivity
-  return 3 + agent.productivity * 1.5;
+  const base = 3 + agent.productivity * 1.5;
+  // Older agents (>45yr) get slightly smaller
+  if (agent.age > 540) {
+    const ageFactor = Math.max(0.7, 1 - (agent.age - 540) / 1000);
+    return base * ageFactor;
+  }
+  return base;
 }
 
 // Hit test: is a mouse point close enough to an agent?

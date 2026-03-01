@@ -59,6 +59,51 @@
   border-color: #64ffda;
 }
 
+.pauseBtn {
+  padding: 10px 24px;
+  font-size: 15px;
+  font-weight: 700;
+  background: #ff9800;
+  color: #0a192f;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.pauseBtn:hover {
+  background: #e68a00;
+  transform: translateY(-1px);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+.endGameBtn {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  color: #ff9800;
+  border: 1px solid #ff9800;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.endGameBtn:hover:not(:disabled) {
+  background: #ff9800;
+  color: #0a192f;
+}
+
+.endGameBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .resetBtn {
   margin-left: auto;
   padding: 6px 14px;

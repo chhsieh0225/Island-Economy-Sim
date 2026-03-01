@@ -1,0 +1,48 @@
+.panel {
+  background: #16213e;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ccd6f6;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+}
+
+.table th {
+  text-align: left;
+  font-size: 11px;
+  color: #8892b0;
+  padding: 4px 8px;
+  border-bottom: 1px solid #233554;
+}
+
+.table td {
+  padding: 6px 8px;
+  font-size: 14px;
+  color: #e6f1ff;
+  border-bottom: 1px solid #1a1a2e;
+}
+
+.food { color: #4caf50; }
+.goods { color: #2196f3; }
+.services { color: #ff9800; }
+
+.up { color: #4caf50; }
+.down { color: #f44336; }
+
+.chartContainer {
+  height: 200px;
+  width: 100%;
+}

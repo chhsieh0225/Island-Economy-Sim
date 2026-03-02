@@ -24,3 +24,18 @@
   letter-spacing: 0.5px;
   pointer-events: none;
 }
+
+.perfDebug {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(8, 20, 35, 0.7);
+  border: 1px solid rgba(130, 176, 226, 0.45);
+  color: #dcecff;
+  font-size: 10px;
+  line-height: 1.25;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}

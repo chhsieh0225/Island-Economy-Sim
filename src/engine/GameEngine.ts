@@ -13,8 +13,6 @@ import type {
   PendingPolicyType,
   ScenarioId,
   DecisionChoice,
-  DecisionEventDef,
-  RandomEventDef,
   MilestoneRecord,
   IslandTerrainState,
   SectorDevelopmentLevel,
@@ -27,8 +25,12 @@ import { Statistics } from './Statistics';
 import { RNG } from './RNG';
 import { computeScore } from './Scoring';
 import { generateName } from '../data/names';
-import { DECISION_EVENTS, RANDOM_EVENTS } from '../data/events';
 import { DEFAULT_SCENARIO, getScenarioById } from '../data/scenarios';
+import { runSpoilagePhase, runProductionPhase, runMarketPostingPhase } from './phases/productionPhase';
+import { runConsumptionPhase } from './phases/consumptionPhase';
+import { runAgingPhase, runLifeDeathPhase } from './phases/demographyPhase';
+import { applyDecisionChoiceEffects, runRandomEventsPhase } from './phases/eventsPhase';
+import { applyPendingPoliciesPhase } from './phases/policiesPhase';
 
 export class GameEngine {
   turn: number = 0;
@@ -335,88 +337,32 @@ export class GameEngine {
   }
 
   private phaseAging(agents: Agent[]): void {
-    for (const agent of agents) {
-      agent.ageOneTurn();
-    }
+    runAgingPhase(agents);
   }
 
   private phaseSpoilage(agents: Agent[]): void {
-    const rate = CONFIG.INVENTORY_SPOILAGE_RATE;
-    for (const agent of agents) {
-      for (const sector of SECTORS) {
-        const keep = CONFIG.CONSUMPTION[sector];
-        const excess = agent.inventory[sector] - keep;
-        if (excess > 0) {
-          agent.inventory[sector] -= excess * rate;
-        }
-      }
-    }
+    runSpoilagePhase(agents);
   }
 
   private phaseProduction(agents: Agent[]): void {
-    const productivityMods: Record<SectorType, number> = { food: 1, goods: 1, services: 1 };
-    for (const event of this.activeRandomEvents) {
-      if (event.def.effects.sectorProductivity) {
-        for (const [sector, mult] of Object.entries(event.def.effects.sectorProductivity)) {
-          productivityMods[sector as SectorType] *= mult;
-        }
-      }
-      if (event.def.effects.productivityPenalty) {
-        for (const s of SECTORS) {
-          productivityMods[s] *= event.def.effects.productivityPenalty;
-        }
-      }
-    }
-
-    for (const agent of agents) {
-      const terrainMult = this.terrain.sectorSuitability[agent.sector];
-      const subsidyMult = this.government.getSubsidyMultiplier(agent.sector) * productivityMods[agent.sector] * terrainMult;
-      const publicWorksBoost = this.government.getPublicWorksBoost();
-      agent.produce(subsidyMult, publicWorksBoost);
-    }
+    runProductionPhase({
+      agents,
+      activeRandomEvents: this.activeRandomEvents,
+      terrain: this.terrain,
+      government: this.government,
+    });
   }
 
   private phaseMarketPosting(aliveAgents: Agent[]): void {
-    // Collect demand modifiers from active events
-    const demandModifiers: Partial<Record<SectorType, number>> = {};
-    for (const event of this.activeRandomEvents) {
-      if (event.def.effects.servicesDemandBoost) {
-        demandModifiers.services = (demandModifiers.services ?? 1) * event.def.effects.servicesDemandBoost;
-      }
-    }
-
-    for (const agent of aliveAgents) {
-      agent.postSellOrders(this.market);
-    }
-    for (const agent of aliveAgents) {
-      agent.postBuyOrders(this.market, Object.keys(demandModifiers).length > 0 ? demandModifiers : undefined);
-    }
+    runMarketPostingPhase({
+      agents: aliveAgents,
+      activeRandomEvents: this.activeRandomEvents,
+      market: this.market,
+    });
   }
 
   private phaseConsumption(agents: Agent[]): void {
-    let eventHealthDamage = 0;
-    for (const event of this.activeRandomEvents) {
-      if (event.def.effects.healthDamage) {
-        eventHealthDamage += event.def.effects.healthDamage;
-      }
-    }
-
-    let eventSatBoost = 0;
-    for (const event of this.activeRandomEvents) {
-      if (event.def.effects.satisfactionBoost) {
-        eventSatBoost += event.def.effects.satisfactionBoost;
-      }
-    }
-
-    for (const agent of agents) {
-      agent.consumeNeeds();
-      if (eventHealthDamage > 0) {
-        agent.health = Math.max(0, agent.health - eventHealthDamage);
-      }
-      if (eventSatBoost > 0) {
-        agent.satisfaction = Math.min(100, agent.satisfaction + eventSatBoost);
-      }
-    }
+    runConsumptionPhase(agents, this.activeRandomEvents);
   }
 
   private phaseFamilySupport(agents: Agent[]): void {
@@ -485,58 +431,14 @@ export class GameEngine {
   }
 
   private phaseLifeDeath(agents: Agent[]): { births: number; deaths: number } {
-    let deaths = 0;
-
-    for (const agent of agents) {
-      if (!agent.alive) continue;
-
-      if (agent.isOld) {
-        agent.alive = false;
-        agent.causeOfDeath = 'age';
-        agent.addLifeEvent(this.turn, 'death', `於 ${Math.floor(agent.age / 12)} 歲因年老去世。`, 'warning');
-        deaths++;
-        this.addEvent('warning', `${agent.name} 因年老去世 (${Math.floor(agent.age / 12)} 歲)。`);
-      } else if (agent.isDead) {
-        agent.alive = false;
-        agent.causeOfDeath = 'health';
-        agent.addLifeEvent(this.turn, 'death', '因健康不佳去世。', 'critical');
-        deaths++;
-        this.addEvent('critical', `${agent.name} 因健康不佳而死亡。`);
-      } else if (agent.shouldLeave) {
-        agent.alive = false;
-        agent.causeOfDeath = 'left';
-        agent.addLifeEvent(this.turn, 'leave', '對小島失去信心，選擇離開。', 'warning');
-        deaths++;
-        this.addEvent('warning', `${agent.name} 因不滿離開了小島。`);
-      }
-    }
-
-    const aliveAgents = this.agents.filter(a => a.alive);
-    const aliveCount = aliveAgents.length;
-    const reproductiveAdults = aliveAgents.filter(
-      a => a.gender === 'F' && a.age >= CONFIG.BIRTH_MIN_REPRO_AGE && a.age <= CONFIG.BIRTH_MAX_REPRO_AGE
-    );
-
-    const capacityFactor = Math.max(0, 1 - aliveCount / CONFIG.BIRTH_CAPACITY_FACTOR);
-    const reproRatio = reproductiveAdults.length / Math.max(1, aliveCount);
-    const birthProb = Math.min(1, Math.max(0,
-      CONFIG.BIRTH_BASE_PROBABILITY * reproRatio * capacityFactor
-    ));
-
-    let births = 0;
-    for (let i = 0; i < 5; i++) {
-      if (births >= CONFIG.BIRTH_MAX_PER_TURN) break;
-      if (reproductiveAdults.length === 0) break;
-      if (birthProb > 0 && this.rng.next() < birthProb) {
-        const parent = this.rng.pick(reproductiveAdults);
-        const newAgent = this.createNewAgent(parent.familyId);
-        this.agents.push(newAgent);
-        births++;
-        this.addEvent('positive', `新居民 ${newAgent.name} 來到了小島！(${Math.floor(newAgent.age / 12)} 歲)`);
-      }
-    }
-
-    return { births, deaths };
+    return runLifeDeathPhase({
+      turn: this.turn,
+      agents,
+      allAgents: this.agents,
+      rng: this.rng,
+      createNewAgent: familyId => this.createNewAgent(familyId),
+      addEvent: (type, message) => this.addEvent(type, message),
+    });
   }
 
   private createNewAgent(familyId?: number): Agent {
@@ -561,170 +463,23 @@ export class GameEngine {
     return agent;
   }
 
-  private decayEventChainSignals(): void {
-    for (const [signal, turns] of Object.entries(this.eventChainSignals)) {
-      const nextTurns = turns - 1;
-      if (nextTurns <= 0) {
-        delete this.eventChainSignals[signal];
-      } else {
-        this.eventChainSignals[signal] = nextTurns;
-      }
-    }
-  }
-
-  private registerEventChainSignal(signal: string, turns: number = CONFIG.EVENT_CHAIN_SIGNAL_TURNS): void {
-    this.eventChainSignals[signal] = Math.max(this.eventChainSignals[signal] ?? 0, turns);
-  }
-
-  private hasEventChainSignal(signal: string): boolean {
-    return (this.eventChainSignals[signal] ?? 0) > 0;
-  }
-
-  private sectorShortageRatio(sector: SectorType): number {
-    const demand = this.market.demand[sector];
-    if (demand <= 0.01) return 0;
-    const supply = this.market.supply[sector];
-    return Math.max(0, (demand - supply) / demand);
-  }
-
-  private getRandomEventProbability(eventDef: RandomEventDef): { probability: number; chainReason?: string } {
-    const baseProbability = eventDef.probability * CONFIG.RANDOM_EVENT_PROBABILITY_MULTIPLIER;
-    let multiplier = 1;
-    const reasons: string[] = [];
-
-    if (eventDef.id === 'inflation_spike') {
-      if (this.hasEventChainSignal('drought')) {
-        multiplier *= 1.85;
-        reasons.push('乾旱導致糧食供應緊縮');
-      }
-      if (this.hasEventChainSignal('storm')) {
-        multiplier *= 1.3;
-        reasons.push('風災擾動生產與運輸');
-      }
-      const foodShortage = this.sectorShortageRatio('food');
-      if (foodShortage >= 0.16) {
-        const shortageMultiplier = 1 + Math.min(0.45, foodShortage * 1.2);
-        multiplier *= shortageMultiplier;
-        reasons.push('食物短缺推升物價');
-      }
-    }
-
-    const boostedProbability = Math.min(
-      baseProbability * multiplier,
-      baseProbability + CONFIG.EVENT_CHAIN_MAX_RANDOM_BONUS,
-    );
-
-    return {
-      probability: Math.max(0, Math.min(1, boostedProbability)),
-      chainReason: reasons.length > 0 ? reasons.join('、') : undefined,
-    };
-  }
-
-  private getDecisionEventProbability(eventDef: DecisionEventDef): { probability: number; chainReason?: string } {
-    const baseProbability = eventDef.probability;
-    let multiplier = 1;
-    const reasons: string[] = [];
-
-    if (eventDef.id === 'cost_of_living') {
-      if (this.hasEventChainSignal('inflation_spike')) {
-        multiplier *= 2.15;
-        reasons.push('通膨壓力延燒');
-      }
-      const foodShortage = this.sectorShortageRatio('food');
-      if (foodShortage >= 0.18) {
-        const shortageMultiplier = 1 + Math.min(0.35, foodShortage);
-        multiplier *= shortageMultiplier;
-        reasons.push('民生供給偏緊');
-      }
-    }
-
-    if (eventDef.id === 'health_crisis' && this.hasEventChainSignal('epidemic')) {
-      multiplier *= 1.8;
-      reasons.push('疫病餘波未平');
-    }
-
-    const boostedProbability = Math.min(
-      baseProbability * multiplier,
-      baseProbability + CONFIG.EVENT_CHAIN_MAX_DECISION_BONUS,
-    );
-
-    return {
-      probability: Math.max(0, Math.min(1, boostedProbability)),
-      chainReason: reasons.length > 0 ? reasons.join('、') : undefined,
-    };
-  }
-
   private phaseRandomEvents(): void {
-    this.activeRandomEvents = this.activeRandomEvents.filter(e => {
-      e.turnsRemaining--;
-      return e.turnsRemaining > 0;
+    const result = runRandomEventsPhase({
+      turn: this.turn,
+      rng: this.rng,
+      market: this.market,
+      activeRandomEvents: this.activeRandomEvents,
+      pendingDecision: this.pendingDecision,
+      lastRandomEventTurn: this.lastRandomEventTurn,
+      lastDecisionTurn: this.lastDecisionTurn,
+      eventChainSignals: this.eventChainSignals,
+      addEvent: (type, message) => this.addEvent(type, message),
     });
-
-    this.decayEventChainSignals();
-    for (const event of this.activeRandomEvents) {
-      if (event.def.probability > 0) {
-        this.registerEventChainSignal(event.def.id, 2);
-      }
-    }
-
-    const decisionCooldownDone = this.turn - this.lastDecisionTurn > CONFIG.DECISION_EVENT_COOLDOWN_TURNS;
-    if (!this.pendingDecision && decisionCooldownDone) {
-      for (const eventDef of DECISION_EVENTS) {
-        const { probability, chainReason } = this.getDecisionEventProbability(eventDef);
-        if (this.rng.next() < probability) {
-          this.pendingDecision = {
-            id: eventDef.id,
-            name: eventDef.name,
-            message: eventDef.message,
-            severity: eventDef.severity,
-            choices: eventDef.choices,
-            turnIssued: this.turn,
-          };
-          this.lastDecisionTurn = this.turn;
-          if (chainReason) {
-            this.addEvent('info', `事件連鎖：${chainReason}，導致「${eventDef.name}」。`);
-          }
-          this.addEvent(eventDef.severity, `${eventDef.name}：${eventDef.message}`);
-          this.addEvent('info', '市政抉擇已出現，請先做出選擇。');
-          break;
-        }
-      }
-    }
-
-    const randomCooldownDone = this.turn - this.lastRandomEventTurn > CONFIG.RANDOM_EVENT_COOLDOWN_TURNS;
-    if (randomCooldownDone) {
-      const available = RANDOM_EVENTS.filter(
-        eventDef => !this.activeRandomEvents.some(e => e.def.id === eventDef.id),
-      );
-
-      if (available.length > 0) {
-        const startIdx = this.rng.nextInt(0, available.length - 1);
-        for (let i = 0; i < available.length; i++) {
-          const eventDef = available[(startIdx + i) % available.length];
-          const { probability, chainReason } = this.getRandomEventProbability(eventDef);
-          if (this.rng.next() < probability) {
-            this.activeRandomEvents.push({ def: eventDef, turnsRemaining: eventDef.duration });
-            this.lastRandomEventTurn = this.turn;
-            if (eventDef.probability > 0) {
-              this.registerEventChainSignal(eventDef.id);
-            }
-            if (chainReason) {
-              this.addEvent('info', `事件連鎖：${chainReason}，觸發「${eventDef.name}」。`);
-            }
-            this.addEvent(eventDef.severity, eventDef.message);
-            break; // at most one new random event per turn
-          }
-        }
-      }
-    }
-
-    for (const event of this.activeRandomEvents) {
-      if (event.def.effects.priceModifier) {
-        for (const [sector, mod] of Object.entries(event.def.effects.priceModifier)) {
-          this.market.prices[sector as SectorType] *= mod;
-        }
-      }
-    }
+    this.activeRandomEvents = result.activeRandomEvents;
+    this.pendingDecision = result.pendingDecision;
+    this.lastRandomEventTurn = result.lastRandomEventTurn;
+    this.lastDecisionTurn = result.lastDecisionTurn;
+    this.eventChainSignals = result.eventChainSignals;
   }
 
   resolveDecision(choiceId: string): boolean {
@@ -740,84 +495,25 @@ export class GameEngine {
   }
 
   private applyDecisionChoice(choice: DecisionChoice): void {
-    if (choice.immediate) {
-      if (choice.immediate.treasuryDelta) {
-        this.government.treasury = Math.max(0, this.government.treasury + choice.immediate.treasuryDelta);
-      }
-
-      if (choice.immediate.satisfactionDelta) {
-        for (const agent of this.agents) {
-          if (!agent.alive) continue;
-          agent.satisfaction = Math.max(0, Math.min(100, agent.satisfaction + choice.immediate.satisfactionDelta));
-        }
-      }
-
-      if (choice.immediate.healthDelta) {
-        for (const agent of this.agents) {
-          if (!agent.alive) continue;
-          agent.health = Math.max(0, Math.min(100, agent.health + choice.immediate.healthDelta));
-        }
-      }
-
-      if (choice.immediate.taxRateDelta) {
-        this.government.setTaxRate(this.government.taxRate + choice.immediate.taxRateDelta);
-      }
-
-      if (choice.immediate.subsidyDelta) {
-        for (const [sector, delta] of Object.entries(choice.immediate.subsidyDelta)) {
-          const key = sector as SectorType;
-          this.government.setSubsidy(key, this.government.subsidies[key] + (delta ?? 0));
-        }
-      }
-    }
-
-    if (choice.temporary) {
-      const tempDef: RandomEventDef = {
-        id: `decision_${this.turn}_${choice.id}_${this.rng.nextInt(1, 1_000_000)}`,
-        name: choice.label,
-        probability: 0,
-        duration: choice.temporary.duration,
-        effects: choice.temporary.effects,
-        message: choice.temporary.message,
-        severity: choice.temporary.severity ?? 'info',
-      };
-      this.activeRandomEvents.push({ def: tempDef, turnsRemaining: tempDef.duration });
-      this.addEvent(tempDef.severity, tempDef.message);
-    }
+    applyDecisionChoiceEffects({
+      choice,
+      turn: this.turn,
+      rng: this.rng,
+      agents: this.agents,
+      government: this.government,
+      activeRandomEvents: this.activeRandomEvents,
+      addEvent: (type, message) => this.addEvent(type, message),
+    });
   }
 
   private applyPendingPolicies(): void {
-    if (this.pendingPolicies.length === 0) return;
-
-    const due: PendingPolicyChange[] = [];
-    this.pendingPolicies = this.pendingPolicies.filter(policy => {
-      if (policy.applyTurn <= this.turn) {
-        due.push(policy);
-        return false;
-      }
-      return true;
+    this.pendingPolicies = applyPendingPoliciesPhase({
+      turn: this.turn,
+      pendingPolicies: this.pendingPolicies,
+      government: this.government,
+      markPolicyApplied: policy => this.markPolicyTimelineApplied(policy),
+      addEvent: (type, message) => this.addEvent(type, message),
     });
-
-    for (const policy of due) {
-      switch (policy.type) {
-        case 'tax':
-          this.government.setTaxRate(policy.value as number);
-          break;
-        case 'subsidy':
-          if (policy.sector) {
-            this.government.setSubsidy(policy.sector, policy.value as number);
-          }
-          break;
-        case 'welfare':
-          this.government.setWelfare(policy.value as boolean);
-          break;
-        case 'publicWorks':
-          this.government.setPublicWorks(policy.value as boolean);
-          break;
-      }
-      this.markPolicyTimelineApplied(policy);
-      this.addEvent('positive', `政策生效：${policy.summary}`);
-    }
   }
 
   private phaseMilestones(): void {

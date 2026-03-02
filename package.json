@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "npm run test:engine",
+    "test:engine": "rm -rf .tmp-tests && tsc -p tsconfig.test.json && echo '{\"type\":\"commonjs\"}' > .tmp-tests/package.json && node --test .tmp-tests/tests/engine/*.test.js"
   },
   "dependencies": {
     "react": "^19.2.0",

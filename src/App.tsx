@@ -12,6 +12,7 @@ import { AgentRoster } from './components/AgentRoster/AgentRoster';
 import { GameOver } from './components/GameOver/GameOver';
 import { DecisionPanel } from './components/DecisionPanel/DecisionPanel';
 import { SimulationLab } from './components/SimulationLab/SimulationLab';
+import { MilestonePanel } from './components/MilestonePanel/MilestonePanel';
 import type { AgentState } from './types';
 import styles from './App.module.css';
 
@@ -34,6 +35,7 @@ function App() {
   } = useGameEngine();
 
   const [selectedAgent, setSelectedAgent] = useState<AgentState | null>(null);
+  const [rightTab, setRightTab] = useState<'market' | 'events' | 'milestones'>('market');
 
   const handleAgentClick = (agent: AgentState) => {
     setSelectedAgent(agent);
@@ -97,11 +99,43 @@ function App() {
           </div>
 
           <div className={styles.rightColumn}>
-            <MarketPanel market={gameState.market} />
-            <EventLog
-              events={gameState.events}
-              activeRandomEvents={gameState.activeRandomEvents}
-            />
+            <div className={styles.rightTabs}>
+              <button
+                className={`${styles.rightTabBtn} ${rightTab === 'market' ? styles.rightTabBtnActive : ''}`}
+                onClick={() => setRightTab('market')}
+              >
+                市場
+              </button>
+              <button
+                className={`${styles.rightTabBtn} ${rightTab === 'events' ? styles.rightTabBtnActive : ''}`}
+                onClick={() => setRightTab('events')}
+              >
+                事件
+              </button>
+              <button
+                className={`${styles.rightTabBtn} ${rightTab === 'milestones' ? styles.rightTabBtnActive : ''}`}
+                onClick={() => setRightTab('milestones')}
+              >
+                里程碑
+              </button>
+            </div>
+
+            {rightTab === 'market' && (
+              <MarketPanel market={gameState.market} />
+            )}
+            {rightTab === 'events' && (
+              <EventLog
+                events={gameState.events}
+                activeRandomEvents={gameState.activeRandomEvents}
+              />
+            )}
+            {rightTab === 'milestones' && (
+              <MilestonePanel
+                milestones={gameState.milestones}
+                agents={gameState.agents}
+                onAgentClick={handleAgentClick}
+              />
+            )}
           </div>
         </div>
       </div>

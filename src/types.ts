@@ -206,6 +206,18 @@ export interface GameOverState {
   };
 }
 
+export type MilestoneKind = 'wealth' | 'talent' | 'longevity' | 'career' | 'family' | 'work';
+
+export interface MilestoneRecord {
+  id: string;
+  turn: number;
+  kind: MilestoneKind;
+  title: string;
+  description: string;
+  agentId?: number;
+  familyId?: number;
+}
+
 export interface RunSummary {
   id: number;
   timestamp: string;
@@ -229,6 +241,7 @@ export interface GameState {
   government: GovernmentState;
   statistics: TurnSnapshot[];
   events: GameEvent[];
+  milestones: MilestoneRecord[];
   activeRandomEvents: ActiveRandomEvent[];
   pendingDecision: PendingDecision | null;
   pendingPolicies: PendingPolicyChange[];

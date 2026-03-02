@@ -13,6 +13,7 @@ import type {
   ScenarioId,
   DecisionChoice,
   RandomEventDef,
+  MilestoneRecord,
 } from '../types';
 import { SECTORS } from '../types';
 import { Agent } from './Agent';
@@ -32,6 +33,7 @@ export class GameEngine {
   government: Government;
   statistics: Statistics;
   events: GameEvent[] = [];
+  milestones: MilestoneRecord[] = [];
   activeRandomEvents: ActiveRandomEvent[] = [];
   pendingDecision: PendingDecision | null = null;
   pendingPolicies: PendingPolicyChange[] = [];
@@ -608,10 +610,14 @@ export class GameEngine {
       const key = `wealth_${m.threshold}`;
       if (!this.milestoneFlags.has(key) && richest.money >= m.threshold) {
         this.milestoneFlags.add(key);
-        this.addEvent(
-          'positive',
-          `${m.label}誕生：${richest.name} 資產突破 $${m.threshold.toLocaleString()}（目前 $${richest.money.toFixed(0)}）。`,
-        );
+        this.addMilestone({
+          id: key,
+          turn: this.turn,
+          kind: 'wealth',
+          title: m.label,
+          description: `${richest.name} 資產突破 $${m.threshold.toLocaleString()}（目前 $${richest.money.toFixed(0)}）。`,
+          agentId: richest.id,
+        });
       }
     }
 
@@ -622,10 +628,14 @@ export class GameEngine {
     );
     if (!this.milestoneFlags.has('super_genius') && smartest.intelligence >= 135) {
       this.milestoneFlags.add('super_genius');
-      this.addEvent(
-        'positive',
-        `超級天才現身：${smartest.name} 的 IQ 高達 ${smartest.intelligence}。`,
-      );
+      this.addMilestone({
+        id: 'super_genius',
+        turn: this.turn,
+        kind: 'talent',
+        title: '超級天才',
+        description: `${smartest.name} 的 IQ 高達 ${smartest.intelligence}。`,
+        agentId: smartest.id,
+      });
     }
 
     // Longevity milestones.
@@ -638,10 +648,14 @@ export class GameEngine {
       const key = `age_${m.turns}`;
       if (!this.milestoneFlags.has(key) && oldest.age >= m.turns) {
         this.milestoneFlags.add(key);
-        this.addEvent(
-          'info',
-          `${m.label}：${oldest.name} 達到 ${m.ageLabel}。`,
-        );
+        this.addMilestone({
+          id: key,
+          turn: this.turn,
+          kind: 'longevity',
+          title: m.label,
+          description: `${oldest.name} 達到 ${m.ageLabel}。`,
+          agentId: oldest.id,
+        });
       }
     }
 
@@ -655,12 +669,97 @@ export class GameEngine {
       const key = `switch_${threshold}`;
       if (!this.milestoneFlags.has(key) && switchKing.totalSwitches >= threshold) {
         this.milestoneFlags.add(key);
-        this.addEvent(
-          'warning',
-          `轉職王出現：${switchKing.name} 已轉職 ${switchKing.totalSwitches} 次。`,
-        );
+        this.addMilestone({
+          id: key,
+          turn: this.turn,
+          kind: 'career',
+          title: '轉職王',
+          description: `${switchKing.name} 已轉職 ${switchKing.totalSwitches} 次。`,
+          agentId: switchKing.id,
+        });
       }
     }
+
+    // Family wealth milestones.
+    const familyTotals = new Map<number, { wealth: number; members: Agent[] }>();
+    for (const agent of aliveAgents) {
+      const current = familyTotals.get(agent.familyId);
+      if (current) {
+        current.wealth += agent.money;
+        current.members.push(agent);
+      } else {
+        familyTotals.set(agent.familyId, { wealth: agent.money, members: [agent] });
+      }
+    }
+    const richestFamily = [...familyTotals.entries()].reduce((best, entry) => (
+      !best || entry[1].wealth > best[1].wealth ? entry : best
+    ), null as [number, { wealth: number; members: Agent[] }] | null);
+
+    if (richestFamily) {
+      const familyMilestones = [5000, 20000];
+      for (const threshold of familyMilestones) {
+        const key = `family_wealth_${threshold}`;
+        if (!this.milestoneFlags.has(key) && richestFamily[1].wealth >= threshold) {
+          this.milestoneFlags.add(key);
+          const representative = richestFamily[1].members.reduce(
+            (best, a) => (a.money > best.money ? a : best),
+            richestFamily[1].members[0],
+          );
+          this.addMilestone({
+            id: key,
+            turn: this.turn,
+            kind: 'family',
+            title: '家族崛起',
+            description: `${representative.name} 所在的 #${richestFamily[0]} 家族總資產突破 $${threshold.toLocaleString()}。`,
+            agentId: representative.id,
+            familyId: richestFamily[0],
+          });
+        }
+      }
+    }
+
+    // Legendary elder with excellent health.
+    const immortalCandidate = aliveAgents.find(a => a.age >= 720 && a.health >= 92);
+    if (immortalCandidate && !this.milestoneFlags.has('immortal_legend')) {
+      this.milestoneFlags.add('immortal_legend');
+      this.addMilestone({
+        id: 'immortal_legend',
+        turn: this.turn,
+        kind: 'longevity',
+        title: '不死傳說',
+        description: `${immortalCandidate.name} 已 ${Math.floor(immortalCandidate.age / 12)} 歲仍維持 ${immortalCandidate.health.toFixed(0)}% 健康。`,
+        agentId: immortalCandidate.id,
+      });
+    }
+
+    // Worker model: sustained high income streak.
+    const workerModel = aliveAgents.find(agent => this.hasRecentIncomeStreak(agent, 5, 90));
+    if (workerModel && !this.milestoneFlags.has('worker_model')) {
+      this.milestoneFlags.add('worker_model');
+      this.addMilestone({
+        id: 'worker_model',
+        turn: this.turn,
+        kind: 'work',
+        title: '勞工楷模',
+        description: `${workerModel.name} 連續 5 回合高收入，展現驚人穩定性。`,
+        agentId: workerModel.id,
+      });
+    }
+  }
+
+  private addMilestone(record: MilestoneRecord): void {
+    this.milestones.unshift(record);
+    if (this.milestones.length > 30) {
+      this.milestones.pop();
+    }
+    // Keep a brief log entry for timeline context, but detailed browsing goes to milestone panel.
+    this.addEvent('positive', `🏅 ${record.title}：${record.description}`);
+  }
+
+  private hasRecentIncomeStreak(agent: Agent, turns: number, threshold: number): boolean {
+    if (agent.incomeHistory.length < turns) return false;
+    const recent = agent.incomeHistory.slice(-turns);
+    return recent.every(v => v >= threshold);
   }
 
   private queuePolicy(change: {
@@ -855,6 +954,7 @@ export class GameEngine {
       government: this.government.toState(),
       statistics: [...this.statistics.history],
       events: [...this.events],
+      milestones: [...this.milestones],
       activeRandomEvents: this.activeRandomEvents.map(e => ({
         def: e.def,
         turnsRemaining: e.turnsRemaining,
@@ -876,6 +976,7 @@ export class GameEngine {
   reset(seed?: number, scenarioId: ScenarioId = this.scenarioId): void {
     this.turn = 0;
     this.events = [];
+    this.milestones = [];
     this.activeRandomEvents = [];
     this.pendingDecision = null;
     this.pendingPolicies = [];

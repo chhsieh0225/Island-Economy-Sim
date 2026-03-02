@@ -46,6 +46,34 @@
   min-width: 0;
 }
 
+.rightTabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.rightTabBtn {
+  border: 1px solid #2d466a;
+  background: #13213d;
+  color: #9bb0cf;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.rightTabBtn:hover {
+  border-color: #64ffda;
+  color: #e6f1ff;
+}
+
+.rightTabBtnActive {
+  border-color: #64ffda;
+  color: #64ffda;
+  background: #10253f;
+}
+
 @media (max-width: 900px) {
   .columns {
     flex-direction: column;

@@ -46,6 +46,7 @@ export class GameEngine {
   private nextPolicyId: number = 1;
   private lastRandomEventTurn: number = -999;
   private lastDecisionTurn: number = -999;
+  private milestoneFlags: Set<string> = new Set();
 
   constructor(seed?: number, scenarioId: ScenarioId = DEFAULT_SCENARIO) {
     this.seed = seed ?? Date.now();
@@ -207,6 +208,7 @@ export class GameEngine {
       this.government,
       demographics
     );
+    this.phaseMilestones();
 
     // Check end conditions
     this.gameOver = this.checkEndConditions();
@@ -591,6 +593,76 @@ export class GameEngine {
     }
   }
 
+  private phaseMilestones(): void {
+    const aliveAgents = this.agents.filter(a => a.alive);
+    if (aliveAgents.length === 0) return;
+
+    // Wealth milestones: trigger once per global threshold.
+    const richest = aliveAgents.reduce((best, a) => (a.money > best.money ? a : best), aliveAgents[0]);
+    const wealthMilestones = [
+      { threshold: 1_000, label: '千元富翁' },
+      { threshold: 10_000, label: '萬元富翁' },
+      { threshold: 1_000_000, label: '百萬富翁' },
+    ];
+    for (const m of wealthMilestones) {
+      const key = `wealth_${m.threshold}`;
+      if (!this.milestoneFlags.has(key) && richest.money >= m.threshold) {
+        this.milestoneFlags.add(key);
+        this.addEvent(
+          'positive',
+          `${m.label}誕生：${richest.name} 資產突破 $${m.threshold.toLocaleString()}（目前 $${richest.money.toFixed(0)}）。`,
+        );
+      }
+    }
+
+    // Super genius: announce once when the first extraordinary IQ appears.
+    const smartest = aliveAgents.reduce(
+      (best, a) => (a.intelligence > best.intelligence ? a : best),
+      aliveAgents[0],
+    );
+    if (!this.milestoneFlags.has('super_genius') && smartest.intelligence >= 135) {
+      this.milestoneFlags.add('super_genius');
+      this.addEvent(
+        'positive',
+        `超級天才現身：${smartest.name} 的 IQ 高達 ${smartest.intelligence}。`,
+      );
+    }
+
+    // Longevity milestones.
+    const oldest = aliveAgents.reduce((best, a) => (a.age > best.age ? a : best), aliveAgents[0]);
+    const ageMilestones = [
+      { turns: 720, label: '長壽里程碑', ageLabel: '60 歲' },
+      { turns: 900, label: '超高齡里程碑', ageLabel: '75 歲' },
+    ];
+    for (const m of ageMilestones) {
+      const key = `age_${m.turns}`;
+      if (!this.milestoneFlags.has(key) && oldest.age >= m.turns) {
+        this.milestoneFlags.add(key);
+        this.addEvent(
+          'info',
+          `${m.label}：${oldest.name} 達到 ${m.ageLabel}。`,
+        );
+      }
+    }
+
+    // Career switching milestones.
+    const switchKing = aliveAgents.reduce(
+      (best, a) => (a.totalSwitches > best.totalSwitches ? a : best),
+      aliveAgents[0],
+    );
+    const switchMilestones = [3, 6];
+    for (const threshold of switchMilestones) {
+      const key = `switch_${threshold}`;
+      if (!this.milestoneFlags.has(key) && switchKing.totalSwitches >= threshold) {
+        this.milestoneFlags.add(key);
+        this.addEvent(
+          'warning',
+          `轉職王出現：${switchKing.name} 已轉職 ${switchKing.totalSwitches} 次。`,
+        );
+      }
+    }
+  }
+
   private queuePolicy(change: {
     type: PendingPolicyType;
     value: number | boolean;
@@ -811,6 +883,7 @@ export class GameEngine {
     this.nextPolicyId = 1;
     this.lastRandomEventTurn = -999;
     this.lastDecisionTurn = -999;
+    this.milestoneFlags.clear();
 
     this.seed = seed ?? Date.now();
     this.scenarioId = scenarioId;

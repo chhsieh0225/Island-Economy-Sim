@@ -6,7 +6,9 @@ import {
   computeResidencePosition,
   computeAnimatedPosition,
   getAnimPhase,
+  shouldCommuteThisTurn,
   shouldVisitMarketThisTurn,
+  getRoutineAnchor,
   computeIdlePosition,
   getAgentColor,
   getAgentOpacity,
@@ -133,10 +135,13 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, autoPlayS
       const home = computeResidencePosition(agent.id, agent.familyId, agent.sector, layout, terrain, w, h);
       const work = computeWorkPosition(agent.id, agent.sector, layout, terrain, w, h);
       const market = { x: layout.market.cx, y: layout.market.cy };
-      const visitMarket = shouldVisitMarketThisTurn(agent, turn);
+      const marketClock = autoPlaySpeed === 'fast' ? Math.floor(turn / 2) : turn;
+      const visitMarket = shouldVisitMarketThisTurn(agent, marketClock);
+      const commuteThisTurn = autoPlaySpeed === 'fast' ? false : shouldCommuteThisTurn(agent, turn);
+      const shouldAnimateTravel = visitMarket || commuteThisTurn;
 
       let pos: Point;
-      if (isAnimatingRef.current) {
+      if (isAnimatingRef.current && shouldAnimateTravel) {
         pos = computeAnimatedPosition(home, work, market, animProgress, agent.id, time, visitMarket);
         const { phase } = getAnimPhase(animProgress, visitMarket);
 
@@ -144,7 +149,8 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, autoPlayS
           drawWorkParticle(ctx, pos.x, pos.y, getAgentColor(agent), animProgress);
         }
       } else {
-        pos = computeIdlePosition(home, agent.id, time);
+        const anchor = getRoutineAnchor(agent, turn, home, work);
+        pos = computeIdlePosition(anchor, agent.id, time);
       }
       pos = clampPointToIsland(pos, island, 0.96);
 

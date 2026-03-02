@@ -205,6 +205,38 @@ export function shouldVisitMarketThisTurn(agent: AgentState, turn: number): bool
   return emergencyRoll < 0.5;
 }
 
+export function shouldCommuteThisTurn(agent: AgentState, turn: number): boolean {
+  const iqPlanning = clamp01((agent.intelligence - 75) / 70);
+  const ageSlowdown = clamp01((agent.age - 420) / 420); // older residents commute less frequently
+  const goalMobility = agent.goalType === 'wealth' ? 0.92
+    : agent.goalType === 'balanced' ? 0.8
+    : agent.goalType === 'survival' ? 0.72
+    : 0.64;
+
+  // Commute cadence by personality + IQ: roughly every 2-5 turns.
+  const intervalRaw = 2 + (1 - iqPlanning) * 1.4 + (1 - goalMobility) * 1.2 + ageSlowdown * 0.6;
+  const interval = Math.max(2, Math.min(5, Math.round(intervalRaw)));
+  const phaseSeed = seededRandom(agent.id * 59 + Math.abs(agent.familyId) * 31 + 23);
+  const phase = Math.floor(phaseSeed * interval);
+  return (turn + phase) % interval === 0;
+}
+
+export function getRoutineAnchor(agent: AgentState, turn: number, home: Point, work: Point): Point {
+  const iqPlanning = clamp01((agent.intelligence - 75) / 70);
+  const homeBias = agent.goalType === 'happiness' ? 0.56
+    : agent.goalType === 'survival' ? 0.48
+    : agent.goalType === 'balanced' ? 0.4
+    : 0.34;
+
+  // Six-slot routine gives longer stretches at home/work instead of per-turn flips.
+  const cycle = 6;
+  const phaseSeed = seededRandom(agent.id * 83 + Math.abs(agent.familyId) * 17 + 3);
+  const phase = Math.floor(phaseSeed * cycle);
+  const slot = (turn + phase) % cycle;
+  const homeSlots = Math.max(1, Math.min(4, Math.round((homeBias + (1 - iqPlanning) * 0.08) * cycle)));
+  return slot < homeSlots ? home : work;
+}
+
 export function getAnimPhase(
   progress: number,
   visitMarket: boolean,

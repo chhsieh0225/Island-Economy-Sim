@@ -4,6 +4,7 @@ import styles from './ControlBar.module.css';
 interface Props {
   autoPlaySpeed: AutoPlaySpeed;
   isGameOver: boolean;
+  hasPendingDecision: boolean;
   onAdvanceTurn: () => void;
   onStartAutoPlay: (speed: 'slow' | 'medium' | 'fast') => void;
   onStopAutoPlay: () => void;
@@ -12,7 +13,7 @@ interface Props {
 }
 
 export function ControlBar({
-  autoPlaySpeed, isGameOver,
+  autoPlaySpeed, isGameOver, hasPendingDecision,
   onAdvanceTurn, onStartAutoPlay, onStopAutoPlay, onReset, onEndGame,
 }: Props) {
   const handleSpeedClick = (speed: 'slow' | 'medium' | 'fast') => {
@@ -28,7 +29,7 @@ export function ControlBar({
       <button
         className={styles.nextTurnBtn}
         onClick={onAdvanceTurn}
-        disabled={autoPlaySpeed !== null || isGameOver}
+        disabled={autoPlaySpeed !== null || isGameOver || hasPendingDecision}
       >
         ▶ 下一回合
       </button>
@@ -46,12 +47,16 @@ export function ControlBar({
             key={speed}
             className={`${styles.speedBtn} ${autoPlaySpeed === speed ? styles.speedBtnActive : ''}`}
             onClick={() => handleSpeedClick(speed)}
-            disabled={isGameOver}
+            disabled={isGameOver || hasPendingDecision}
           >
             {speed === 'slow' ? '慢' : speed === 'medium' ? '中' : '快'}
           </button>
         ))}
       </div>
+
+      {hasPendingDecision && (
+        <span className={styles.pendingFlag}>等待市政抉擇中</span>
+      )}
 
       <button
         className={styles.endGameBtn}

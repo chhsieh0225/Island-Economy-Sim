@@ -93,15 +93,27 @@ export function AgentRoster({ agents, onAgentClick }: Props) {
             <span className={styles.dot} style={{ background: SECTOR_COLORS[agent.sector] }} />
             <span className={styles.name}>{agent.name}</span>
             <span className={styles.age}>{Math.floor(agent.age / 12)}歲</span>
+            <span className={styles.iq}>IQ {agent.intelligence}</span>
             <span className={styles.money}>${agent.money.toFixed(0)}</span>
-            <div className={styles.miniBar}>
-              <div
-                className={styles.miniBarFill}
-                style={{
-                  width: `${agent.health}%`,
-                  background: agent.health > 60 ? '#4caf50' : agent.health > 30 ? '#ff9800' : '#f44336',
-                }}
-              />
+            <div className={styles.barStack}>
+              <div className={styles.miniBar}>
+                <div
+                  className={styles.miniBarFill}
+                  style={{
+                    width: `${agent.health}%`,
+                    background: agent.health > 60 ? '#4caf50' : agent.health > 30 ? '#ff9800' : '#f44336',
+                  }}
+                />
+              </div>
+              <div className={styles.miniBar}>
+                <div
+                  className={styles.miniBarFill}
+                  style={{
+                    width: `${agent.satisfaction}%`,
+                    background: agent.satisfaction > 60 ? '#64ffda' : agent.satisfaction > 30 ? '#ffb74d' : '#ef5350',
+                  }}
+                />
+              </div>
             </div>
           </div>
         ))}
@@ -126,7 +138,7 @@ export function AgentRoster({ agents, onAgentClick }: Props) {
                   <span className={styles.genderIcon}>{agent.gender === 'M' ? '♂' : '♀'}</span>
                   <span className={styles.dot} style={{ background: '#555' }} />
                   <span className={styles.name}>{agent.name}</span>
-                  <span className={styles.deathCause}>{deathLabel(agent)}</span>
+                  <span className={styles.deathCause}>{deathLabel(agent)} · {Math.floor(agent.age / 12)}歲</span>
                 </div>
               ))}
             </div>

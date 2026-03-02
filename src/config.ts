@@ -1,4 +1,4 @@
-import type { SectorType } from './types';
+import type { SectorType, AgeGroup } from './types';
 
 export const CONFIG = {
   INITIAL_POPULATION: 100,
@@ -59,6 +59,7 @@ export const CONFIG = {
   // Government
   DEFAULT_TAX_RATE: 0.10,
   MAX_TAX_RATE: 0.50,
+  POLICY_DELAY_TURNS: 1,
   WELFARE_THRESHOLD_PERCENTILE: 0.25, // bottom 25% get welfare
   WELFARE_AMOUNT: 5,
   PUBLIC_WORKS_COST_PER_TURN: 50,
@@ -75,7 +76,7 @@ export const CONFIG = {
   } as Record<string, number>,
 
   // Demographics
-  BIRTH_BASE_PROBABILITY: 0.15,
+  BIRTH_BASE_PROBABILITY: 0.03,
   BIRTH_CAPACITY_FACTOR: 150,
   BIRTH_MIN_REPRO_AGE: 216,  // 18 years — minimum reproductive age
   BIRTH_MAX_REPRO_AGE: 528,  // 44 years — maximum reproductive age
@@ -85,7 +86,7 @@ export const CONFIG = {
   MIN_LIFESPAN: 600,         // 50 years
   MAX_LIFESPAN: 960,         // 80 years
   AGE_HEALTH_DECAY_START: 540,  // 45 years
-  AGE_HEALTH_DECAY_RATE: 0.15,
+  AGE_HEALTH_DECAY_RATE: 0.5,
 
   // Intelligence
   INTELLIGENCE_MEAN: 100,
@@ -100,6 +101,22 @@ export const CONFIG = {
   LUCK_BASE_MAX: 0.1,
   LUCK_TURN_RANGE: 0.2,
   LUCK_PRODUCTION_WEIGHT: 0.15,
+
+  // Age-layered demand profile
+  AGE_GROUP_MAX_AGE: {
+    youth: 359,    // < 30 years
+    adult: 719,    // < 60 years
+  } as const,
+  CONSUMPTION_AGE_MULTIPLIERS: {
+    youth: { food: 1.0, goods: 1.05, services: 1.2 },
+    adult: { food: 1.0, goods: 1.0, services: 1.0 },
+    senior: { food: 1.1, goods: 0.9, services: 1.25 },
+  } as Record<AgeGroup, Record<SectorType, number>>,
+
+  // Family support
+  FAMILY_SUPPORT_POOR_LINE: 40,
+  FAMILY_SUPPORT_DONOR_LINE: 180,
+  FAMILY_SUPPORT_TRANSFER_MAX: 6,
 
   // Victory / End Conditions
   VICTORY_GDP_THRESHOLD: 50000,       // cumulative GDP milestone

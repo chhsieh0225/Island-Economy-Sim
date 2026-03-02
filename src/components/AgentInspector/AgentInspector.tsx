@@ -22,6 +22,11 @@ export function AgentInspector({ agent, onClose }: Props) {
 
   const genderIcon = agent.gender === 'M' ? '♂' : '♀';
   const genderLabel = agent.gender === 'M' ? '男' : '女';
+  const ageGroupLabel = agent.ageGroup === 'youth'
+    ? '青年'
+    : agent.ageGroup === 'adult'
+      ? '壯年'
+      : '高齡';
 
   const iqColor = agent.intelligence >= 115 ? '#4caf50'
     : agent.intelligence >= 85 ? '#ccd6f6'
@@ -77,6 +82,10 @@ export function AgentInspector({ agent, onClose }: Props) {
             <div className={styles.statValue}>{ageYears} 歲</div>
           </div>
           <div className={styles.stat}>
+            <div className={styles.statLabel}>年齡層 Age Group</div>
+            <div className={styles.statValue}>{ageGroupLabel}</div>
+          </div>
+          <div className={styles.stat}>
             <div className={styles.statLabel}>智力 IQ</div>
             <div className={styles.statValue} style={{ color: iqColor }}>{agent.intelligence}</div>
           </div>
@@ -105,6 +114,10 @@ export function AgentInspector({ agent, onClose }: Props) {
           <div className={styles.stat}>
             <div className={styles.statLabel}>在職回合</div>
             <div className={styles.statValue}>{agent.turnsInSector}</div>
+          </div>
+          <div className={styles.stat}>
+            <div className={styles.statLabel}>家庭 Family</div>
+            <div className={styles.statValue}>#{agent.familyId}</div>
           </div>
         </div>
 

@@ -41,7 +41,7 @@
 }
 
 .list {
-  max-height: 360px;
+  max-height: 400px;
   overflow-y: auto;
 }
 
@@ -49,10 +49,11 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 4px;
+  min-height: 36px;
+  padding: 4px 4px;
   border-bottom: 1px solid #1a1a2e;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
   color: #ccd6f6;
   transition: background 0.1s;
 }
@@ -94,11 +95,24 @@
   text-align: right;
 }
 
+.iq {
+  font-size: 10px;
+  color: #9eb5d8;
+  width: 44px;
+  text-align: right;
+}
+
 .money {
   font-size: 11px;
   color: #64ffda;
   width: 44px;
   text-align: right;
+}
+
+.barStack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .miniBar {

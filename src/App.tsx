@@ -10,6 +10,8 @@ import { ControlBar } from './components/ControlBar/ControlBar';
 import { IslandMap } from './components/IslandMap/IslandMap';
 import { AgentRoster } from './components/AgentRoster/AgentRoster';
 import { GameOver } from './components/GameOver/GameOver';
+import { DecisionPanel } from './components/DecisionPanel/DecisionPanel';
+import { SimulationLab } from './components/SimulationLab/SimulationLab';
 import type { AgentState } from './types';
 import styles from './App.module.css';
 
@@ -17,12 +19,15 @@ function App() {
   const {
     gameState,
     autoPlaySpeed,
+    runHistory,
     advanceTurn,
+    chooseDecision,
     setTaxRate,
     setSubsidy,
     setWelfare,
     setPublicWorks,
     reset,
+    startNewRun,
     startAutoPlay,
     stopAutoPlay,
     endGame,
@@ -49,6 +54,7 @@ function App() {
         <ControlBar
           autoPlaySpeed={autoPlaySpeed}
           isGameOver={gameState.gameOver !== null}
+          hasPendingDecision={gameState.pendingDecision !== null}
           onAdvanceTurn={advanceTurn}
           onStartAutoPlay={startAutoPlay}
           onStopAutoPlay={stopAutoPlay}
@@ -65,8 +71,17 @@ function App() {
 
         <div className={styles.columns}>
           <div className={styles.leftColumn}>
+            <SimulationLab
+              scenarioId={gameState.scenarioId}
+              seed={gameState.seed}
+              runHistory={runHistory}
+              onStartRun={startNewRun}
+            />
+
             <PolicyPanel
+              turn={gameState.turn}
               government={gameState.government}
+              pendingPolicies={gameState.pendingPolicies}
               onSetTaxRate={setTaxRate}
               onSetSubsidy={setSubsidy}
               onSetWelfare={setWelfare}
@@ -102,6 +117,13 @@ function App() {
         <GameOver
           gameOver={gameState.gameOver}
           onRestart={reset}
+        />
+      )}
+
+      {gameState.pendingDecision && (
+        <DecisionPanel
+          decision={gameState.pendingDecision}
+          onChoose={chooseDecision}
         />
       )}
     </div>

@@ -1,0 +1,140 @@
+.panel {
+  background: #16213e;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ccd6f6;
+}
+
+.controlRow {
+  margin-top: 10px;
+}
+
+.label {
+  display: block;
+  font-size: 11px;
+  color: #8892b0;
+  margin-bottom: 4px;
+}
+
+.select,
+.input {
+  width: 100%;
+  background: #0f1a30;
+  border: 1px solid #2d4468;
+  color: #e6f1ff;
+  border-radius: 6px;
+  padding: 7px 8px;
+  font-size: 12px;
+}
+
+.desc {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #a9b7d3;
+  line-height: 1.35;
+}
+
+.buttonRow {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.primaryBtn,
+.secondaryBtn {
+  flex: 1;
+  border: 1px solid #2d4468;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.primaryBtn {
+  background: #64ffda;
+  color: #0a192f;
+  border-color: #64ffda;
+  font-weight: 700;
+}
+
+.secondaryBtn {
+  background: transparent;
+  color: #ccd6f6;
+}
+
+.primaryBtn:hover,
+.secondaryBtn:hover {
+  transform: translateY(-1px);
+  border-color: #64ffda;
+}
+
+.sectionTitle {
+  margin-top: 12px;
+  font-size: 11px;
+  color: #64ffda;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.empty {
+  margin-top: 6px;
+  color: #8892b0;
+  font-size: 11px;
+}
+
+.compare {
+  margin-top: 6px;
+  background: #0f1a30;
+  border: 1px solid #243a5d;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.compareRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #ccd6f6;
+  padding: 3px 0;
+}
+
+.delta {
+  font-variant-numeric: tabular-nums;
+  color: #64ffda;
+}
+
+.history {
+  margin-top: 6px;
+  max-height: 110px;
+  overflow-y: auto;
+  border: 1px solid #243a5d;
+  border-radius: 6px;
+}
+
+.historyItem {
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #1a2b46;
+  font-size: 11px;
+}
+
+.historyItem:last-child {
+  border-bottom: none;
+}
+
+.historyName {
+  color: #e6f1ff;
+  flex: 1;
+}
+
+.historyMeta {
+  color: #8fa2c1;
+}

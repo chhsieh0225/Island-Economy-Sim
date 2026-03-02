@@ -1,5 +1,7 @@
 export type SectorType = 'food' | 'goods' | 'services';
 export type Gender = 'M' | 'F';
+export type AgeGroup = 'youth' | 'adult' | 'senior';
+export type ScenarioId = 'baseline' | 'inflation' | 'inequality' | 'aging';
 
 export const SECTORS: SectorType[] = ['food', 'goods', 'services'];
 
@@ -24,6 +26,8 @@ export interface AgentState {
   causeOfDeath?: 'health' | 'age' | 'left';
   totalSwitches: number;
   switchHistory: SectorType[];
+  familyId: number;
+  ageGroup: AgeGroup;
 }
 
 export interface SellOrder {
@@ -96,9 +100,79 @@ export interface RandomEventEffects {
   servicesDemandBoost?: number;
 }
 
+export interface DecisionImmediateEffects {
+  treasuryDelta?: number;
+  satisfactionDelta?: number;
+  healthDelta?: number;
+  taxRateDelta?: number;
+  subsidyDelta?: Partial<Record<SectorType, number>>;
+}
+
+export interface DecisionChoice {
+  id: string;
+  label: string;
+  description: string;
+  immediate?: DecisionImmediateEffects;
+  temporary?: {
+    duration: number;
+    effects: RandomEventEffects;
+    message: string;
+    severity?: GameEvent['type'];
+  };
+}
+
+export interface DecisionEventDef {
+  id: string;
+  name: string;
+  probability: number;
+  message: string;
+  severity: GameEvent['type'];
+  choices: [DecisionChoice, DecisionChoice];
+}
+
+export interface PendingDecision {
+  id: string;
+  name: string;
+  message: string;
+  severity: GameEvent['type'];
+  choices: [DecisionChoice, DecisionChoice];
+  turnIssued: number;
+}
+
 export interface ActiveRandomEvent {
   def: RandomEventDef;
   turnsRemaining: number;
+}
+
+export type PendingPolicyType = 'tax' | 'subsidy' | 'welfare' | 'publicWorks';
+
+export interface PendingPolicyChange {
+  id: string;
+  type: PendingPolicyType;
+  requestedTurn: number;
+  applyTurn: number;
+  value: number | boolean;
+  sector?: SectorType;
+  summary: string;
+  sideEffects: string[];
+}
+
+export interface ScenarioDef {
+  id: ScenarioId;
+  name: string;
+  description: string;
+  initialTreasury?: number;
+  initialTaxRate?: number;
+  initialSubsidies?: Partial<Record<SectorType, number>>;
+  enableWelfare?: boolean;
+  enablePublicWorks?: boolean;
+  priceMultiplier?: Partial<Record<SectorType, number>>;
+  ageShiftTurns?: number;
+  wealthSkew?: {
+    topPercent: number;
+    topMultiplier: number;
+    bottomMultiplier: number;
+  };
 }
 
 export interface ScoreBreakdown {
@@ -132,6 +206,22 @@ export interface GameOverState {
   };
 }
 
+export interface RunSummary {
+  id: number;
+  timestamp: string;
+  scenarioId: ScenarioId;
+  scenarioName: string;
+  seed: number;
+  turns: number;
+  reason: GameOverReason | 'reset';
+  finalPopulation: number;
+  totalBirths: number;
+  totalDeaths: number;
+  finalGdp: number;
+  finalGini: number;
+  score: number;
+}
+
 export interface GameState {
   turn: number;
   agents: AgentState[];
@@ -140,6 +230,10 @@ export interface GameState {
   statistics: TurnSnapshot[];
   events: GameEvent[];
   activeRandomEvents: ActiveRandomEvent[];
+  pendingDecision: PendingDecision | null;
+  pendingPolicies: PendingPolicyChange[];
   rngState: number;
+  seed: number;
+  scenarioId: ScenarioId;
   gameOver: GameOverState | null;
 }

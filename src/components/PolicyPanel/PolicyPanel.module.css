@@ -14,6 +14,13 @@
   letter-spacing: 0.5px;
 }
 
+.delayHint {
+  font-size: 11px;
+  color: #8fa2c1;
+  margin-bottom: 10px;
+  line-height: 1.3;
+}
+
 .control {
   margin-bottom: 14px;
 }
@@ -77,4 +84,41 @@
   margin: 16px 0 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.empty {
+  font-size: 11px;
+  color: #8892b0;
+}
+
+.pendingList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pendingItem {
+  background: #0f1a30;
+  border: 1px solid #233554;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.pendingMain {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #ccd6f6;
+}
+
+.pendingTurns {
+  color: #64ffda;
+  font-variant-numeric: tabular-nums;
+}
+
+.pendingSide {
+  margin-top: 3px;
+  font-size: 10px;
+  color: #8fa2c1;
 }

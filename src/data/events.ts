@@ -1,4 +1,4 @@
-import type { RandomEventDef } from '../types';
+import type { RandomEventDef, DecisionEventDef } from '../types';
 
 export const RANDOM_EVENTS: RandomEventDef[] = [
   {
@@ -63,5 +63,101 @@ export const RANDOM_EVENTS: RandomEventDef[] = [
     effects: { sectorProductivity: { food: 0.7, goods: 0.7 }, healthDamage: 2 },
     message: '暴風雨侵襲小島！食物和商品生產受損。',
     severity: 'warning',
+  },
+];
+
+export const DECISION_EVENTS: DecisionEventDef[] = [
+  {
+    id: 'cost_of_living',
+    name: '民生壓力 Cost of Living',
+    probability: 0.035,
+    message: '物價上漲引發民怨，市政府必須決定對策。',
+    severity: 'warning',
+    choices: [
+      {
+        id: 'relief',
+        label: '加碼補助',
+        description: '立刻發放生活補助，短期穩定民意，但國庫壓力變大。',
+        immediate: { treasuryDelta: -220, satisfactionDelta: 6 },
+        temporary: {
+          duration: 2,
+          effects: { priceModifier: { food: 0.94, goods: 0.95 } },
+          message: '補助發放生效，民生物價短期被壓住。',
+          severity: 'positive',
+        },
+      },
+      {
+        id: 'austerity',
+        label: '緊縮預算',
+        description: '保住財政，但居民消費與心情會明顯轉弱。',
+        immediate: { treasuryDelta: 120, satisfactionDelta: -8 },
+        temporary: {
+          duration: 2,
+          effects: { servicesDemandBoost: 0.9 },
+          message: '緊縮政策實施，消費信心下降。',
+          severity: 'warning',
+        },
+      },
+    ],
+  },
+  {
+    id: 'health_crisis',
+    name: '公共衛生危機 Health Crisis',
+    probability: 0.03,
+    message: '島上出現傳染病徵兆，該如何回應？',
+    severity: 'critical',
+    choices: [
+      {
+        id: 'strict_control',
+        label: '嚴格防疫',
+        description: '提升健康保護，但經濟活動會放緩。',
+        immediate: { treasuryDelta: -140, healthDelta: 5, satisfactionDelta: -3 },
+        temporary: {
+          duration: 2,
+          effects: { productivityPenalty: 0.9 },
+          message: '嚴格防疫實施，感染受控但產能暫降。',
+          severity: 'warning',
+        },
+      },
+      {
+        id: 'open_economy',
+        label: '維持開放',
+        description: '保住交易活力，但健康風險上升。',
+        immediate: { treasuryDelta: 70, healthDelta: -5, satisfactionDelta: 2 },
+        temporary: {
+          duration: 2,
+          effects: { servicesDemandBoost: 1.15 },
+          message: '市場維持開放，短期需求提升。',
+          severity: 'positive',
+        },
+      },
+    ],
+  },
+  {
+    id: 'industry_lobby',
+    name: '產業遊說 Industry Lobby',
+    probability: 0.03,
+    message: '工坊業者要求政府投入升級基金。',
+    severity: 'info',
+    choices: [
+      {
+        id: 'fund_upgrade',
+        label: '核准升級基金',
+        description: '短期燒錢換中期產能，偏向成長政策。',
+        immediate: { treasuryDelta: -180, subsidyDelta: { goods: 15 } },
+        temporary: {
+          duration: 3,
+          effects: { sectorProductivity: { goods: 1.12 } },
+          message: '升級基金帶動工坊效率提升。',
+          severity: 'positive',
+        },
+      },
+      {
+        id: 'hold_cash',
+        label: '保留現金',
+        description: '財政保守，避免負擔但產業失望。',
+        immediate: { treasuryDelta: 50, satisfactionDelta: -4 },
+      },
+    ],
   },
 ];

@@ -1,5 +1,5 @@
 import { CONFIG } from '../config';
-import type { SectorType, AgentState, Gender, SellOrder, BuyOrder } from '../types';
+import type { AgeGroup, SectorType, AgentState, Gender, SellOrder, BuyOrder } from '../types';
 import { SECTORS } from '../types';
 import type { Market } from './Market';
 import type { RNG } from './RNG';
@@ -10,6 +10,7 @@ export interface AgentOptions {
   intelligence?: number;
   baseLuck?: number;
   gender?: Gender;
+  familyId?: number;
 }
 
 export class Agent {
@@ -35,6 +36,7 @@ export class Agent {
 
   totalSwitches: number;
   switchHistory: SectorType[];
+  familyId: number;
 
   private _incomeThisTurn: number = 0;
   private _spentThisTurn: number = 0;
@@ -55,6 +57,7 @@ export class Agent {
 
     this.totalSwitches = 0;
     this.switchHistory = [sector];
+    this.familyId = options?.familyId ?? id;
 
     this.gender = options?.gender ?? (rng.next() < 0.5 ? 'M' : 'F');
     this.age = options?.age ?? rng.nextInt(CONFIG.MIN_STARTING_AGE, CONFIG.MAX_STARTING_AGE);
@@ -85,6 +88,18 @@ export class Agent {
     return 1 + this._currentLuck * CONFIG.LUCK_PRODUCTION_WEIGHT;
   }
 
+  get ageGroup(): AgeGroup {
+    if (this.age <= CONFIG.AGE_GROUP_MAX_AGE.youth) return 'youth';
+    if (this.age <= CONFIG.AGE_GROUP_MAX_AGE.adult) return 'adult';
+    return 'senior';
+  }
+
+  private getNeedForSector(sector: SectorType, demandMultiplier: number = 1): number {
+    const base = CONFIG.CONSUMPTION[sector];
+    const ageMult = CONFIG.CONSUMPTION_AGE_MULTIPLIERS[this.ageGroup][sector];
+    return base * ageMult * demandMultiplier;
+  }
+
   rollTurnLuck(rng: RNG): void {
     this._currentLuck = this.baseLuck + (rng.next() * 2 - 1) * CONFIG.LUCK_TURN_RANGE;
   }
@@ -100,7 +115,7 @@ export class Agent {
     const available = this.inventory[sector];
     if (available <= 0) return;
 
-    const ownNeed = CONFIG.CONSUMPTION[sector];
+    const ownNeed = this.getNeedForSector(sector);
     const sellQty = Math.max(0, available - ownNeed);
     if (sellQty <= 0) return;
 
@@ -116,7 +131,7 @@ export class Agent {
     for (const sector of SECTORS) {
       if (sector === this.sector) continue;
       const demandMult = demandModifiers?.[sector] ?? 1;
-      const needed = CONFIG.CONSUMPTION[sector] * demandMult - this.inventory[sector];
+      const needed = this.getNeedForSector(sector, demandMult) - this.inventory[sector];
       if (needed <= 0) continue;
 
       const price = market.getPrice(sector);
@@ -154,7 +169,7 @@ export class Agent {
     const unmetNeeds: SectorType[] = [];
 
     for (const sector of SECTORS) {
-      const required = CONFIG.CONSUMPTION[sector];
+      const required = this.getNeedForSector(sector);
       if (this.inventory[sector] >= required) {
         this.inventory[sector] -= required;
       } else {
@@ -259,6 +274,11 @@ export class Agent {
     }
   }
 
+  shiftAge(turns: number): void {
+    this.age = Math.max(CONFIG.MIN_STARTING_AGE, this.age + turns);
+    this.maxAge = Math.max(this.maxAge, this.age + 120);
+  }
+
   get isOld(): boolean {
     return this.age >= this.maxAge;
   }
@@ -293,6 +313,8 @@ export class Agent {
       causeOfDeath: this.causeOfDeath,
       totalSwitches: this.totalSwitches,
       switchHistory: [...this.switchHistory],
+      familyId: this.familyId,
+      ageGroup: this.ageGroup,
     };
   }
 }

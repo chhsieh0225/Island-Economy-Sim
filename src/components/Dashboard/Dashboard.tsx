@@ -20,6 +20,13 @@ export function Dashboard({ state }: Props) {
   const births = latest?.births ?? 0;
   const deaths = latest?.deaths ?? 0;
   const avgAge = latest?.avgAge ?? 0;
+  const ageLayers = alive.reduce(
+    (acc, a) => {
+      acc[a.ageGroup]++;
+      return acc;
+    },
+    { youth: 0, adult: 0, senior: 0 },
+  );
 
   const trend = (current: number, previous: number | undefined) => {
     if (previous === undefined) return <span className={`${styles.trend} ${styles.neutral}`}>--</span>;
@@ -84,6 +91,12 @@ export function Dashboard({ state }: Props) {
           <span style={{ color: '#4caf50' }}>+{births}</span>
           {' / '}
           <span style={{ color: '#f44336' }}>-{deaths}</span>
+        </div>
+      </div>
+      <div className={styles.stat}>
+        <div className={styles.label}>年齡層 Y/A/S</div>
+        <div className={styles.value}>
+          {ageLayers.youth}/{ageLayers.adult}/{ageLayers.senior}
         </div>
       </div>
     </div>

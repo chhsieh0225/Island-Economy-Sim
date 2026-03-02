@@ -51,6 +51,88 @@
   line-height: 1.35;
 }
 
+.objectives {
+  flex: 1 1 100%;
+  background: #1f2640;
+  border: 1px solid #2f3a63;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.objectivesTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f2f6ff;
+  margin-bottom: 8px;
+}
+
+.objectiveList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.objectiveItem {
+  background: #151a2d;
+  border: 1px solid #2b3455;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.objectiveDone {
+  border-color: #287a49;
+  background: #13271d;
+}
+
+.objectiveHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.objectiveHorizon {
+  font-size: 10px;
+  color: #8fcbff;
+  background: #102f47;
+  border-radius: 999px;
+  padding: 2px 6px;
+}
+
+.objectiveName {
+  flex: 1;
+  font-size: 12px;
+  color: #dfe8ff;
+  text-align: left;
+}
+
+.objectivePct {
+  font-size: 11px;
+  color: #ffd56a;
+  font-variant-numeric: tabular-nums;
+}
+
+.objectiveBar {
+  height: 6px;
+  border-radius: 999px;
+  background: #29355a;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.objectiveBar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #5ac8fa, #f4d35e);
+}
+
+.objectiveHint {
+  font-size: 11px;
+  line-height: 1.35;
+  color: #b9c7e6;
+  text-align: left;
+}
+
 .stat {
   flex: 1 1 120px;
   text-align: center;

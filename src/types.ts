@@ -167,6 +167,19 @@ export interface PendingPolicyChange {
   sideEffects: string[];
 }
 
+export interface PolicyTimelineEntry {
+  id: string;
+  type: PendingPolicyType;
+  requestedTurn: number;
+  applyTurn: number;
+  resolvedTurn?: number;
+  status: 'pending' | 'applied';
+  value: number | boolean;
+  sector?: SectorType;
+  summary: string;
+  sideEffects: string[];
+}
+
 export interface ScenarioDef {
   id: ScenarioId;
   name: string;
@@ -233,6 +246,7 @@ export interface GameOverState {
     avgSatisfaction: number;
     avgHealth: number;
     sectorDevelopment: Record<SectorType, SectorDevelopmentSummary>;
+    counterfactualNotes: string[];
   };
 }
 
@@ -276,6 +290,7 @@ export interface GameState {
   activeRandomEvents: ActiveRandomEvent[];
   pendingDecision: PendingDecision | null;
   pendingPolicies: PendingPolicyChange[];
+  policyTimeline: PolicyTimelineEntry[];
   rngState: number;
   seed: number;
   scenarioId: ScenarioId;

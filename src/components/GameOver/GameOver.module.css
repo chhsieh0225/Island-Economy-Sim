@@ -223,6 +223,25 @@
   color: #9fb3d8;
 }
 
+.counterfactualSection {
+  margin-bottom: 24px;
+  padding: 12px 14px;
+  background: #0d1b30;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.counterfactualNote {
+  font-size: 12px;
+  color: #bed4f2;
+  line-height: 1.45;
+  margin-bottom: 6px;
+}
+
+.counterfactualNote:last-child {
+  margin-bottom: 0;
+}
+
 .restartBtn {
   padding: 12px 40px;
   font-size: 16px;

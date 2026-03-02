@@ -1,10 +1,22 @@
-import type { GovernmentState, PendingPolicyChange, SectorType } from '../../types';
+import type {
+  ActiveRandomEvent,
+  GovernmentState,
+  MarketState,
+  PendingPolicyChange,
+  PolicyTimelineEntry,
+  SectorType,
+  TurnSnapshot,
+} from '../../types';
 import styles from './PolicyPanel.module.css';
 
 interface Props {
   turn: number;
   government: GovernmentState;
+  market: MarketState;
+  statistics: TurnSnapshot[];
+  activeRandomEvents: ActiveRandomEvent[];
   pendingPolicies: PendingPolicyChange[];
+  policyTimeline: PolicyTimelineEntry[];
   onSetTaxRate: (rate: number) => void;
   onSetSubsidy: (sector: SectorType, amount: number) => void;
   onSetWelfare: (enabled: boolean) => void;
@@ -30,10 +42,19 @@ function pendingSummary(policy: PendingPolicyChange): string {
   }
 }
 
+function signed(value: number, digits: number = 1): string {
+  const fixed = value.toFixed(digits);
+  return value >= 0 ? `+${fixed}` : fixed;
+}
+
 export function PolicyPanel({
   turn,
   government,
+  market,
+  statistics,
+  activeRandomEvents,
   pendingPolicies,
+  policyTimeline,
   onSetTaxRate,
   onSetSubsidy,
   onSetWelfare,
@@ -50,6 +71,24 @@ export function PolicyPanel({
   const taxDisplay = (pendingTax ? pendingTax.value as number : government.taxRate) * 100;
   const welfareDisplay = pendingWelfare ? pendingWelfare.value as boolean : government.welfareEnabled;
   const publicWorksDisplay = pendingPublicWorks ? pendingPublicWorks.value as boolean : government.publicWorksActive;
+  const latest = statistics.length > 0 ? statistics[statistics.length - 1] : null;
+  const prev = statistics.length > 1 ? statistics[statistics.length - 2] : null;
+
+  const shortageRatios = (['food', 'goods', 'services'] as const).map(sector => {
+    const demand = market.demand[sector];
+    if (demand <= 0.001) return 0;
+    return Math.max(0, (demand - market.supply[sector]) / demand);
+  });
+  const shortagePressure = shortageRatios.reduce((s, v) => s + v, 0) / shortageRatios.length;
+  const shortagePenalty = -Math.min(7, shortagePressure * 8.5);
+  const taxPenalty = -Math.max(0, (government.taxRate - 0.1) * 24);
+  const welfareBoost = government.welfareEnabled ? 1.4 : 0;
+  const publicWorksBoost = government.publicWorksActive ? 0.9 : 0;
+  const eventBoost = activeRandomEvents.reduce((sum, event) => (
+    sum + (event.def.effects.satisfactionBoost ?? 0) - (event.def.effects.healthDamage ?? 0) * 0.28
+  ), 0);
+  const modelDelta = shortagePenalty + taxPenalty + welfareBoost + publicWorksBoost + eventBoost;
+  const actualSatDelta = latest && prev ? latest.avgSatisfaction - prev.avgSatisfaction : null;
 
   return (
     <div className={styles.panel}>
@@ -117,6 +156,41 @@ export function PolicyPanel({
         <span className={styles.toggleLabel}>公共建設 Public Works</span>
       </label>
 
+      <div className={styles.sectionTitle}>政策效果拆解 Policy Impact</div>
+      {latest && prev ? (
+        <div className={styles.impactCard}>
+          <div className={styles.impactHeadline}>
+            本回合滿意度 ΔSat:
+            <span className={actualSatDelta! >= 0 ? styles.impactUp : styles.impactDown}>
+              {signed(actualSatDelta!, 2)}%
+            </span>
+          </div>
+          <div className={styles.impactLine}>
+            <span>需求短缺壓力</span>
+            <span className={shortagePenalty >= 0 ? styles.impactUp : styles.impactDown}>{signed(shortagePenalty)}</span>
+          </div>
+          <div className={styles.impactLine}>
+            <span>稅率負擔（{(government.taxRate * 100).toFixed(0)}%）</span>
+            <span className={taxPenalty >= 0 ? styles.impactUp : styles.impactDown}>{signed(taxPenalty)}</span>
+          </div>
+          <div className={styles.impactLine}>
+            <span>福利/公共建設加成</span>
+            <span className={(welfareBoost + publicWorksBoost) >= 0 ? styles.impactUp : styles.impactDown}>
+              {signed(welfareBoost + publicWorksBoost)}
+            </span>
+          </div>
+          <div className={styles.impactLine}>
+            <span>事件影響</span>
+            <span className={eventBoost >= 0 ? styles.impactUp : styles.impactDown}>{signed(eventBoost)}</span>
+          </div>
+          <div className={styles.impactFoot}>
+            模型估計合計 {signed(modelDelta)}，可與實際 ΔSat 對照理解政策延遲與市場波動。
+          </div>
+        </div>
+      ) : (
+        <div className={styles.empty}>需要至少 2 回合資料才能拆解效果。</div>
+      )}
+
       <div className={styles.sectionTitle}>待生效政策 Pending</div>
       {pendingPolicies.length === 0 ? (
         <div className={styles.empty}>目前沒有待生效政策</div>
@@ -138,6 +212,27 @@ export function PolicyPanel({
                 </div>
               </div>
             ))}
+        </div>
+      )}
+
+      <div className={styles.sectionTitle}>政策因果時間線 Causal Timeline</div>
+      {policyTimeline.length === 0 ? (
+        <div className={styles.empty}>尚無政策紀錄。</div>
+      ) : (
+        <div className={styles.timelineList}>
+          {policyTimeline.slice(0, 8).map(item => (
+            <div key={item.id} className={styles.timelineItem}>
+              <div className={styles.timelineMain}>
+                <span>{item.summary}</span>
+                <span className={item.status === 'pending' ? styles.pendingTurns : styles.timelineApplied}>
+                  {item.status === 'pending'
+                    ? `T${item.requestedTurn} → T${item.applyTurn}（待生效）`
+                    : `T${item.requestedTurn} → T${item.resolvedTurn ?? item.applyTurn}（已生效）`}
+                </span>
+              </div>
+              <div className={styles.pendingSide}>{item.sideEffects.join(' / ')}</div>
+            </div>
+          ))}
         </div>
       )}
     </div>

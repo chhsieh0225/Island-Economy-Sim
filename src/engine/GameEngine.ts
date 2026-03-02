@@ -9,9 +9,11 @@ import type {
   GameOverReason,
   PendingDecision,
   PendingPolicyChange,
+  PolicyTimelineEntry,
   PendingPolicyType,
   ScenarioId,
   DecisionChoice,
+  DecisionEventDef,
   RandomEventDef,
   MilestoneRecord,
   IslandTerrainState,
@@ -40,6 +42,7 @@ export class GameEngine {
   activeRandomEvents: ActiveRandomEvent[] = [];
   pendingDecision: PendingDecision | null = null;
   pendingPolicies: PendingPolicyChange[] = [];
+  policyTimeline: PolicyTimelineEntry[] = [];
 
   rng: RNG;
   seed: number;
@@ -51,6 +54,7 @@ export class GameEngine {
   private nextPolicyId: number = 1;
   private lastRandomEventTurn: number = -999;
   private lastDecisionTurn: number = -999;
+  private eventChainSignals: Record<string, number> = {};
   private milestoneFlags: Set<string> = new Set();
 
   constructor(seed?: number, scenarioId: ScenarioId = DEFAULT_SCENARIO) {
@@ -557,16 +561,117 @@ export class GameEngine {
     return agent;
   }
 
+  private decayEventChainSignals(): void {
+    for (const [signal, turns] of Object.entries(this.eventChainSignals)) {
+      const nextTurns = turns - 1;
+      if (nextTurns <= 0) {
+        delete this.eventChainSignals[signal];
+      } else {
+        this.eventChainSignals[signal] = nextTurns;
+      }
+    }
+  }
+
+  private registerEventChainSignal(signal: string, turns: number = CONFIG.EVENT_CHAIN_SIGNAL_TURNS): void {
+    this.eventChainSignals[signal] = Math.max(this.eventChainSignals[signal] ?? 0, turns);
+  }
+
+  private hasEventChainSignal(signal: string): boolean {
+    return (this.eventChainSignals[signal] ?? 0) > 0;
+  }
+
+  private sectorShortageRatio(sector: SectorType): number {
+    const demand = this.market.demand[sector];
+    if (demand <= 0.01) return 0;
+    const supply = this.market.supply[sector];
+    return Math.max(0, (demand - supply) / demand);
+  }
+
+  private getRandomEventProbability(eventDef: RandomEventDef): { probability: number; chainReason?: string } {
+    const baseProbability = eventDef.probability * CONFIG.RANDOM_EVENT_PROBABILITY_MULTIPLIER;
+    let multiplier = 1;
+    const reasons: string[] = [];
+
+    if (eventDef.id === 'inflation_spike') {
+      if (this.hasEventChainSignal('drought')) {
+        multiplier *= 1.85;
+        reasons.push('乾旱導致糧食供應緊縮');
+      }
+      if (this.hasEventChainSignal('storm')) {
+        multiplier *= 1.3;
+        reasons.push('風災擾動生產與運輸');
+      }
+      const foodShortage = this.sectorShortageRatio('food');
+      if (foodShortage >= 0.16) {
+        const shortageMultiplier = 1 + Math.min(0.45, foodShortage * 1.2);
+        multiplier *= shortageMultiplier;
+        reasons.push('食物短缺推升物價');
+      }
+    }
+
+    const boostedProbability = Math.min(
+      baseProbability * multiplier,
+      baseProbability + CONFIG.EVENT_CHAIN_MAX_RANDOM_BONUS,
+    );
+
+    return {
+      probability: Math.max(0, Math.min(1, boostedProbability)),
+      chainReason: reasons.length > 0 ? reasons.join('、') : undefined,
+    };
+  }
+
+  private getDecisionEventProbability(eventDef: DecisionEventDef): { probability: number; chainReason?: string } {
+    const baseProbability = eventDef.probability;
+    let multiplier = 1;
+    const reasons: string[] = [];
+
+    if (eventDef.id === 'cost_of_living') {
+      if (this.hasEventChainSignal('inflation_spike')) {
+        multiplier *= 2.15;
+        reasons.push('通膨壓力延燒');
+      }
+      const foodShortage = this.sectorShortageRatio('food');
+      if (foodShortage >= 0.18) {
+        const shortageMultiplier = 1 + Math.min(0.35, foodShortage);
+        multiplier *= shortageMultiplier;
+        reasons.push('民生供給偏緊');
+      }
+    }
+
+    if (eventDef.id === 'health_crisis' && this.hasEventChainSignal('epidemic')) {
+      multiplier *= 1.8;
+      reasons.push('疫病餘波未平');
+    }
+
+    const boostedProbability = Math.min(
+      baseProbability * multiplier,
+      baseProbability + CONFIG.EVENT_CHAIN_MAX_DECISION_BONUS,
+    );
+
+    return {
+      probability: Math.max(0, Math.min(1, boostedProbability)),
+      chainReason: reasons.length > 0 ? reasons.join('、') : undefined,
+    };
+  }
+
   private phaseRandomEvents(): void {
     this.activeRandomEvents = this.activeRandomEvents.filter(e => {
       e.turnsRemaining--;
       return e.turnsRemaining > 0;
     });
 
+    this.decayEventChainSignals();
+    for (const event of this.activeRandomEvents) {
+      if (event.def.probability > 0) {
+        this.registerEventChainSignal(event.def.id, 2);
+      }
+    }
+
     const decisionCooldownDone = this.turn - this.lastDecisionTurn > CONFIG.DECISION_EVENT_COOLDOWN_TURNS;
     if (!this.pendingDecision && decisionCooldownDone) {
       for (const eventDef of DECISION_EVENTS) {
-        if (this.rng.next() < eventDef.probability) {
+        const { probability, chainReason } = this.getDecisionEventProbability(eventDef);
+        if (this.rng.next() < probability) {
           this.pendingDecision = {
             id: eventDef.id,
             name: eventDef.name,
@@ -576,6 +681,9 @@ export class GameEngine {
             turnIssued: this.turn,
           };
           this.lastDecisionTurn = this.turn;
+          if (chainReason) {
+            this.addEvent('info', `事件連鎖：${chainReason}，導致「${eventDef.name}」。`);
+          }
           this.addEvent(eventDef.severity, `${eventDef.name}：${eventDef.message}`);
           this.addEvent('info', '市政抉擇已出現，請先做出選擇。');
           break;
@@ -593,10 +701,16 @@ export class GameEngine {
         const startIdx = this.rng.nextInt(0, available.length - 1);
         for (let i = 0; i < available.length; i++) {
           const eventDef = available[(startIdx + i) % available.length];
-          const adjustedProbability = eventDef.probability * CONFIG.RANDOM_EVENT_PROBABILITY_MULTIPLIER;
-          if (this.rng.next() < adjustedProbability) {
+          const { probability, chainReason } = this.getRandomEventProbability(eventDef);
+          if (this.rng.next() < probability) {
             this.activeRandomEvents.push({ def: eventDef, turnsRemaining: eventDef.duration });
             this.lastRandomEventTurn = this.turn;
+            if (eventDef.probability > 0) {
+              this.registerEventChainSignal(eventDef.id);
+            }
+            if (chainReason) {
+              this.addEvent('info', `事件連鎖：${chainReason}，觸發「${eventDef.name}」。`);
+            }
             this.addEvent(eventDef.severity, eventDef.message);
             break; // at most one new random event per turn
           }
@@ -701,6 +815,7 @@ export class GameEngine {
           this.government.setPublicWorks(policy.value as boolean);
           break;
       }
+      this.markPolicyTimelineApplied(policy);
       this.addEvent('positive', `政策生效：${policy.summary}`);
     }
   }
@@ -878,6 +993,59 @@ export class GameEngine {
     return recent.every(v => v >= threshold);
   }
 
+  private upsertPolicyTimeline(policy: PendingPolicyChange): void {
+    const nextEntry: PolicyTimelineEntry = {
+      id: policy.id,
+      type: policy.type,
+      requestedTurn: policy.requestedTurn,
+      applyTurn: policy.applyTurn,
+      status: 'pending',
+      value: policy.value,
+      sector: policy.sector,
+      summary: policy.summary,
+      sideEffects: [...policy.sideEffects],
+    };
+
+    const existingIdx = this.policyTimeline.findIndex(entry => entry.id === policy.id);
+    if (existingIdx >= 0) {
+      this.policyTimeline[existingIdx] = nextEntry;
+    } else {
+      this.policyTimeline.unshift(nextEntry);
+      if (this.policyTimeline.length > 80) {
+        this.policyTimeline.pop();
+      }
+    }
+  }
+
+  private markPolicyTimelineApplied(policy: PendingPolicyChange): void {
+    const existingIdx = this.policyTimeline.findIndex(entry => entry.id === policy.id);
+    if (existingIdx >= 0) {
+      this.policyTimeline[existingIdx] = {
+        ...this.policyTimeline[existingIdx],
+        status: 'applied',
+        resolvedTurn: this.turn,
+        applyTurn: policy.applyTurn,
+        value: policy.value,
+        summary: policy.summary,
+        sideEffects: [...policy.sideEffects],
+      };
+      return;
+    }
+
+    this.policyTimeline.unshift({
+      id: policy.id,
+      type: policy.type,
+      requestedTurn: policy.requestedTurn,
+      applyTurn: policy.applyTurn,
+      resolvedTurn: this.turn,
+      status: 'applied',
+      value: policy.value,
+      sector: policy.sector,
+      summary: policy.summary,
+      sideEffects: [...policy.sideEffects],
+    });
+  }
+
   private queuePolicy(change: {
     type: PendingPolicyType;
     value: number | boolean;
@@ -908,6 +1076,7 @@ export class GameEngine {
       this.pendingPolicies.push(nextPolicy);
       this.addEvent('info', `政策排程：${change.summary}（將於 ${nextPolicy.applyTurn} 回合生效）`);
     }
+    this.upsertPolicyTimeline(nextPolicy);
   }
 
   private getPolicySideEffects(type: PendingPolicyType, value: number | boolean): string[] {
@@ -1012,6 +1181,48 @@ export class GameEngine {
     return result;
   }
 
+  private buildCounterfactualNotes(history: TurnSnapshot[]): string[] {
+    const latest = history[history.length - 1];
+    if (!latest) {
+      return ['資料不足，建議先運行數回合再比較政策反事實。'];
+    }
+
+    const notes: string[] = [];
+    const taxPct = latest.government.taxRate * 100;
+    const totalPopulationSeen = Math.max(1, this.agents.length);
+    const leftCount = this.agents.filter(a => a.causeOfDeath === 'left').length;
+    const leaveRate = (leftCount / totalPopulationSeen) * 100;
+
+    if (taxPct >= 12) {
+      const taxCut = 5;
+      const taxRelief = Math.max(1, (taxPct - 10) * 0.18 + latest.giniCoefficient * 3.2);
+      notes.push(
+        `若稅率下調 ${taxCut}%（${taxPct.toFixed(0)}% → ${Math.max(0, taxPct - taxCut).toFixed(0)}%），估計離島率可減少約 ${taxRelief.toFixed(1)}%（現況約 ${leaveRate.toFixed(1)}%）。`,
+      );
+    }
+
+    const foodDemand = latest.market.demand.food;
+    const foodSupply = latest.market.supply.food;
+    const foodGapRatio = foodDemand > 0 ? Math.max(0, (foodDemand - foodSupply) / foodDemand) : 0;
+    if (foodGapRatio > 0.1) {
+      const satLift = Math.min(7.5, 2 + foodGapRatio * 10);
+      notes.push(
+        `若把食物缺口補回一半，估計平均滿意度可回升約 ${satLift.toFixed(1)}%。`,
+      );
+    }
+
+    if (!latest.government.welfareEnabled && latest.giniCoefficient > 0.44) {
+      const giniDrop = Math.min(0.08, 0.02 + (latest.giniCoefficient - 0.44) * 0.35);
+      notes.push(`若啟用福利並持續 12 回合，估計基尼可下降約 ${giniDrop.toFixed(3)}。`);
+    }
+
+    if (notes.length === 0) {
+      notes.push('現況結構相對平衡：可用稅率或補貼 ±5% 做對照實驗，觀察中期差異。');
+    }
+
+    return notes.slice(0, 3);
+  }
+
   private buildGameOverState(reason: GameOverReason): GameOverState {
     const history = this.statistics.history;
     return {
@@ -1028,6 +1239,7 @@ export class GameEngine {
         avgHealth: history.length > 0
           ? history.reduce((s, h) => s + h.avgHealth, 0) / history.length : 0,
         sectorDevelopment: this.buildSectorDevelopment(history),
+        counterfactualNotes: this.buildCounterfactualNotes(history),
       },
     };
   }
@@ -1152,6 +1364,7 @@ export class GameEngine {
         }
         : null,
       pendingPolicies: [...this.pendingPolicies],
+      policyTimeline: this.policyTimeline.map(entry => ({ ...entry, sideEffects: [...entry.sideEffects] })),
       rngState: this.rng.getState(),
       seed: this.seed,
       scenarioId: this.scenarioId,
@@ -1166,10 +1379,12 @@ export class GameEngine {
     this.activeRandomEvents = [];
     this.pendingDecision = null;
     this.pendingPolicies = [];
+    this.policyTimeline = [];
     this.gameOver = null;
     this.nextPolicyId = 1;
     this.lastRandomEventTurn = -999;
     this.lastDecisionTurn = -999;
+    this.eventChainSignals = {};
     this.milestoneFlags.clear();
 
     this.seed = seed ?? Date.now();

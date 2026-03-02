@@ -893,6 +893,15 @@ export function drawEventOverlays(
       ctx.fill();
       ctx.restore();
     }
+
+    if (id === 'inflation_spike') {
+      // Warm haze to indicate island-wide price pressure.
+      ctx.save();
+      const pulse = 0.05 + Math.sin(time * 2.2) * 0.015;
+      ctx.fillStyle = `rgba(255, 120, 64, ${pulse})`;
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
   }
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { SCENARIOS } from '../../data/scenarios';
 import type { RunSummary, ScenarioId } from '../../types';
 import styles from './SimulationLab.module.css';
@@ -18,27 +18,32 @@ function fmtDelta(value: number, digits: number = 0): string {
 export function SimulationLab({ scenarioId, seed, runHistory, onStartRun }: Props) {
   const [seedInput, setSeedInput] = useState(String(seed));
   const [scenarioInput, setScenarioInput] = useState<ScenarioId>(scenarioId);
+  const [seedDirty, setSeedDirty] = useState(false);
+  const [scenarioDirty, setScenarioDirty] = useState(false);
 
-  useEffect(() => {
-    setSeedInput(String(seed));
-    setScenarioInput(scenarioId);
-  }, [seed, scenarioId]);
+  const displayedSeed = seedDirty ? seedInput : String(seed);
+  const displayedScenario = scenarioDirty ? scenarioInput : scenarioId;
 
   const selectedScenario = useMemo(
-    () => SCENARIOS.find(s => s.id === scenarioInput) ?? SCENARIOS[0],
-    [scenarioInput],
+    () => SCENARIOS.find(s => s.id === displayedScenario) ?? SCENARIOS[0],
+    [displayedScenario],
   );
 
   const latest = runHistory[0];
   const prev = runHistory[1];
 
   const launch = () => {
-    const parsed = Number(seedInput);
+    const parsed = Number(displayedSeed);
     const nextSeed = Number.isFinite(parsed) ? Math.max(1, Math.floor(parsed)) : Date.now();
-    onStartRun(nextSeed, scenarioInput);
+    onStartRun(nextSeed, displayedScenario);
+    setSeedInput(String(nextSeed));
+    setScenarioInput(displayedScenario);
+    setSeedDirty(false);
+    setScenarioDirty(false);
   };
 
   const randomizeSeed = () => {
+    setSeedDirty(true);
     setSeedInput(String(Date.now()));
   };
 
@@ -50,8 +55,11 @@ export function SimulationLab({ scenarioId, seed, runHistory, onStartRun }: Prop
         <label className={styles.label}>劇本 Scenario</label>
         <select
           className={styles.select}
-          value={scenarioInput}
-          onChange={e => setScenarioInput(e.target.value as ScenarioId)}
+          value={displayedScenario}
+          onChange={e => {
+            setScenarioDirty(true);
+            setScenarioInput(e.target.value as ScenarioId);
+          }}
         >
           {SCENARIOS.map(s => (
             <option key={s.id} value={s.id}>{s.name}</option>
@@ -65,8 +73,11 @@ export function SimulationLab({ scenarioId, seed, runHistory, onStartRun }: Prop
         <label className={styles.label}>Seed</label>
         <input
           className={styles.input}
-          value={seedInput}
-          onChange={e => setSeedInput(e.target.value)}
+          value={displayedSeed}
+          onChange={e => {
+            setSeedDirty(true);
+            setSeedInput(e.target.value);
+          }}
           inputMode="numeric"
           placeholder="輸入整數 seed"
         />

@@ -106,6 +106,13 @@ export function GameOver({ gameOver, onRestart }: Props) {
           })}
         </div>
 
+        <div className={styles.counterfactualSection}>
+          <div className={styles.sectionTitle}>反事實 Counterfactual</div>
+          {finalStats.counterfactualNotes.map((note, idx) => (
+            <div key={idx} className={styles.counterfactualNote}>{note}</div>
+          ))}
+        </div>
+
         <button className={styles.restartBtn} onClick={onRestart}>
           重新開始 Restart
         </button>

@@ -82,110 +82,109 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, autoPlayS
     }
   }, [turn]);
 
-  // Main render loop
-  const render = useCallback((timestamp: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    const w = rect.width;
-    const h = rect.height;
-
-    // Resize canvas if needed
-    if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
-      ctx.scale(dpr, dpr);
-    }
-
-    ctx.clearRect(0, 0, w, h);
-
-    const time = timestamp / 1000;
-    const layout = getZoneLayout(w, h, terrain);
-    const island = getIslandGeometry(w, h, terrain);
-
-    // Compute animation progress
-    let animProgress = 0;
-    if (isAnimatingRef.current) {
-      const elapsed = timestamp - animStartRef.current;
-      const animDuration = getAnimDurationMs(autoPlaySpeed);
-      animProgress = Math.min(1, elapsed / animDuration);
-      if (animProgress >= 1) {
-        isAnimatingRef.current = false;
-        animProgress = 0;
-      }
-    }
-
-    // Draw background layers
-    drawWater(ctx, w, h, time);
-    drawIsland(ctx, w, h, terrain);
-    drawZones(ctx, layout, terrain, agents, turn, w, h);
-    drawEventOverlays(ctx, layout, activeRandomEvents, w, h, time);
-    drawMarket(ctx, layout);
-    drawZoneLabels(ctx, layout, terrain, agents, turn);
-
-    // Draw agents
-    const aliveAgents = agents.filter(a => a.alive);
-    const rendered: AgentRenderState[] = [];
-
-    for (const agent of aliveAgents) {
-      const home = computeResidencePosition(agent.id, agent.familyId, agent.sector, layout, terrain, w, h);
-      const work = computeWorkPosition(agent.id, agent.sector, layout, terrain, w, h);
-      const market = { x: layout.market.cx, y: layout.market.cy };
-      const marketClock = autoPlaySpeed === 'fast' ? Math.floor(turn / 2) : turn;
-      const visitMarket = shouldVisitMarketThisTurn(agent, marketClock);
-      const commuteThisTurn = autoPlaySpeed === 'fast' ? false : shouldCommuteThisTurn(agent, turn);
-      const shouldAnimateTravel = visitMarket || commuteThisTurn;
-
-      let pos: Point;
-      if (isAnimatingRef.current && shouldAnimateTravel) {
-        pos = computeAnimatedPosition(home, work, market, animProgress, agent.id, time, visitMarket);
-        const { phase } = getAnimPhase(animProgress, visitMarket);
-
-        if (phase === 'working') {
-          drawWorkParticle(ctx, pos.x, pos.y, getAgentColor(agent), animProgress);
-        }
-      } else {
-        const anchor = getRoutineAnchor(agent, turn, home, work);
-        pos = computeIdlePosition(anchor, agent.id, time);
-      }
-      pos = clampPointToIsland(pos, island, 0.96);
-
-      const color = getAgentColor(agent);
-      const opacity = getAgentOpacity(agent);
-      const size = getAgentSize(agent);
-      const isLowHealth = agent.health < 40;
-
-      drawAgent(ctx, pos.x, pos.y, color, size, opacity, isLowHealth, time);
-      rendered.push({ pos, color, opacity, size, agent });
-    }
-
-    agentPositionsRef.current = rendered;
-
-    // Draw tooltip for hovered agent
-    if (hoveredAgent) {
-      const agentRender = rendered.find(r => r.agent.id === hoveredAgent.id);
-      if (agentRender) {
-        const { pos, agent } = agentRender;
-        const sectorLabel = agent.sector === 'food' ? '食物' : agent.sector === 'goods' ? '商品' : '服務';
-        const genderIcon = agent.gender === 'M' ? '♂' : '♀';
-        const ageYears = Math.floor(agent.age / 12);
-        const label = `${genderIcon}${agent.name} [${sectorLabel}] ${ageYears}歲 $${agent.money.toFixed(0)} HP:${agent.health.toFixed(0)}`;
-        drawTooltip(ctx, pos.x, pos.y, label, w);
-      }
-    }
-
-    animRef.current = requestAnimationFrame(render);
-  }, [agents, activeRandomEvents, hoveredAgent, terrain, autoPlaySpeed]);
-
   // Start/stop animation loop
   useEffect(() => {
-    animRef.current = requestAnimationFrame(render);
+    const renderFrame = (timestamp: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = rect.width;
+      const h = rect.height;
+
+      // Resize canvas if needed
+      if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.scale(dpr, dpr);
+      }
+
+      ctx.clearRect(0, 0, w, h);
+
+      const time = timestamp / 1000;
+      const layout = getZoneLayout(w, h, terrain);
+      const island = getIslandGeometry(w, h, terrain);
+
+      // Compute animation progress
+      let animProgress = 0;
+      if (isAnimatingRef.current) {
+        const elapsed = timestamp - animStartRef.current;
+        const animDuration = getAnimDurationMs(autoPlaySpeed);
+        animProgress = Math.min(1, elapsed / animDuration);
+        if (animProgress >= 1) {
+          isAnimatingRef.current = false;
+          animProgress = 0;
+        }
+      }
+
+      // Draw background layers
+      drawWater(ctx, w, h, time);
+      drawIsland(ctx, w, h, terrain);
+      drawZones(ctx, layout, terrain, agents, turn, w, h);
+      drawEventOverlays(ctx, layout, activeRandomEvents, w, h, time);
+      drawMarket(ctx, layout);
+      drawZoneLabels(ctx, layout, terrain, agents, turn);
+
+      // Draw agents
+      const aliveAgents = agents.filter(a => a.alive);
+      const rendered: AgentRenderState[] = [];
+
+      for (const agent of aliveAgents) {
+        const home = computeResidencePosition(agent.id, agent.familyId, agent.sector, layout, terrain, w, h);
+        const work = computeWorkPosition(agent.id, agent.sector, layout, terrain, w, h);
+        const market = { x: layout.market.cx, y: layout.market.cy };
+        const marketClock = autoPlaySpeed === 'fast' ? Math.floor(turn / 2) : turn;
+        const visitMarket = shouldVisitMarketThisTurn(agent, marketClock);
+        const commuteThisTurn = autoPlaySpeed === 'fast' ? false : shouldCommuteThisTurn(agent, turn);
+        const shouldAnimateTravel = visitMarket || commuteThisTurn;
+
+        let pos: Point;
+        if (isAnimatingRef.current && shouldAnimateTravel) {
+          pos = computeAnimatedPosition(home, work, market, animProgress, agent.id, time, visitMarket);
+          const { phase } = getAnimPhase(animProgress, visitMarket);
+
+          if (phase === 'working') {
+            drawWorkParticle(ctx, pos.x, pos.y, getAgentColor(agent), animProgress);
+          }
+        } else {
+          const anchor = getRoutineAnchor(agent, turn, home, work);
+          pos = computeIdlePosition(anchor, agent.id, time);
+        }
+        pos = clampPointToIsland(pos, island, 0.96);
+
+        const color = getAgentColor(agent);
+        const opacity = getAgentOpacity(agent);
+        const size = getAgentSize(agent);
+        const isLowHealth = agent.health < 40;
+
+        drawAgent(ctx, pos.x, pos.y, color, size, opacity, isLowHealth, time);
+        rendered.push({ pos, color, opacity, size, agent });
+      }
+
+      agentPositionsRef.current = rendered;
+
+      // Draw tooltip for hovered agent
+      if (hoveredAgent) {
+        const agentRender = rendered.find(r => r.agent.id === hoveredAgent.id);
+        if (agentRender) {
+          const { pos, agent } = agentRender;
+          const sectorLabel = agent.sector === 'food' ? '食物' : agent.sector === 'goods' ? '商品' : '服務';
+          const genderIcon = agent.gender === 'M' ? '♂' : '♀';
+          const ageYears = Math.floor(agent.age / 12);
+          const label = `${genderIcon}${agent.name} [${sectorLabel}] ${ageYears}歲 $${agent.money.toFixed(0)} HP:${agent.health.toFixed(0)}`;
+          drawTooltip(ctx, pos.x, pos.y, label, w);
+        }
+      }
+
+      animRef.current = requestAnimationFrame(renderFrame);
+    };
+
+    animRef.current = requestAnimationFrame(renderFrame);
     return () => cancelAnimationFrame(animRef.current);
-  }, [render]);
+  }, [agents, activeRandomEvents, hoveredAgent, terrain, autoPlaySpeed, turn]);
 
   // Mouse move handler for hover detection
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {

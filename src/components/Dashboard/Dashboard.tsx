@@ -1,4 +1,5 @@
 import type { GameState, SectorType } from '../../types';
+import { CONFIG } from '../../config';
 import styles from './Dashboard.module.css';
 
 interface Props {
@@ -12,6 +13,15 @@ interface SentimentAlert {
   title: string;
   message: string;
   actions: string[];
+}
+
+interface GovernorObjective {
+  id: string;
+  horizon: '短期' | '中期';
+  title: string;
+  progress: number; // 0-100
+  hint: string;
+  done: boolean;
 }
 
 const SECTORS: SectorType[] = ['food', 'goods', 'services'];
@@ -90,6 +100,72 @@ function buildSentimentAlert(state: GameState): SentimentAlert | null {
   return null;
 }
 
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+function buildObjectives(state: GameState): GovernorObjective[] {
+  const latest = state.statistics[state.statistics.length - 1];
+  const alive = state.agents.filter(a => a.alive);
+  const pop = alive.length;
+
+  const foodDemand = latest?.market.demand.food ?? state.market.demand.food;
+  const foodSupply = latest?.market.supply.food ?? state.market.supply.food;
+  const foodCoverage = foodDemand > 0.01 ? clamp01(foodSupply / foodDemand) : 1;
+
+  const avgSat = latest?.avgSatisfaction ?? 55;
+  const satProgress = clamp01(avgSat / 62);
+
+  const gini = latest?.giniCoefficient ?? 0.5;
+  const giniProgress = clamp01((0.62 - gini) / 0.2);
+
+  const targetPop = Math.max(70, Math.floor(CONFIG.INITIAL_POPULATION * 0.95));
+  const popProgress = clamp01(pop / targetPop);
+
+  return [
+    {
+      id: 'food_stability',
+      horizon: '短期',
+      title: '穩定食物供應',
+      progress: foodCoverage * 100,
+      hint: foodCoverage >= 1
+        ? '食物供需已平衡，可維持補貼並觀察 2-3 回合。'
+        : '先拉高食物補貼或降稅，優先把基本需求補齊。',
+      done: foodCoverage >= 1,
+    },
+    {
+      id: 'sentiment_recovery',
+      horizon: '短期',
+      title: '回升平均滿意度至 62%',
+      progress: satProgress * 100,
+      hint: avgSat >= 62
+        ? '民心進入穩定區，避免一次調太多政策。'
+        : '抑制短缺並維持福利，可更快拉回滿意度。',
+      done: avgSat >= 62,
+    },
+    {
+      id: 'equity_guardrail',
+      horizon: '中期',
+      title: '控制不平等 (Gini <= 0.42)',
+      progress: giniProgress * 100,
+      hint: gini <= 0.42
+        ? '財富分配在可控區間，繼續觀察成長與公平平衡。'
+        : '可維持福利並避免同時大幅拉高多產業補貼。',
+      done: gini <= 0.42,
+    },
+    {
+      id: 'population_retention',
+      horizon: '中期',
+      title: `人口維持 ${targetPop}+`,
+      progress: popProgress * 100,
+      hint: pop >= targetPop
+        ? '人口留存達標，可轉向提升長期產業結構。'
+        : '降低離島率比拚命拉生育更有效，先救民心。',
+      done: pop >= targetPop,
+    },
+  ];
+}
+
 export function Dashboard({ state }: Props) {
   const alive = state.agents.filter(a => a.alive);
   const pop = alive.length;
@@ -106,6 +182,7 @@ export function Dashboard({ state }: Props) {
   const deaths = latest?.deaths ?? 0;
   const avgAge = latest?.avgAge ?? 0;
   const alert = buildSentimentAlert(state);
+  const objectives = buildObjectives(state);
   const ageLayers = alive.reduce(
     (acc, a) => {
       acc[a.ageGroup]++;
@@ -131,6 +208,28 @@ export function Dashboard({ state }: Props) {
           <div className={styles.alertActions}>{alert.actions.join(' ')}</div>
         </div>
       )}
+
+      <div className={styles.objectives}>
+        <div className={styles.objectivesTitle}>短中期任務 Objectives</div>
+        <div className={styles.objectiveList}>
+          {objectives.map(objective => (
+            <div
+              key={objective.id}
+              className={`${styles.objectiveItem} ${objective.done ? styles.objectiveDone : ''}`}
+            >
+              <div className={styles.objectiveHead}>
+                <span className={styles.objectiveHorizon}>{objective.horizon}</span>
+                <span className={styles.objectiveName}>{objective.title}</span>
+                <span className={styles.objectivePct}>{objective.progress.toFixed(0)}%</span>
+              </div>
+              <div className={styles.objectiveBar}>
+                <span style={{ width: `${Math.max(4, objective.progress)}%` }} />
+              </div>
+              <div className={styles.objectiveHint}>{objective.hint}</div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       <div className={styles.stat}>
         <div className={styles.label}>回合 Turn</div>

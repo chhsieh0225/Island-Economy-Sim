@@ -47,17 +47,16 @@ function buildRunSummary(
 }
 
 export function useGameEngine() {
-  const initialSeed = Date.now();
-  const engineRef = useRef<GameEngine>(new GameEngine(initialSeed, DEFAULT_SCENARIO));
-  const [gameState, setGameState] = useState<GameState>(() => engineRef.current.getState());
+  const [engine] = useState(() => new GameEngine(Date.now(), DEFAULT_SCENARIO));
+  const [gameState, setGameState] = useState<GameState>(() => engine.getState());
   const [autoPlaySpeed, setAutoPlaySpeed] = useState<AutoPlaySpeed>(null);
   const [runHistory, setRunHistory] = useState<RunSummary[]>([]);
   const intervalRef = useRef<number | null>(null);
   const runIdRef = useRef(1);
 
   const syncState = useCallback(() => {
-    setGameState(engineRef.current.getState());
-  }, []);
+    setGameState(engine.getState());
+  }, [engine]);
 
   const stopAutoPlayInternal = useCallback(() => {
     if (intervalRef.current) {
@@ -68,62 +67,62 @@ export function useGameEngine() {
   }, []);
 
   const pushRunSnapshot = useCallback((reason: GameOverReason | 'reset') => {
-    const summary = buildRunSummary(engineRef.current.getState(), runIdRef.current++, reason);
+    const summary = buildRunSummary(engine.getState(), runIdRef.current++, reason);
     if (!summary) return;
     setRunHistory(prev => [summary, ...prev].slice(0, 12));
-  }, []);
+  }, [engine]);
 
   const advanceTurn = useCallback(() => {
-    engineRef.current.advanceTurn();
+    engine.advanceTurn();
     syncState();
-    if (engineRef.current.gameOver || engineRef.current.pendingDecision) {
+    if (engine.gameOver || engine.pendingDecision) {
       stopAutoPlayInternal();
     }
-  }, [syncState, stopAutoPlayInternal]);
+  }, [engine, syncState, stopAutoPlayInternal]);
 
   const setTaxRate = useCallback((rate: number) => {
-    engineRef.current.setTaxRate(rate);
+    engine.setTaxRate(rate);
     syncState();
-  }, [syncState]);
+  }, [engine, syncState]);
 
   const setSubsidy = useCallback((sector: SectorType, amount: number) => {
-    engineRef.current.setSubsidy(sector, amount);
+    engine.setSubsidy(sector, amount);
     syncState();
-  }, [syncState]);
+  }, [engine, syncState]);
 
   const setWelfare = useCallback((enabled: boolean) => {
-    engineRef.current.setWelfare(enabled);
+    engine.setWelfare(enabled);
     syncState();
-  }, [syncState]);
+  }, [engine, syncState]);
 
   const setPublicWorks = useCallback((active: boolean) => {
-    engineRef.current.setPublicWorks(active);
+    engine.setPublicWorks(active);
     syncState();
-  }, [syncState]);
+  }, [engine, syncState]);
 
   const chooseDecision = useCallback((choiceId: string) => {
-    const resolved = engineRef.current.resolveDecision(choiceId);
+    const resolved = engine.resolveDecision(choiceId);
     if (resolved) {
       syncState();
     }
-  }, [syncState]);
+  }, [engine, syncState]);
 
   const startNewRun = useCallback((seed: number, scenarioId: ScenarioId) => {
     stopAutoPlayInternal();
 
-    const existing = engineRef.current.getState();
+    const existing = engine.getState();
     if (existing.turn > 0) {
       pushRunSnapshot(existing.gameOver?.reason ?? 'reset');
     }
 
-    engineRef.current.reset(seed, scenarioId);
+    engine.reset(seed, scenarioId);
     syncState();
-  }, [pushRunSnapshot, stopAutoPlayInternal, syncState]);
+  }, [engine, pushRunSnapshot, stopAutoPlayInternal, syncState]);
 
   const reset = useCallback(() => {
-    const state = engineRef.current.getState();
+    const state = engine.getState();
     startNewRun(state.seed, state.scenarioId);
-  }, [startNewRun]);
+  }, [engine, startNewRun]);
 
   const startAutoPlay = useCallback((speed: 'slow' | 'medium' | 'fast') => {
     if (intervalRef.current) {
@@ -132,13 +131,13 @@ export function useGameEngine() {
     setAutoPlaySpeed(speed);
     const ms = CONFIG.AUTO_PLAY_SPEEDS[speed];
     intervalRef.current = window.setInterval(() => {
-      engineRef.current.advanceTurn();
+      engine.advanceTurn();
       syncState();
-      if (engineRef.current.gameOver || engineRef.current.pendingDecision) {
+      if (engine.gameOver || engine.pendingDecision) {
         stopAutoPlayInternal();
       }
     }, ms);
-  }, [syncState, stopAutoPlayInternal]);
+  }, [engine, syncState, stopAutoPlayInternal]);
 
   const stopAutoPlay = useCallback(() => {
     stopAutoPlayInternal();
@@ -146,16 +145,9 @@ export function useGameEngine() {
 
   const endGame = useCallback(() => {
     stopAutoPlayInternal();
-    engineRef.current.endGame();
+    engine.endGame();
     syncState();
-  }, [syncState, stopAutoPlayInternal]);
-
-  // Auto-stop autoplay if a decision appears from non-autoplay actions.
-  useEffect(() => {
-    if ((gameState.pendingDecision || gameState.gameOver) && autoPlaySpeed !== null) {
-      stopAutoPlayInternal();
-    }
-  }, [gameState.pendingDecision, gameState.gameOver, autoPlaySpeed, stopAutoPlayInternal]);
+  }, [engine, syncState, stopAutoPlayInternal]);
 
   // Cleanup on unmount
   useEffect(() => {

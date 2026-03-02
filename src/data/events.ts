@@ -11,6 +11,15 @@ export const RANDOM_EVENTS: RandomEventDef[] = [
     severity: 'critical',
   },
   {
+    id: 'inflation_spike',
+    name: '通膨升溫 Inflation Spike',
+    probability: 0.02,
+    duration: 2,
+    effects: { priceModifier: { food: 1.16, goods: 1.12, services: 1.08 } },
+    message: '供應壓力推升物價，通膨升溫。',
+    severity: 'warning',
+  },
+  {
     id: 'trade_ship',
     name: '貿易船 Trade Ship',
     probability: 0.08,

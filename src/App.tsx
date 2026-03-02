@@ -86,7 +86,11 @@ function App() {
             <PolicyPanel
               turn={gameState.turn}
               government={gameState.government}
+              market={gameState.market}
+              statistics={gameState.statistics}
+              activeRandomEvents={gameState.activeRandomEvents}
               pendingPolicies={gameState.pendingPolicies}
+              policyTimeline={gameState.policyTimeline}
               onSetTaxRate={setTaxRate}
               onSetSubsidy={setSubsidy}
               onSetWelfare={setWelfare}

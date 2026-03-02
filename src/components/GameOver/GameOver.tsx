@@ -1,4 +1,4 @@
-import type { GameOverState } from '../../types';
+import type { GameOverState, SectorType } from '../../types';
 import { getGrade } from '../../engine/Scoring';
 import styles from './GameOver.module.css';
 
@@ -13,6 +13,12 @@ const REASON_LABELS: Record<string, string> = {
   treasury_victory: '財政勝利 Treasury Victory!',
   max_turns: '時光流逝 Time\'s Up',
   player_exit: '市長離任 Mayor Resigned',
+};
+
+const SECTOR_LABELS: Record<SectorType, string> = {
+  food: '食物業 Food',
+  goods: '商品業 Goods',
+  services: '服務業 Services',
 };
 
 function ScoreRow({ label, value, max }: { label: string; value: number; max: number }) {
@@ -32,6 +38,7 @@ export function GameOver({ gameOver, onRestart }: Props) {
   const { reason, turn, score, finalStats } = gameOver;
   const grade = getGrade(score.totalScore);
   const isVictory = reason === 'gdp_victory' || reason === 'treasury_victory';
+  const sectors: SectorType[] = ['food', 'goods', 'services'];
 
   return (
     <div className={styles.overlay}>
@@ -77,6 +84,26 @@ export function GameOver({ gameOver, onRestart }: Props) {
             <span className={styles.statLabel}>平均滿意 Avg Sat</span>
             <span className={styles.statValue}>{finalStats.avgSatisfaction.toFixed(1)}%</span>
           </div>
+        </div>
+
+        <div className={styles.sectorSection}>
+          <div className={styles.sectionTitle}>產業結構 Industry Structure</div>
+          {sectors.map((sector) => {
+            const info = finalStats.sectorDevelopment[sector];
+            return (
+              <div key={sector} className={styles.sectorRow}>
+                <div className={styles.sectorHead}>
+                  <span className={styles.sectorName}>{SECTOR_LABELS[sector]}</span>
+                  <span className={styles.sectorShare}>{info.share.toFixed(1)}%</span>
+                  <span className={styles.sectorLevel}>{info.level}</span>
+                </div>
+                <div className={styles.sectorBarBg}>
+                  <div className={styles.sectorBarFill} style={{ width: `${Math.max(2, info.share)}%` }} />
+                </div>
+                <div className={styles.sectorComment}>{info.comment}</div>
+              </div>
+            );
+          })}
         </div>
 
         <button className={styles.restartBtn} onClick={onRestart}>

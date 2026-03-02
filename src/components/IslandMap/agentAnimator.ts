@@ -69,19 +69,19 @@ export function getZoneLayout(w: number, h: number, terrain: IslandTerrainState)
 
   const residential = [
     buildZone(
-      { x: cx * 0.82 + w * zoneOffsets.food.x * 0.55, y: cy * 0.86 + h * zoneOffsets.food.y * 0.45 },
-      w * 0.1,
-      h * 0.085,
-    ),
-    buildZone(
-      { x: cx * 1.2 + w * zoneOffsets.services.x * 0.6, y: cy * 0.9 + h * zoneOffsets.services.y * 0.42 },
-      w * 0.1,
-      h * 0.085,
-    ),
-    buildZone(
-      { x: cx * 1.0 + w * zoneOffsets.goods.x * 0.55, y: cy * 1.18 + h * zoneOffsets.goods.y * 0.48 },
+      { x: cx * 0.68 + w * zoneOffsets.food.x * 0.5, y: cy * 0.58 + h * zoneOffsets.food.y * 0.4 },
       w * 0.11,
-      h * 0.09,
+      h * 0.095,
+    ),
+    buildZone(
+      { x: cx * 0.48 + w * zoneOffsets.goods.x * 0.52, y: cy * 1.32 + h * zoneOffsets.goods.y * 0.5 },
+      w * 0.11,
+      h * 0.095,
+    ),
+    buildZone(
+      { x: cx * 1.52 + w * zoneOffsets.services.x * 0.52, y: cy * 1.3 + h * zoneOffsets.services.y * 0.5 },
+      w * 0.11,
+      h * 0.095,
     ),
   ];
 
@@ -135,6 +135,7 @@ export function computeWorkPosition(
 export function computeResidencePosition(
   agentId: number,
   familyId: number,
+  sector: SectorType,
   layout: ZoneLayout,
   terrain: IslandTerrainState,
   w: number,
@@ -142,14 +143,27 @@ export function computeResidencePosition(
 ): Point {
   const residentialZones = layout.residential;
   const zoneCount = residentialZones.length;
+  if (zoneCount === 0) {
+    return computeWorkPosition(agentId, sector, layout, terrain, w, h);
+  }
+
   const householdSeed = Math.abs(familyId || agentId);
-  const zoneIndex = householdSeed % Math.max(1, zoneCount);
+  const baseZone = sector === 'food' ? 0 : sector === 'goods' ? 1 : 2;
+  let zoneIndex = baseZone % zoneCount;
+
+  const driftRoll = seededRandom(householdSeed * 29 + agentId * 11 + 7);
+  if (driftRoll < 0.1) {
+    zoneIndex = (zoneIndex + 1) % zoneCount;
+  } else if (driftRoll > 0.92) {
+    zoneIndex = (zoneIndex + zoneCount - 1) % zoneCount;
+  }
+
   const zone = residentialZones[zoneIndex];
 
   const rawPoint = distributeInZone(
     zone,
-    householdSeed * 17 + agentId * 5 + 11,
-    householdSeed * 23 + agentId * 3 + 19,
+    householdSeed * 17 + agentId * 5 + zoneIndex * 13 + 11,
+    householdSeed * 23 + agentId * 3 + zoneIndex * 19 + 19,
   );
   const island = getIslandGeometry(w, h, terrain);
   return clampPointToIsland(rawPoint, island, 0.94);
@@ -160,22 +174,35 @@ function clamp01(v: number): number {
 }
 
 export function shouldVisitMarketThisTurn(agent: AgentState, turn: number): boolean {
-  const inventoryPressure = clamp01(
-    (2.8 - (agent.inventory.food + agent.inventory.goods + agent.inventory.services)) / 2.8,
+  const iqTendency = clamp01((agent.intelligence - 70) / 70);
+  const inventoryTotal = agent.inventory.food + agent.inventory.goods + agent.inventory.services;
+  const inventoryPressure = clamp01((2.4 - inventoryTotal) / 2.4);
+  const moneyPressure = clamp01((95 - agent.money) / 95);
+  const moodPressure = clamp01((55 - agent.satisfaction) / 55);
+
+  const goalBias = agent.goalType === 'survival' ? 0.55
+    : agent.goalType === 'happiness' ? 0.4
+    : agent.goalType === 'balanced' ? 0.2
+    : 0;
+
+  // Baseline cadence: every 3-5 turns, shifted by IQ, goal preference and current pressure.
+  const intervalRaw = 5 - iqTendency * 1.05 - goalBias - (inventoryPressure * 0.45 + moneyPressure * 0.3 + moodPressure * 0.25) * 0.75;
+  const interval = Math.max(3, Math.min(5, Math.round(intervalRaw)));
+
+  const phaseSeed = seededRandom(agent.id * 41 + Math.abs(agent.familyId) * 17 + 5);
+  const phase = Math.floor(phaseSeed * interval);
+  const scheduled = (turn + phase) % interval === 0;
+  if (scheduled) return true;
+
+  // Emergency trip if supplies or cash are critically low.
+  const emergency = Math.max(
+    clamp01((1.05 - (agent.inventory.food + agent.inventory.goods * 0.85 + agent.inventory.services * 0.65)) / 1.05),
+    clamp01((26 - agent.money) / 26),
   );
-  const moneyPressure = clamp01((120 - agent.money) / 120);
-  const moodPressure = clamp01((58 - agent.satisfaction) / 58);
-  const iqTendency = clamp01((agent.intelligence - 85) / 80);
+  if (emergency < 0.92) return false;
 
-  const baseProbability = 0.08
-    + inventoryPressure * 0.2
-    + moneyPressure * 0.09
-    + moodPressure * 0.07
-    + iqTendency * 0.03;
-  const probability = Math.min(0.42, baseProbability);
-
-  const roll = seededRandom(agent.id * 97 + turn * 131 + 17);
-  return roll < probability;
+  const emergencyRoll = seededRandom(agent.id * 191 + turn * 67 + 29);
+  return emergencyRoll < 0.5;
 }
 
 export function getAnimPhase(

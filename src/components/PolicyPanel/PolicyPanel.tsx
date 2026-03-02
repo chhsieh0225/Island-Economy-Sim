@@ -42,6 +42,10 @@ export function PolicyPanel({
   const pendingTax = pendingPolicies.find(p => p.type === 'tax');
   const pendingWelfare = pendingPolicies.find(p => p.type === 'welfare');
   const pendingPublicWorks = pendingPolicies.find(p => p.type === 'publicWorks');
+  const getSubsidyDisplay = (sector: SectorType): number => (
+    (pendingPolicies.find(p => p.type === 'subsidy' && p.sector === sector)?.value as number | undefined)
+    ?? government.subsidies[sector]
+  );
 
   const taxDisplay = (pendingTax ? pendingTax.value as number : government.taxRate) * 100;
   const welfareDisplay = pendingWelfare ? pendingWelfare.value as boolean : government.welfareEnabled;
@@ -70,26 +74,26 @@ export function PolicyPanel({
 
       <div className={styles.sectionTitle}>產業補貼 Subsidies</div>
 
-      {(['food', 'goods', 'services'] as const).map(sector => (
-        <div key={sector} className={styles.control}>
-          <div className={styles.controlLabel}>
-            <span>{SECTOR_LABELS[sector]}</span>
-            <span className={styles.controlValue}>{government.subsidies[sector].toFixed(0)}%</span>
+      {(['food', 'goods', 'services'] as const).map(sector => {
+        const subsidyDisplay = getSubsidyDisplay(sector);
+        return (
+          <div key={sector} className={styles.control}>
+            <div className={styles.controlLabel}>
+              <span>{SECTOR_LABELS[sector]}</span>
+              <span className={styles.controlValue}>{subsidyDisplay.toFixed(0)}%</span>
+            </div>
+            <input
+              type="range"
+              className={styles.slider}
+              min="0"
+              max="100"
+              step="5"
+              value={subsidyDisplay}
+              onChange={e => onSetSubsidy(sector, Number(e.target.value))}
+            />
           </div>
-          <input
-            type="range"
-            className={styles.slider}
-            min="0"
-            max="100"
-            step="5"
-            value={
-              (pendingPolicies.find(p => p.type === 'subsidy' && p.sector === sector)?.value as number | undefined)
-              ?? government.subsidies[sector]
-            }
-            onChange={e => onSetSubsidy(sector, Number(e.target.value))}
-          />
-        </div>
-      ))}
+        );
+      })}
 
       <div className={styles.sectionTitle}>社會政策 Social</div>
 

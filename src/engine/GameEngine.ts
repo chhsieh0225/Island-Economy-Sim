@@ -15,6 +15,7 @@ import type {
   RandomEventDef,
   MilestoneRecord,
   IslandTerrainState,
+  SectorDevelopmentLevel,
 } from '../types';
 import { SECTORS } from '../types';
 import { Agent } from './Agent';
@@ -953,6 +954,64 @@ export class GameEngine {
     return this.statistics.history.reduce((sum, s) => sum + s.gdp, 0);
   }
 
+  private classifySectorDevelopment(share: number): SectorDevelopmentLevel {
+    if (share >= 45) return '主導';
+    if (share >= 33) return '成熟';
+    if (share >= 20) return '成長';
+    if (share >= 10) return '起步';
+    return '薄弱';
+  }
+
+  private getSectorDevelopmentComment(sector: SectorType, level: SectorDevelopmentLevel): string {
+    const comments: Record<SectorType, Record<SectorDevelopmentLevel, string>> = {
+      food: {
+        薄弱: '糧食基礎不足，遇到衝擊時風險偏高。',
+        起步: '糧食供給剛起步，仍需擴大生產能力。',
+        成長: '糧食體系逐步穩定，已具備基本支撐力。',
+        成熟: '糧食供應成熟，對人口承載較有保障。',
+        主導: '糧食產業高度主導，安全盤穩但結構較單一。',
+      },
+      goods: {
+        薄弱: '製造產能偏弱，實體經濟擴張受限。',
+        起步: '工坊與生產鏈剛建立，仍在打底階段。',
+        成長: '製造部門穩定成長，帶動交易活力。',
+        成熟: '商品產業成熟，是經濟增長的重要引擎。',
+        主導: '商品業高度集中，效率高但波動風險上升。',
+      },
+      services: {
+        薄弱: '服務供給不足，生活品質與消費偏弱。',
+        起步: '服務業剛形成，內需體驗還在建立。',
+        成長: '服務業穩步發展，內需韌性逐漸提升。',
+        成熟: '服務網絡成熟，居民福祉與交易體驗良好。',
+        主導: '服務業主導結構，內需強勁但實體供應需平衡。',
+      },
+    };
+
+    return comments[sector][level];
+  }
+
+  private buildSectorDevelopment(history: TurnSnapshot[]): GameOverState['finalStats']['sectorDevelopment'] {
+    const latest = history[history.length - 1];
+    const distribution: Record<SectorType, number> = latest?.jobDistribution ?? {
+      food: 0,
+      goods: 0,
+      services: 0,
+    };
+    const total = Math.max(1, distribution.food + distribution.goods + distribution.services);
+
+    const result = {} as GameOverState['finalStats']['sectorDevelopment'];
+    for (const sector of SECTORS) {
+      const share = (distribution[sector] / total) * 100;
+      const level = this.classifySectorDevelopment(share);
+      result[sector] = {
+        share,
+        level,
+        comment: this.getSectorDevelopmentComment(sector, level),
+      };
+    }
+    return result;
+  }
+
   private buildGameOverState(reason: GameOverReason): GameOverState {
     const history = this.statistics.history;
     return {
@@ -968,6 +1027,7 @@ export class GameEngine {
           ? history.reduce((s, h) => s + h.avgSatisfaction, 0) / history.length : 0,
         avgHealth: history.length > 0
           ? history.reduce((s, h) => s + h.avgHealth, 0) / history.length : 0,
+        sectorDevelopment: this.buildSectorDevelopment(history),
       },
     };
   }

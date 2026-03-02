@@ -130,10 +130,10 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, autoPlayS
     const rendered: AgentRenderState[] = [];
 
     for (const agent of aliveAgents) {
-      const home = computeResidencePosition(agent.id, agent.familyId, layout, terrain, w, h);
+      const home = computeResidencePosition(agent.id, agent.familyId, agent.sector, layout, terrain, w, h);
       const work = computeWorkPosition(agent.id, agent.sector, layout, terrain, w, h);
       const market = { x: layout.market.cx, y: layout.market.cy };
-      const visitMarket = autoPlaySpeed === 'fast' ? false : shouldVisitMarketThisTurn(agent, turn);
+      const visitMarket = shouldVisitMarketThisTurn(agent, turn);
 
       let pos: Point;
       if (isAnimatingRef.current) {

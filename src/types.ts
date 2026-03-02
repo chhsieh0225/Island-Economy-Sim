@@ -2,6 +2,7 @@ export type SectorType = 'food' | 'goods' | 'services';
 export type Gender = 'M' | 'F';
 export type AgeGroup = 'youth' | 'adult' | 'senior';
 export type ScenarioId = 'baseline' | 'inflation' | 'inequality' | 'aging';
+export type AgentGoalType = 'survival' | 'wealth' | 'happiness' | 'balanced';
 
 export const SECTORS: SectorType[] = ['food', 'goods', 'services'];
 
@@ -28,6 +29,15 @@ export interface AgentState {
   switchHistory: SectorType[];
   familyId: number;
   ageGroup: AgeGroup;
+  goalType: AgentGoalType;
+  lifeEvents: AgentLifeEvent[];
+}
+
+export interface AgentLifeEvent {
+  turn: number;
+  category: 'join' | 'job' | 'leave' | 'death' | 'achievement';
+  message: string;
+  severity: GameEvent['type'];
 }
 
 export interface SellOrder {

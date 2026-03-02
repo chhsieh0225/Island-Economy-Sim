@@ -72,7 +72,9 @@ export class GameEngine {
         const sector = SECTORS[sectorIdx];
         const gender = this.rng.next() < 0.5 ? 'M' as const : 'F' as const;
         const name = generateName(gender, this.rng);
-        this.agents.push(new Agent(i, name, sector, this.rng, { gender, familyId }));
+        const agent = new Agent(i, name, sector, this.rng, { gender, familyId });
+        agent.addLifeEvent(0, 'join', `加入小島，就業於${this.sectorLabel(sector)}。`, 'positive');
+        this.agents.push(agent);
       }
       familyId++;
     }
@@ -370,6 +372,7 @@ export class GameEngine {
       if (switchTo) {
         const oldSector = agent.sector;
         agent.switchJob(switchTo);
+        agent.addLifeEvent(this.turn, 'job', `從${this.sectorLabel(oldSector)}轉職到${this.sectorLabel(switchTo)}。`, 'info');
         this.addEvent('info', `${agent.name} 從${this.sectorLabel(oldSector)}轉職到${this.sectorLabel(switchTo)}。`);
       }
     }
@@ -384,16 +387,19 @@ export class GameEngine {
       if (agent.isOld) {
         agent.alive = false;
         agent.causeOfDeath = 'age';
+        agent.addLifeEvent(this.turn, 'death', `於 ${Math.floor(agent.age / 12)} 歲因年老去世。`, 'warning');
         deaths++;
         this.addEvent('warning', `${agent.name} 因年老去世 (${Math.floor(agent.age / 12)} 歲)。`);
       } else if (agent.isDead) {
         agent.alive = false;
         agent.causeOfDeath = 'health';
+        agent.addLifeEvent(this.turn, 'death', '因健康不佳去世。', 'critical');
         deaths++;
         this.addEvent('critical', `${agent.name} 因健康不佳而死亡。`);
       } else if (agent.shouldLeave) {
         agent.alive = false;
         agent.causeOfDeath = 'left';
+        agent.addLifeEvent(this.turn, 'leave', '對小島失去信心，選擇離開。', 'warning');
         deaths++;
         this.addEvent('warning', `${agent.name} 因不滿離開了小島。`);
       }
@@ -440,11 +446,13 @@ export class GameEngine {
     const sector = SECTORS.reduce((min, s) => sectorCounts[s] < sectorCounts[min] ? s : min);
 
     const assignedFamilyId = familyId ?? this.nextFamilyId++;
-    return new Agent(id, name, sector, this.rng, {
+    const agent = new Agent(id, name, sector, this.rng, {
       age: CONFIG.MIN_STARTING_AGE,
       gender,
       familyId: assignedFamilyId,
     });
+    agent.addLifeEvent(this.turn, 'join', `加入小島，就業於${this.sectorLabel(sector)}。`, 'positive');
+    return agent;
   }
 
   private phaseRandomEvents(): void {
@@ -751,6 +759,12 @@ export class GameEngine {
     this.milestones.unshift(record);
     if (this.milestones.length > 30) {
       this.milestones.pop();
+    }
+    if (record.agentId !== undefined) {
+      const target = this.agents.find(a => a.id === record.agentId);
+      if (target) {
+        target.addLifeEvent(record.turn, 'achievement', `${record.title}：${record.description}`, 'positive');
+      }
     }
     // Keep a brief log entry for timeline context, but detailed browsing goes to milestone panel.
     this.addEvent('positive', `🏅 ${record.title}：${record.description}`);

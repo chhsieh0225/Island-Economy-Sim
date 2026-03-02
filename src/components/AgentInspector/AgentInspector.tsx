@@ -15,6 +15,7 @@ const SECTOR_LABELS: Record<SectorType, string> = {
 
 export function AgentInspector({ agent, onClose }: Props) {
   const incomeData = agent.incomeHistory.map((v, i) => ({ turn: i, income: v }));
+  const lifeEvents = [...agent.lifeEvents].reverse();
   const ageYears = Math.floor(agent.age / 12);
   const ageMonths = agent.age % 12;
   const maxAgeYears = Math.floor(agent.maxAge / 12);
@@ -27,6 +28,13 @@ export function AgentInspector({ agent, onClose }: Props) {
     : agent.ageGroup === 'adult'
       ? '壯年'
       : '高齡';
+  const goalLabel = agent.goalType === 'survival'
+    ? '生存'
+    : agent.goalType === 'wealth'
+      ? '財富'
+      : agent.goalType === 'happiness'
+        ? '幸福'
+        : '平衡';
 
   const iqColor = agent.intelligence >= 115 ? '#4caf50'
     : agent.intelligence >= 85 ? '#ccd6f6'
@@ -119,6 +127,10 @@ export function AgentInspector({ agent, onClose }: Props) {
             <div className={styles.statLabel}>家庭 Family</div>
             <div className={styles.statValue}>#{agent.familyId}</div>
           </div>
+          <div className={styles.stat}>
+            <div className={styles.statLabel}>目標 Goal</div>
+            <div className={styles.statValue}>{goalLabel}</div>
+          </div>
         </div>
 
         <div className={styles.section}>
@@ -150,6 +162,22 @@ export function AgentInspector({ agent, onClose }: Props) {
             </div>
           </div>
         )}
+
+        <div className={styles.section}>
+          <div className={styles.sectionTitle}>人生事件 Life Events</div>
+          {lifeEvents.length === 0 ? (
+            <div className={styles.lifeEventEmpty}>尚無事件紀錄</div>
+          ) : (
+            <div className={styles.lifeEventList}>
+              {lifeEvents.map((event, idx) => (
+                <div key={idx} className={styles.lifeEventItem}>
+                  <span className={styles.lifeEventTurn}>[{event.turn}]</span>
+                  <span className={styles.lifeEventText}>{event.message}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

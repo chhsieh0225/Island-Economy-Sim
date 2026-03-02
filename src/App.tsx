@@ -67,6 +67,7 @@ function App() {
         <IslandMap
           agents={gameState.agents}
           turn={gameState.turn}
+          terrain={gameState.terrain}
           activeRandomEvents={gameState.activeRandomEvents}
           onAgentClick={handleAgentClick}
         />

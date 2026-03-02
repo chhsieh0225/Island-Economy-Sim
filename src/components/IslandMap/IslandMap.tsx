@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
-import type { AgentState, ActiveRandomEvent } from '../../types';
+import type { AgentState, ActiveRandomEvent, IslandTerrainState } from '../../types';
 import {
   getZoneLayout,
   computeHomePosition,
@@ -29,6 +29,7 @@ const ANIM_DURATION = 1500; // ms per turn animation cycle
 interface Props {
   agents: AgentState[];
   turn: number;
+  terrain: IslandTerrainState;
   activeRandomEvents: ActiveRandomEvent[];
   onAgentClick: (agent: AgentState) => void;
 }
@@ -41,7 +42,7 @@ interface AgentRenderState {
   agent: AgentState;
 }
 
-export function IslandMap({ agents, turn, activeRandomEvents, onAgentClick }: Props) {
+export function IslandMap({ agents, turn, terrain, activeRandomEvents, onAgentClick }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
@@ -89,7 +90,7 @@ export function IslandMap({ agents, turn, activeRandomEvents, onAgentClick }: Pr
     ctx.clearRect(0, 0, w, h);
 
     const time = timestamp / 1000;
-    const layout = getZoneLayout(w, h);
+    const layout = getZoneLayout(w, h, terrain);
 
     // Compute animation progress
     let animProgress = 0;
@@ -104,11 +105,11 @@ export function IslandMap({ agents, turn, activeRandomEvents, onAgentClick }: Pr
 
     // Draw background layers
     drawWater(ctx, w, h, time);
-    drawIsland(ctx, w, h);
-    drawZones(ctx, layout);
+    drawIsland(ctx, w, h, terrain);
+    drawZones(ctx, layout, terrain);
     drawEventOverlays(ctx, layout, activeRandomEvents, w, h, time);
     drawMarket(ctx, layout);
-    drawZoneLabels(ctx, layout);
+    drawZoneLabels(ctx, layout, terrain);
 
     // Draw agents
     const aliveAgents = agents.filter(a => a.alive);
@@ -153,7 +154,7 @@ export function IslandMap({ agents, turn, activeRandomEvents, onAgentClick }: Pr
     }
 
     animRef.current = requestAnimationFrame(render);
-  }, [agents, activeRandomEvents, hoveredAgent]);
+  }, [agents, activeRandomEvents, hoveredAgent, terrain]);
 
   // Start/stop animation loop
   useEffect(() => {

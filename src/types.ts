@@ -185,6 +185,17 @@ export interface ScenarioDef {
   };
 }
 
+export interface IslandTerrainState {
+  seed: number;
+  coastlineOffsets: number[];
+  islandScaleX: number;
+  islandScaleY: number;
+  islandRotation: number;
+  zoneOffsets: Record<SectorType, { x: number; y: number }>;
+  sectorSuitability: Record<SectorType, number>;
+  sectorFeatures: Record<SectorType, string>;
+}
+
 export interface ScoreBreakdown {
   totalScore: number;
   populationScore: number;
@@ -247,6 +258,7 @@ export interface RunSummary {
 export interface GameState {
   turn: number;
   agents: AgentState[];
+  terrain: IslandTerrainState;
   market: MarketState;
   government: GovernmentState;
   statistics: TurnSnapshot[];

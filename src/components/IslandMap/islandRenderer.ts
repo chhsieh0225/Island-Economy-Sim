@@ -1,4 +1,4 @@
-import type { ActiveRandomEvent } from '../../types';
+import type { ActiveRandomEvent, IslandTerrainState, SectorType } from '../../types';
 import type { ZoneLayout } from './agentAnimator';
 
 // Draw animated water background
@@ -25,24 +25,24 @@ export function drawWater(ctx: CanvasRenderingContext2D, w: number, h: number, t
   }
 }
 
-// Draw island shape — organic blob
-export function drawIsland(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+// Draw island shape — organic blob generated from terrain profile
+export function drawIsland(ctx: CanvasRenderingContext2D, w: number, h: number, terrain: IslandTerrainState): void {
   const cx = w / 2;
   const cy = h / 2;
-  const rx = w * 0.40;
-  const ry = h * 0.42;
+  const rx = w * 0.40 * terrain.islandScaleX;
+  const ry = h * 0.42 * terrain.islandScaleY;
 
   ctx.save();
 
   // Beach edge (slightly larger)
   ctx.beginPath();
-  drawIslandPath(ctx, cx, cy, rx + 6, ry + 6);
+  drawIslandPath(ctx, cx, cy, rx + 6, ry + 6, terrain.coastlineOffsets, terrain.islandRotation);
   ctx.fillStyle = '#c2a878';
   ctx.fill();
 
   // Main island ground
   ctx.beginPath();
-  drawIslandPath(ctx, cx, cy, rx, ry);
+  drawIslandPath(ctx, cx, cy, rx, ry, terrain.coastlineOffsets, terrain.islandRotation);
   const landGrad = ctx.createRadialGradient(cx, cy * 0.85, 0, cx, cy, Math.max(rx, ry));
   landGrad.addColorStop(0, '#3a5f3a');
   landGrad.addColorStop(0.6, '#2d4a2d');
@@ -53,15 +53,24 @@ export function drawIsland(ctx: CanvasRenderingContext2D, w: number, h: number):
   ctx.restore();
 }
 
-function drawIslandPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number): void {
-  // Organic blob using bezier curves
-  const points = 12;
-  const offsets = [0.95, 1.05, 0.98, 1.03, 0.96, 1.04, 0.97, 1.02, 0.99, 1.01, 0.94, 1.06];
+function drawIslandPath(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  offsets: number[],
+  rotation: number,
+): void {
+  const points = offsets.length;
 
-  ctx.moveTo(cx + rx * offsets[0], cy);
+  ctx.moveTo(
+    cx + Math.cos(rotation) * rx * offsets[0],
+    cy + Math.sin(rotation) * ry * offsets[0],
+  );
   for (let i = 0; i < points; i++) {
-    const a1 = (i / points) * Math.PI * 2;
-    const a2 = ((i + 1) / points) * Math.PI * 2;
+    const a1 = (i / points) * Math.PI * 2 + rotation;
+    const a2 = ((i + 1) / points) * Math.PI * 2 + rotation;
     const aMid = (a1 + a2) / 2;
 
     const r1 = offsets[i % offsets.length];
@@ -78,14 +87,22 @@ function drawIslandPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, r
   ctx.closePath();
 }
 
+function zoneAlpha(suitability: number): number {
+  return 0.1 + Math.max(-0.06, Math.min(0.1, (suitability - 1) * 0.5));
+}
+
 // Draw zone overlays
-export function drawZones(ctx: CanvasRenderingContext2D, layout: ZoneLayout): void {
+export function drawZones(ctx: CanvasRenderingContext2D, layout: ZoneLayout, terrain: IslandTerrainState): void {
+  const foodAlpha = zoneAlpha(terrain.sectorSuitability.food).toFixed(3);
+  const goodsAlpha = zoneAlpha(terrain.sectorSuitability.goods).toFixed(3);
+  const serviceAlpha = zoneAlpha(terrain.sectorSuitability.services).toFixed(3);
+
   // Farm zone — green tint
-  drawZoneEllipse(ctx, layout.farm, 'rgba(76, 175, 80, 0.12)');
+  drawZoneEllipse(ctx, layout.farm, `rgba(76, 175, 80, ${foodAlpha})`);
   // Goods zone — blue tint
-  drawZoneEllipse(ctx, layout.goods, 'rgba(33, 150, 243, 0.12)');
+  drawZoneEllipse(ctx, layout.goods, `rgba(33, 150, 243, ${goodsAlpha})`);
   // Services zone — orange tint
-  drawZoneEllipse(ctx, layout.services, 'rgba(255, 152, 0, 0.12)');
+  drawZoneEllipse(ctx, layout.services, `rgba(255, 152, 0, ${serviceAlpha})`);
 }
 
 function drawZoneEllipse(
@@ -101,7 +118,7 @@ function drawZoneEllipse(
 
   // Dashed border
   ctx.setLineDash([4, 4]);
-  ctx.strokeStyle = color.replace('0.12', '0.3');
+  ctx.strokeStyle = color.replace(/0\.\d+\)/, '0.35)');
   ctx.lineWidth = 1;
   ctx.stroke();
   ctx.setLineDash([]);
@@ -109,23 +126,48 @@ function drawZoneEllipse(
 }
 
 // Draw zone labels
-export function drawZoneLabels(ctx: CanvasRenderingContext2D, layout: ZoneLayout): void {
+export function drawZoneLabels(ctx: CanvasRenderingContext2D, layout: ZoneLayout, terrain: IslandTerrainState): void {
   ctx.save();
   ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
+  const featurePct = (sector: SectorType) => {
+    const pct = (terrain.sectorSuitability[sector] - 1) * 100;
+    return `${pct >= 0 ? '+' : ''}${pct.toFixed(0)}%`;
+  };
+
   // Farm
   ctx.fillStyle = 'rgba(76, 175, 80, 0.7)';
-  ctx.fillText('🌾 農地 Farm', layout.farm.cx, layout.farm.cy - layout.farm.ry - 10);
+  ctx.fillText('🌾 農地 Food', layout.farm.cx, layout.farm.cy - layout.farm.ry - 12);
+  ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
+  ctx.fillText(
+    `${terrain.sectorFeatures.food} ${featurePct('food')}`,
+    layout.farm.cx,
+    layout.farm.cy - layout.farm.ry + 2,
+  );
 
   // Goods
+  ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
   ctx.fillStyle = 'rgba(33, 150, 243, 0.7)';
-  ctx.fillText('🏭 工坊 Goods', layout.goods.cx, layout.goods.cy + layout.goods.ry + 14);
+  ctx.fillText('🏭 工坊 Goods', layout.goods.cx, layout.goods.cy + layout.goods.ry + 12);
+  ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
+  ctx.fillText(
+    `${terrain.sectorFeatures.goods} ${featurePct('goods')}`,
+    layout.goods.cx,
+    layout.goods.cy + layout.goods.ry + 24,
+  );
 
   // Services
+  ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
   ctx.fillStyle = 'rgba(255, 152, 0, 0.7)';
-  ctx.fillText('🏢 服務 Services', layout.services.cx, layout.services.cy + layout.services.ry + 14);
+  ctx.fillText('🏢 服務 Services', layout.services.cx, layout.services.cy + layout.services.ry + 12);
+  ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
+  ctx.fillText(
+    `${terrain.sectorFeatures.services} ${featurePct('services')}`,
+    layout.services.cx,
+    layout.services.cy + layout.services.ry + 24,
+  );
 
   ctx.restore();
 }

@@ -1,4 +1,4 @@
-import type { AgentState, SectorType } from '../../types';
+import type { AgentState, IslandTerrainState, SectorType } from '../../types';
 
 export interface Point {
   x: number;
@@ -15,15 +15,36 @@ export interface ZoneLayout {
 // Animation phases within a turn cycle
 export type AnimPhase = 'working' | 'toMarket' | 'atMarket' | 'returning';
 
-export function getZoneLayout(w: number, h: number): ZoneLayout {
+export function getZoneLayout(w: number, h: number, terrain: IslandTerrainState): ZoneLayout {
   // Island center
   const cx = w / 2;
   const cy = h / 2;
+  const suitability = terrain.sectorSuitability;
+  const zoneOffsets = terrain.zoneOffsets;
+
+  const foodSize = 1 + (suitability.food - 1) * 0.45;
+  const goodsSize = 1 + (suitability.goods - 1) * 0.45;
+  const serviceSize = 1 + (suitability.services - 1) * 0.45;
 
   return {
-    farm: { cx: cx, cy: cy * 0.42, rx: w * 0.22, ry: h * 0.14 },
-    goods: { cx: cx * 0.58, cy: cy * 1.38, rx: w * 0.16, ry: h * 0.14 },
-    services: { cx: cx * 1.42, cy: cy * 1.38, rx: w * 0.16, ry: h * 0.14 },
+    farm: {
+      cx: cx + w * zoneOffsets.food.x,
+      cy: cy * 0.42 + h * zoneOffsets.food.y,
+      rx: w * 0.22 * foodSize,
+      ry: h * 0.14 * foodSize,
+    },
+    goods: {
+      cx: cx * 0.58 + w * zoneOffsets.goods.x,
+      cy: cy * 1.38 + h * zoneOffsets.goods.y,
+      rx: w * 0.16 * goodsSize,
+      ry: h * 0.14 * goodsSize,
+    },
+    services: {
+      cx: cx * 1.42 + w * zoneOffsets.services.x,
+      cy: cy * 1.38 + h * zoneOffsets.services.y,
+      rx: w * 0.16 * serviceSize,
+      ry: h * 0.14 * serviceSize,
+    },
     market: { cx: cx, cy: cy * 0.92, r: w * 0.06 },
   };
 }

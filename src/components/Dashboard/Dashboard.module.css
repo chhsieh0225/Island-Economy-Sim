@@ -8,6 +8,49 @@
   margin-bottom: 16px;
 }
 
+.alert {
+  flex: 1 1 100%;
+  border-radius: 8px;
+  padding: 10px 12px;
+  text-align: left;
+  border: 1px solid transparent;
+}
+
+.alertwatch {
+  background: #3a2f16;
+  border-color: #8e6d28;
+}
+
+.alertwarning {
+  background: #402610;
+  border-color: #b35d1f;
+}
+
+.alertcritical {
+  background: #43161b;
+  border-color: #ba3a47;
+}
+
+.alertTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f4f6fb;
+  margin-bottom: 4px;
+}
+
+.alertMessage {
+  font-size: 12px;
+  color: #d7e2f3;
+  line-height: 1.35;
+}
+
+.alertActions {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #bed4f2;
+  line-height: 1.35;
+}
+
 .stat {
   flex: 1 1 120px;
   text-align: center;

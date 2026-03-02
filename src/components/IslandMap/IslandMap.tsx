@@ -2,8 +2,11 @@ import { useRef, useEffect, useCallback, useState } from 'react';
 import type { AgentState, ActiveRandomEvent, IslandTerrainState } from '../../types';
 import {
   getZoneLayout,
-  computeHomePosition,
+  computeWorkPosition,
+  computeResidencePosition,
   computeAnimatedPosition,
+  getAnimPhase,
+  shouldVisitMarketThisTurn,
   computeIdlePosition,
   getAgentColor,
   getAgentOpacity,
@@ -118,15 +121,19 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, onAgentCl
     const rendered: AgentRenderState[] = [];
 
     for (const agent of aliveAgents) {
-      const home = computeHomePosition(agent.id, agent.sector, layout, terrain, w, h);
+      const home = computeResidencePosition(agent.id, agent.familyId, layout, terrain, w, h);
+      const work = computeWorkPosition(agent.id, agent.sector, layout, terrain, w, h);
       const market = { x: layout.market.cx, y: layout.market.cy };
+      const visitMarket = shouldVisitMarketThisTurn(agent, turn);
 
       let pos: Point;
       if (isAnimatingRef.current) {
-        pos = computeAnimatedPosition(home, market, animProgress, agent.id, time);
+        pos = computeAnimatedPosition(home, work, market, animProgress, agent.id, time, visitMarket);
+        const { phase } = getAnimPhase(animProgress, visitMarket);
 
-        // Draw work particle during working phase
-        drawWorkParticle(ctx, pos.x, pos.y, getAgentColor(agent), animProgress);
+        if (phase === 'working') {
+          drawWorkParticle(ctx, pos.x, pos.y, getAgentColor(agent), animProgress);
+        }
       } else {
         pos = computeIdlePosition(home, agent.id, time);
       }

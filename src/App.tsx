@@ -70,6 +70,7 @@ function App() {
           turn={gameState.turn}
           terrain={gameState.terrain}
           activeRandomEvents={gameState.activeRandomEvents}
+          autoPlaySpeed={autoPlaySpeed}
           onAgentClick={handleAgentClick}
         />
 

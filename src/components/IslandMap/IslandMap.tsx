@@ -28,13 +28,14 @@ import {
 } from './islandRenderer';
 import styles from './IslandMap.module.css';
 
-const ANIM_DURATION = 1500; // ms per turn animation cycle
+type AutoPlaySpeed = 'slow' | 'medium' | 'fast' | null;
 
 interface Props {
   agents: AgentState[];
   turn: number;
   terrain: IslandTerrainState;
   activeRandomEvents: ActiveRandomEvent[];
+  autoPlaySpeed: AutoPlaySpeed;
   onAgentClick: (agent: AgentState) => void;
 }
 
@@ -46,7 +47,14 @@ interface AgentRenderState {
   agent: AgentState;
 }
 
-export function IslandMap({ agents, turn, terrain, activeRandomEvents, onAgentClick }: Props) {
+function getAnimDurationMs(autoPlaySpeed: AutoPlaySpeed): number {
+  if (autoPlaySpeed === 'slow') return 1200;
+  if (autoPlaySpeed === 'medium') return 750;
+  if (autoPlaySpeed === 'fast') return 220;
+  return 1400;
+}
+
+export function IslandMap({ agents, turn, terrain, activeRandomEvents, autoPlaySpeed, onAgentClick }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
@@ -101,7 +109,8 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, onAgentCl
     let animProgress = 0;
     if (isAnimatingRef.current) {
       const elapsed = timestamp - animStartRef.current;
-      animProgress = Math.min(1, elapsed / ANIM_DURATION);
+      const animDuration = getAnimDurationMs(autoPlaySpeed);
+      animProgress = Math.min(1, elapsed / animDuration);
       if (animProgress >= 1) {
         isAnimatingRef.current = false;
         animProgress = 0;
@@ -124,7 +133,7 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, onAgentCl
       const home = computeResidencePosition(agent.id, agent.familyId, layout, terrain, w, h);
       const work = computeWorkPosition(agent.id, agent.sector, layout, terrain, w, h);
       const market = { x: layout.market.cx, y: layout.market.cy };
-      const visitMarket = shouldVisitMarketThisTurn(agent, turn);
+      const visitMarket = autoPlaySpeed === 'fast' ? false : shouldVisitMarketThisTurn(agent, turn);
 
       let pos: Point;
       if (isAnimatingRef.current) {
@@ -164,7 +173,7 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, onAgentCl
     }
 
     animRef.current = requestAnimationFrame(render);
-  }, [agents, activeRandomEvents, hoveredAgent, terrain]);
+  }, [agents, activeRandomEvents, hoveredAgent, terrain, autoPlaySpeed]);
 
   // Start/stop animation loop
   useEffect(() => {

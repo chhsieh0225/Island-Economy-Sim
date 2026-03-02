@@ -223,6 +223,12 @@ export function computeAnimatedPosition(
 ): Point {
   const { phase, phaseProgress } = getAnimPhase(animProgress, visitMarket);
   const t = ease(phaseProgress);
+  const marketAngle = seededRandom(agentId * 19 + 7) * Math.PI * 2;
+  const marketRadius = 4 + seededRandom(agentId * 31 + 13) * 18;
+  const marketAnchor = {
+    x: market.x + Math.cos(marketAngle) * marketRadius,
+    y: market.y + Math.sin(marketAngle) * marketRadius * 0.72,
+  };
 
   // Small wobble based on time
   const wobbleX = Math.sin(time * 3 + agentId * 2.1) * 2;
@@ -240,15 +246,15 @@ export function computeAnimatedPosition(
       y = work.y + wobbleY * 1.6;
       break;
     case 'toMarket':
-      x = lerp(work.x, market.x + wobbleX, t);
-      y = lerp(work.y, market.y + wobbleY, t);
+      x = lerp(work.x, marketAnchor.x + wobbleX, t);
+      y = lerp(work.y, marketAnchor.y + wobbleY, t);
       break;
     case 'atMarket':
-      x = market.x + wobbleX * 2;
-      y = market.y + wobbleY * 2;
+      x = marketAnchor.x + wobbleX * 1.4;
+      y = marketAnchor.y + wobbleY * 1.4;
       break;
     case 'toHome': {
-      const start = visitMarket ? market : work;
+      const start = visitMarket ? marketAnchor : work;
       x = lerp(start.x + wobbleX * 0.6, home.x, t);
       y = lerp(start.y + wobbleY * 0.6, home.y, t);
       break;

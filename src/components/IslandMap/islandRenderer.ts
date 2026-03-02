@@ -1,5 +1,6 @@
-import type { ActiveRandomEvent, IslandTerrainState, SectorType } from '../../types';
+import type { ActiveRandomEvent, AgentState, IslandTerrainState, SectorType } from '../../types';
 import type { ZoneLayout } from './agentAnimator';
+import { getIslandGeometry } from './islandGeometry';
 
 // Draw animated water background
 export function drawWater(ctx: CanvasRenderingContext2D, w: number, h: number, time: number): void {
@@ -27,22 +28,20 @@ export function drawWater(ctx: CanvasRenderingContext2D, w: number, h: number, t
 
 // Draw island shape — organic blob generated from terrain profile
 export function drawIsland(ctx: CanvasRenderingContext2D, w: number, h: number, terrain: IslandTerrainState): void {
-  const cx = w / 2;
-  const cy = h / 2;
-  const rx = w * 0.40 * terrain.islandScaleX;
-  const ry = h * 0.42 * terrain.islandScaleY;
+  const island = getIslandGeometry(w, h, terrain);
+  const { cx, cy, rx, ry } = island;
 
   ctx.save();
 
   // Beach edge (slightly larger)
   ctx.beginPath();
-  drawIslandPath(ctx, cx, cy, rx + 6, ry + 6, terrain.coastlineOffsets, terrain.islandRotation);
+  drawIslandPath(ctx, cx, cy, rx + 6, ry + 6, island.offsets, island.rotation);
   ctx.fillStyle = '#c2a878';
   ctx.fill();
 
   // Main island ground
   ctx.beginPath();
-  drawIslandPath(ctx, cx, cy, rx, ry, terrain.coastlineOffsets, terrain.islandRotation);
+  drawIslandPath(ctx, cx, cy, rx, ry, island.offsets, island.rotation);
   const landGrad = ctx.createRadialGradient(cx, cy * 0.85, 0, cx, cy, Math.max(rx, ry));
   landGrad.addColorStop(0, '#3a5f3a');
   landGrad.addColorStop(0.6, '#2d4a2d');
@@ -91,18 +90,117 @@ function zoneAlpha(suitability: number): number {
   return 0.1 + Math.max(-0.06, Math.min(0.1, (suitability - 1) * 0.5));
 }
 
+function clamp01(v: number): number {
+  return Math.max(0, Math.min(1, v));
+}
+
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = clamp01((x - edge0) / Math.max(1e-6, edge1 - edge0));
+  return t * t * (3 - 2 * t);
+}
+
+function getZoneReveal(sector: SectorType, agents: AgentState[], turn: number): number {
+  const alive = agents.filter(a => a.alive);
+  const pop = Math.max(1, alive.length);
+  const workers = alive.filter(a => a.sector === sector).length;
+  const workerRatio = workers / pop;
+
+  if (sector === 'food') {
+    return 1;
+  }
+
+  if (sector === 'goods') {
+    const turnProgress = smoothstep(3, 26, turn);
+    const workerProgress = smoothstep(0.08, 0.28, workerRatio);
+    return clamp01(turnProgress * (0.35 + workerProgress * 0.65));
+  }
+
+  const turnProgress = smoothstep(10, 45, turn);
+  const workerProgress = smoothstep(0.06, 0.24, workerRatio);
+  return clamp01(turnProgress * (0.28 + workerProgress * 0.72));
+}
+
+function scaleZone(
+  zone: { cx: number; cy: number; rx: number; ry: number },
+  reveal: number,
+): { cx: number; cy: number; rx: number; ry: number } {
+  const scale = 0.28 + reveal * 0.72;
+  return {
+    cx: zone.cx,
+    cy: zone.cy,
+    rx: zone.rx * scale,
+    ry: zone.ry * scale,
+  };
+}
+
+function drawZoneSatellites(
+  ctx: CanvasRenderingContext2D,
+  zone: { cx: number; cy: number; rx: number; ry: number },
+  color: string,
+  reveal: number,
+): void {
+  if (reveal < 0.45) return;
+  const satelliteReveal = smoothstep(0.45, 1, reveal);
+  const alpha = 0.12 * satelliteReveal;
+  const satColor = color.replace(/0\.\d+\)/, `${alpha.toFixed(3)})`);
+  const offsets = [
+    { x: zone.rx * 0.58, y: zone.ry * 0.1 },
+    { x: -zone.rx * 0.48, y: -zone.ry * 0.16 },
+  ];
+  for (const offset of offsets) {
+    drawZoneEllipse(
+      ctx,
+      {
+        cx: zone.cx + offset.x,
+        cy: zone.cy + offset.y,
+        rx: zone.rx * (0.22 + 0.24 * satelliteReveal),
+        ry: zone.ry * (0.2 + 0.2 * satelliteReveal),
+      },
+      satColor,
+    );
+  }
+}
+
 // Draw zone overlays
-export function drawZones(ctx: CanvasRenderingContext2D, layout: ZoneLayout, terrain: IslandTerrainState): void {
+export function drawZones(
+  ctx: CanvasRenderingContext2D,
+  layout: ZoneLayout,
+  terrain: IslandTerrainState,
+  agents: AgentState[],
+  turn: number,
+  w: number,
+  h: number,
+): void {
+  const island = getIslandGeometry(w, h, terrain);
+  ctx.save();
+  ctx.beginPath();
+  drawIslandPath(ctx, island.cx, island.cy, island.rx, island.ry, island.offsets, island.rotation);
+  ctx.clip();
+
+  const foodReveal = getZoneReveal('food', agents, turn);
+  const goodsReveal = getZoneReveal('goods', agents, turn);
+  const servicesReveal = getZoneReveal('services', agents, turn);
+
   const foodAlpha = zoneAlpha(terrain.sectorSuitability.food).toFixed(3);
-  const goodsAlpha = zoneAlpha(terrain.sectorSuitability.goods).toFixed(3);
-  const serviceAlpha = zoneAlpha(terrain.sectorSuitability.services).toFixed(3);
+  const goodsAlpha = (zoneAlpha(terrain.sectorSuitability.goods) * goodsReveal).toFixed(3);
+  const serviceAlpha = (zoneAlpha(terrain.sectorSuitability.services) * servicesReveal).toFixed(3);
 
   // Farm zone — green tint
-  drawZoneEllipse(ctx, layout.farm, `rgba(76, 175, 80, ${foodAlpha})`);
+  drawZoneEllipse(ctx, scaleZone(layout.farm, foodReveal), `rgba(76, 175, 80, ${foodAlpha})`);
   // Goods zone — blue tint
-  drawZoneEllipse(ctx, layout.goods, `rgba(33, 150, 243, ${goodsAlpha})`);
+  if (goodsReveal > 0.03) {
+    const goodsZone = scaleZone(layout.goods, goodsReveal);
+    drawZoneEllipse(ctx, goodsZone, `rgba(33, 150, 243, ${goodsAlpha})`);
+    drawZoneSatellites(ctx, goodsZone, `rgba(33, 150, 243, ${goodsAlpha})`, goodsReveal);
+  }
   // Services zone — orange tint
-  drawZoneEllipse(ctx, layout.services, `rgba(255, 152, 0, ${serviceAlpha})`);
+  if (servicesReveal > 0.03) {
+    const servicesZone = scaleZone(layout.services, servicesReveal);
+    drawZoneEllipse(ctx, servicesZone, `rgba(255, 152, 0, ${serviceAlpha})`);
+    drawZoneSatellites(ctx, servicesZone, `rgba(255, 152, 0, ${serviceAlpha})`, servicesReveal);
+  }
+
+  ctx.restore();
 }
 
 function drawZoneEllipse(
@@ -126,7 +224,13 @@ function drawZoneEllipse(
 }
 
 // Draw zone labels
-export function drawZoneLabels(ctx: CanvasRenderingContext2D, layout: ZoneLayout, terrain: IslandTerrainState): void {
+export function drawZoneLabels(
+  ctx: CanvasRenderingContext2D,
+  layout: ZoneLayout,
+  terrain: IslandTerrainState,
+  agents: AgentState[],
+  turn: number,
+): void {
   ctx.save();
   ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
   ctx.textAlign = 'center';
@@ -148,26 +252,32 @@ export function drawZoneLabels(ctx: CanvasRenderingContext2D, layout: ZoneLayout
   );
 
   // Goods
-  ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
-  ctx.fillStyle = 'rgba(33, 150, 243, 0.7)';
-  ctx.fillText('🏭 工坊 Goods', layout.goods.cx, layout.goods.cy + layout.goods.ry + 12);
-  ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
-  ctx.fillText(
-    `${terrain.sectorFeatures.goods} ${featurePct('goods')}`,
-    layout.goods.cx,
-    layout.goods.cy + layout.goods.ry + 24,
-  );
+  const goodsReveal = getZoneReveal('goods', agents, turn);
+  if (goodsReveal > 0.18) {
+    ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillStyle = `rgba(33, 150, 243, ${0.45 + goodsReveal * 0.35})`;
+    ctx.fillText('🏭 工坊 Goods', layout.goods.cx, layout.goods.cy + layout.goods.ry + 12);
+    ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillText(
+      `${terrain.sectorFeatures.goods} ${featurePct('goods')}`,
+      layout.goods.cx,
+      layout.goods.cy + layout.goods.ry + 24,
+    );
+  }
 
   // Services
-  ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
-  ctx.fillStyle = 'rgba(255, 152, 0, 0.7)';
-  ctx.fillText('🏢 服務 Services', layout.services.cx, layout.services.cy + layout.services.ry + 12);
-  ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
-  ctx.fillText(
-    `${terrain.sectorFeatures.services} ${featurePct('services')}`,
-    layout.services.cx,
-    layout.services.cy + layout.services.ry + 24,
-  );
+  const servicesReveal = getZoneReveal('services', agents, turn);
+  if (servicesReveal > 0.2) {
+    ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillStyle = `rgba(255, 152, 0, ${0.42 + servicesReveal * 0.36})`;
+    ctx.fillText('🏢 服務 Services', layout.services.cx, layout.services.cy + layout.services.ry + 12);
+    ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillText(
+      `${terrain.sectorFeatures.services} ${featurePct('services')}`,
+      layout.services.cx,
+      layout.services.cy + layout.services.ry + 24,
+    );
+  }
 
   ctx.restore();
 }

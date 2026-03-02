@@ -1,4 +1,9 @@
 import type { AgentState, IslandTerrainState, SectorType } from '../../types';
+import {
+  clampPointToIsland,
+  getIslandGeometry,
+  getIslandPolarMetrics,
+} from './islandGeometry';
 
 export interface Point {
   x: number;
@@ -26,26 +31,48 @@ export function getZoneLayout(w: number, h: number, terrain: IslandTerrainState)
   const goodsSize = 1 + (suitability.goods - 1) * 0.45;
   const serviceSize = 1 + (suitability.services - 1) * 0.45;
 
+  const island = getIslandGeometry(w, h, terrain);
+
+  const buildZone = (
+    rawCenter: Point,
+    rx: number,
+    ry: number,
+  ) => {
+    const clampedCenter = clampPointToIsland(rawCenter, island, 0.78);
+    const metrics = getIslandPolarMetrics(clampedCenter, island);
+    const edgeRatio = metrics.radial / Math.max(0.001, metrics.boundary);
+    const edgeShrink = Math.max(0.58, 1 - Math.max(0, edgeRatio - 0.5) * 0.9);
+    return {
+      cx: clampedCenter.x,
+      cy: clampedCenter.y,
+      rx: rx * edgeShrink,
+      ry: ry * edgeShrink,
+    };
+  };
+
+  const farm = buildZone(
+    { x: cx + w * zoneOffsets.food.x, y: cy * 0.42 + h * zoneOffsets.food.y },
+    w * 0.22 * foodSize,
+    h * 0.14 * foodSize,
+  );
+  const goods = buildZone(
+    { x: cx * 0.58 + w * zoneOffsets.goods.x, y: cy * 1.38 + h * zoneOffsets.goods.y },
+    w * 0.16 * goodsSize,
+    h * 0.14 * goodsSize,
+  );
+  const services = buildZone(
+    { x: cx * 1.42 + w * zoneOffsets.services.x, y: cy * 1.38 + h * zoneOffsets.services.y },
+    w * 0.16 * serviceSize,
+    h * 0.14 * serviceSize,
+  );
+
+  const marketCenter = clampPointToIsland({ x: cx, y: cy * 0.92 }, island, 0.88);
+
   return {
-    farm: {
-      cx: cx + w * zoneOffsets.food.x,
-      cy: cy * 0.42 + h * zoneOffsets.food.y,
-      rx: w * 0.22 * foodSize,
-      ry: h * 0.14 * foodSize,
-    },
-    goods: {
-      cx: cx * 0.58 + w * zoneOffsets.goods.x,
-      cy: cy * 1.38 + h * zoneOffsets.goods.y,
-      rx: w * 0.16 * goodsSize,
-      ry: h * 0.14 * goodsSize,
-    },
-    services: {
-      cx: cx * 1.42 + w * zoneOffsets.services.x,
-      cy: cy * 1.38 + h * zoneOffsets.services.y,
-      rx: w * 0.16 * serviceSize,
-      ry: h * 0.14 * serviceSize,
-    },
-    market: { cx: cx, cy: cy * 0.92, r: w * 0.06 },
+    farm,
+    goods,
+    services,
+    market: { cx: marketCenter.x, cy: marketCenter.y, r: w * 0.06 },
   };
 }
 
@@ -55,7 +82,14 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-export function computeHomePosition(agentId: number, sector: SectorType, layout: ZoneLayout): Point {
+export function computeHomePosition(
+  agentId: number,
+  sector: SectorType,
+  layout: ZoneLayout,
+  terrain: IslandTerrainState,
+  w: number,
+  h: number,
+): Point {
   const zone = sector === 'food' ? layout.farm
     : sector === 'goods' ? layout.goods
     : layout.services;
@@ -64,10 +98,12 @@ export function computeHomePosition(agentId: number, sector: SectorType, layout:
   const angle = seededRandom(agentId * 7 + 1) * Math.PI * 2;
   const radius = Math.sqrt(seededRandom(agentId * 13 + 3)) * 0.85; // sqrt for uniform distribution
 
-  return {
+  const rawPoint = {
     x: zone.cx + Math.cos(angle) * zone.rx * radius,
     y: zone.cy + Math.sin(angle) * zone.ry * radius,
   };
+  const island = getIslandGeometry(w, h, terrain);
+  return clampPointToIsland(rawPoint, island, 0.94);
 }
 
 export function getAnimPhase(progress: number): { phase: AnimPhase; phaseProgress: number } {

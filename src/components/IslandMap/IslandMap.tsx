@@ -11,6 +11,7 @@ import {
   hitTestAgent,
 } from './agentAnimator';
 import type { Point } from './agentAnimator';
+import { clampPointToIsland, getIslandGeometry } from './islandGeometry';
 import {
   drawWater,
   drawIsland,
@@ -91,6 +92,7 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, onAgentCl
 
     const time = timestamp / 1000;
     const layout = getZoneLayout(w, h, terrain);
+    const island = getIslandGeometry(w, h, terrain);
 
     // Compute animation progress
     let animProgress = 0;
@@ -106,17 +108,17 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, onAgentCl
     // Draw background layers
     drawWater(ctx, w, h, time);
     drawIsland(ctx, w, h, terrain);
-    drawZones(ctx, layout, terrain);
+    drawZones(ctx, layout, terrain, agents, turn, w, h);
     drawEventOverlays(ctx, layout, activeRandomEvents, w, h, time);
     drawMarket(ctx, layout);
-    drawZoneLabels(ctx, layout, terrain);
+    drawZoneLabels(ctx, layout, terrain, agents, turn);
 
     // Draw agents
     const aliveAgents = agents.filter(a => a.alive);
     const rendered: AgentRenderState[] = [];
 
     for (const agent of aliveAgents) {
-      const home = computeHomePosition(agent.id, agent.sector, layout);
+      const home = computeHomePosition(agent.id, agent.sector, layout, terrain, w, h);
       const market = { x: layout.market.cx, y: layout.market.cy };
 
       let pos: Point;
@@ -128,6 +130,7 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, onAgentCl
       } else {
         pos = computeIdlePosition(home, agent.id, time);
       }
+      pos = clampPointToIsland(pos, island, 0.96);
 
       const color = getAgentColor(agent);
       const opacity = getAgentOpacity(agent);

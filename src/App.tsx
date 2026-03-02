@@ -13,6 +13,7 @@ import { GameOver } from './components/GameOver/GameOver';
 import { DecisionPanel } from './components/DecisionPanel/DecisionPanel';
 import { SimulationLab } from './components/SimulationLab/SimulationLab';
 import { MilestonePanel } from './components/MilestonePanel/MilestonePanel';
+import { TerrainPanel } from './components/TerrainPanel/TerrainPanel';
 import type { AgentState } from './types';
 import styles from './App.module.css';
 
@@ -35,7 +36,7 @@ function App() {
   } = useGameEngine();
 
   const [selectedAgent, setSelectedAgent] = useState<AgentState | null>(null);
-  const [rightTab, setRightTab] = useState<'market' | 'events' | 'milestones'>('market');
+  const [rightTab, setRightTab] = useState<'market' | 'terrain' | 'events' | 'milestones'>('terrain');
 
   const handleAgentClick = (agent: AgentState) => {
     setSelectedAgent(agent);
@@ -108,6 +109,12 @@ function App() {
                 市場
               </button>
               <button
+                className={`${styles.rightTabBtn} ${rightTab === 'terrain' ? styles.rightTabBtnActive : ''}`}
+                onClick={() => setRightTab('terrain')}
+              >
+                地貌
+              </button>
+              <button
                 className={`${styles.rightTabBtn} ${rightTab === 'events' ? styles.rightTabBtnActive : ''}`}
                 onClick={() => setRightTab('events')}
               >
@@ -122,7 +129,10 @@ function App() {
             </div>
 
             {rightTab === 'market' && (
-              <MarketPanel market={gameState.market} />
+              <MarketPanel market={gameState.market} terrain={gameState.terrain} />
+            )}
+            {rightTab === 'terrain' && (
+              <TerrainPanel terrain={gameState.terrain} />
             )}
             {rightTab === 'events' && (
               <EventLog

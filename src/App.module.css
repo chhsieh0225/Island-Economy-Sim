@@ -49,6 +49,7 @@
 .rightTabs {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
   margin-bottom: 10px;
 }
 

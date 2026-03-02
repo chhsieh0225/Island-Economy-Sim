@@ -1,0 +1,119 @@
+.panel {
+  background: #16213e;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ccd6f6;
+}
+
+.seed {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #8fa2c1;
+}
+
+.rankRow {
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.rankLabel {
+  color: #8fa2c1;
+}
+
+.rankValue {
+  color: #e6f1ff;
+  font-weight: 600;
+}
+
+.cards {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.card {
+  text-align: left;
+  background: #0f1a30;
+  border: 1px solid #2a4368;
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.card:hover {
+  border-color: #64ffda;
+  transform: translateY(-1px);
+}
+
+.cardActive {
+  border-color: #64ffda;
+  background: #11233e;
+}
+
+.cardHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #d7e2f5;
+}
+
+.feature {
+  margin-top: 3px;
+  font-size: 11px;
+  color: #9bb0cf;
+}
+
+.up {
+  color: #64ffda;
+  font-weight: 700;
+}
+
+.down {
+  color: #ff8a80;
+  font-weight: 700;
+}
+
+.barBg {
+  margin-top: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #1c2d4a;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #4fc3f7, #64ffda);
+}
+
+.focus {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #0d1a2f;
+  border: 1px solid #233554;
+}
+
+.focusTitle {
+  font-size: 11px;
+  color: #64ffda;
+  text-transform: uppercase;
+}
+
+.focusText {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #c5d4ec;
+  line-height: 1.35;
+}

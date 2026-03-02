@@ -42,6 +42,9 @@
 .up { color: #4caf50; }
 .down { color: #f44336; }
 
+.terrainUp { color: #64ffda; font-weight: 600; }
+.terrainDown { color: #ff8a80; font-weight: 600; }
+
 .chartContainer {
   height: 200px;
   width: 100%;

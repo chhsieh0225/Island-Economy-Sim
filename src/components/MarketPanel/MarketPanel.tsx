@@ -1,16 +1,17 @@
 import { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import type { MarketState } from '../../types';
+import type { IslandTerrainState, MarketState } from '../../types';
 import styles from './MarketPanel.module.css';
 
 interface Props {
   market: MarketState;
+  terrain: IslandTerrainState;
 }
 
 const SECTOR_COLORS = { food: '#4caf50', goods: '#2196f3', services: '#ff9800' };
 const SECTOR_LABELS = { food: '食物 Food', goods: '商品 Goods', services: '服務 Services' };
 
-export function MarketPanel({ market }: Props) {
+export function MarketPanel({ market, terrain }: Props) {
   const chartData = useMemo(() => {
     const len = market.priceHistory.food.length;
     const data = [];
@@ -55,6 +56,7 @@ export function MarketPanel({ market }: Props) {
             <th>供給</th>
             <th>需求</th>
             <th>成交量</th>
+            <th>地貌</th>
           </tr>
         </thead>
         <tbody>
@@ -66,6 +68,9 @@ export function MarketPanel({ market }: Props) {
               <td>{market.supply[sector].toFixed(1)}</td>
               <td>{market.demand[sector].toFixed(1)}</td>
               <td>{market.volume[sector].toFixed(1)}</td>
+              <td className={terrain.sectorSuitability[sector] >= 1 ? styles.terrainUp : styles.terrainDown}>
+                {(terrain.sectorSuitability[sector] >= 1 ? '+' : '') + ((terrain.sectorSuitability[sector] - 1) * 100).toFixed(0)}%
+              </td>
             </tr>
           ))}
         </tbody>

@@ -44,6 +44,8 @@ export class GameEngine {
   private nextAgentId: number = CONFIG.INITIAL_POPULATION;
   private nextFamilyId: number = 1;
   private nextPolicyId: number = 1;
+  private lastRandomEventTurn: number = -999;
+  private lastDecisionTurn: number = -999;
 
   constructor(seed?: number, scenarioId: ScenarioId = DEFAULT_SCENARIO) {
     this.seed = seed ?? Date.now();
@@ -447,7 +449,8 @@ export class GameEngine {
       return e.turnsRemaining > 0;
     });
 
-    if (!this.pendingDecision) {
+    const decisionCooldownDone = this.turn - this.lastDecisionTurn > CONFIG.DECISION_EVENT_COOLDOWN_TURNS;
+    if (!this.pendingDecision && decisionCooldownDone) {
       for (const eventDef of DECISION_EVENTS) {
         if (this.rng.next() < eventDef.probability) {
           this.pendingDecision = {
@@ -458,6 +461,7 @@ export class GameEngine {
             choices: eventDef.choices,
             turnIssued: this.turn,
           };
+          this.lastDecisionTurn = this.turn;
           this.addEvent(eventDef.severity, `${eventDef.name}：${eventDef.message}`);
           this.addEvent('info', '市政抉擇已出現，請先做出選擇。');
           break;
@@ -465,11 +469,24 @@ export class GameEngine {
       }
     }
 
-    for (const eventDef of RANDOM_EVENTS) {
-      if (this.activeRandomEvents.some(e => e.def.id === eventDef.id)) continue;
-      if (this.rng.next() < eventDef.probability) {
-        this.activeRandomEvents.push({ def: eventDef, turnsRemaining: eventDef.duration });
-        this.addEvent(eventDef.severity, eventDef.message);
+    const randomCooldownDone = this.turn - this.lastRandomEventTurn > CONFIG.RANDOM_EVENT_COOLDOWN_TURNS;
+    if (randomCooldownDone) {
+      const available = RANDOM_EVENTS.filter(
+        eventDef => !this.activeRandomEvents.some(e => e.def.id === eventDef.id),
+      );
+
+      if (available.length > 0) {
+        const startIdx = this.rng.nextInt(0, available.length - 1);
+        for (let i = 0; i < available.length; i++) {
+          const eventDef = available[(startIdx + i) % available.length];
+          const adjustedProbability = eventDef.probability * CONFIG.RANDOM_EVENT_PROBABILITY_MULTIPLIER;
+          if (this.rng.next() < adjustedProbability) {
+            this.activeRandomEvents.push({ def: eventDef, turnsRemaining: eventDef.duration });
+            this.lastRandomEventTurn = this.turn;
+            this.addEvent(eventDef.severity, eventDef.message);
+            break; // at most one new random event per turn
+          }
+        }
       }
     }
 
@@ -792,6 +809,8 @@ export class GameEngine {
     this.pendingPolicies = [];
     this.gameOver = null;
     this.nextPolicyId = 1;
+    this.lastRandomEventTurn = -999;
+    this.lastDecisionTurn = -999;
 
     this.seed = seed ?? Date.now();
     this.scenarioId = scenarioId;

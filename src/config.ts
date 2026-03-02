@@ -68,6 +68,11 @@ export const CONFIG = {
   // History
   MAX_HISTORY_LENGTH: 200,
 
+  // Event pacing
+  RANDOM_EVENT_PROBABILITY_MULTIPLIER: 0.5,
+  RANDOM_EVENT_COOLDOWN_TURNS: 2,
+  DECISION_EVENT_COOLDOWN_TURNS: 4,
+
   // Auto-play speeds (ms per turn)
   AUTO_PLAY_SPEEDS: {
     slow: 2000,

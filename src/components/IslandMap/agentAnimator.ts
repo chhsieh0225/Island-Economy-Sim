@@ -234,10 +234,6 @@ function ease(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
-}
-
 // Quadratic Bézier: P = (1-t)²·P0 + 2(1-t)t·P1 + t²·P2
 function quadBezier(p0: Point, ctrl: Point, p2: Point, t: number): Point {
   const u = 1 - t;

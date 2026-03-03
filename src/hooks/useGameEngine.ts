@@ -8,6 +8,7 @@ import type {
   ScenarioId,
   RunSummary,
   GameOverReason,
+  MilestoneRecord,
   ToastNotification,
 } from '../types';
 import { CONFIG } from '../config';
@@ -76,7 +77,7 @@ export function useGameEngine() {
     setRunHistory(prev => [summary, ...prev].slice(0, 12));
   }, [engine]);
 
-  const pushToasts = useCallback((newMilestones: typeof engine.newMilestones) => {
+  const pushToasts = useCallback((newMilestones: MilestoneRecord[]) => {
     if (newMilestones.length === 0) return;
     const now = Date.now();
     const toasts: ToastNotification[] = newMilestones.map(m => ({

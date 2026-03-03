@@ -333,7 +333,7 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, autoPlayS
           const anchor = getRoutineAnchor(agent, currentTurn, home, work);
           pos = computeIdlePosition(anchor, agent.id, time);
         }
-        pos = clampPointToIsland(pos, island, 0.96);
+        pos = clampPointToIsland(pos, island, 0.91);
 
         const color = getAgentColor(agent);
         const opacity = getAgentOpacity(agent);

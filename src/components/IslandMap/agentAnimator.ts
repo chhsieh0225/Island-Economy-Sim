@@ -129,7 +129,7 @@ export function computeWorkPosition(
 
   const rawPoint = distributeInZone(zone, agentId * 7 + 1, agentId * 13 + 3);
   const island = getIslandGeometry(w, h, terrain);
-  return clampPointToIsland(rawPoint, island, 0.94);
+  return clampPointToIsland(rawPoint, island, 0.88);
 }
 
 export function computeResidencePosition(
@@ -166,7 +166,7 @@ export function computeResidencePosition(
     householdSeed * 23 + agentId * 3 + zoneIndex * 19 + 19,
   );
   const island = getIslandGeometry(w, h, terrain);
-  return clampPointToIsland(rawPoint, island, 0.94);
+  return clampPointToIsland(rawPoint, island, 0.88);
 }
 
 function clamp01(v: number): number {
@@ -238,6 +238,32 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
+// Quadratic Bézier: P = (1-t)²·P0 + 2(1-t)t·P1 + t²·P2
+function quadBezier(p0: Point, ctrl: Point, p2: Point, t: number): Point {
+  const u = 1 - t;
+  return {
+    x: u * u * p0.x + 2 * u * t * ctrl.x + t * t * p2.x,
+    y: u * u * p0.y + 2 * u * t * ctrl.y + t * t * p2.y,
+  };
+}
+
+// Build a curved control point perpendicular to the work→market line.
+// Each agent gets a consistent arc direction based on their seed.
+function getArcControl(from: Point, to: Point, agentId: number): Point {
+  const mx = (from.x + to.x) / 2;
+  const my = (from.y + to.y) / 2;
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  // Perpendicular unit vector
+  const px = -dy / Math.max(1, dist);
+  const py = dx / Math.max(1, dist);
+  // Arc magnitude: 20-45% of the distance, direction seeded per agent
+  const arcSign = seededRandom(agentId * 53 + 11) < 0.5 ? -1 : 1;
+  const arcMag = (0.20 + seededRandom(agentId * 67 + 23) * 0.25) * dist * arcSign;
+  return { x: mx + px * arcMag, y: my + py * arcMag };
+}
+
 export function computeAnimatedPosition(
   work: Point,
   market: Point,
@@ -258,6 +284,9 @@ export function computeAnimatedPosition(
   const wobbleX = Math.sin(time * 3 + agentId * 2.1) * 2;
   const wobbleY = Math.cos(time * 2.7 + agentId * 1.7) * 2;
 
+  // Arc control point for curved travel (consistent per agent)
+  const ctrl = getArcControl(work, marketAnchor, agentId);
+
   let x: number, y: number;
 
   switch (phase) {
@@ -265,18 +294,23 @@ export function computeAnimatedPosition(
       x = work.x + wobbleX * 1.6;
       y = work.y + wobbleY * 1.6;
       break;
-    case 'toMarket':
-      x = lerp(work.x, marketAnchor.x + wobbleX * 0.4, t);
-      y = lerp(work.y, marketAnchor.y + wobbleY * 0.4, t);
+    case 'toMarket': {
+      const p = quadBezier(work, ctrl, marketAnchor, t);
+      x = p.x + wobbleX * 0.3;
+      y = p.y + wobbleY * 0.3;
       break;
+    }
     case 'atMarket':
       x = marketAnchor.x + wobbleX * 1.4;
       y = marketAnchor.y + wobbleY * 1.4;
       break;
-    case 'returning':
-      x = lerp(marketAnchor.x + wobbleX * 0.4, work.x, t);
-      y = lerp(marketAnchor.y + wobbleY * 0.4, work.y, t);
+    case 'returning': {
+      // Reverse: market → work along same arc
+      const p = quadBezier(marketAnchor, ctrl, work, t);
+      x = p.x + wobbleX * 0.3;
+      y = p.y + wobbleY * 0.3;
       break;
+    }
   }
 
   return { x, y };

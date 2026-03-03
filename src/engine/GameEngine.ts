@@ -16,6 +16,9 @@ import type {
   MilestoneRecord,
   IslandTerrainState,
   SectorDevelopmentLevel,
+  ReflectiveQuestion,
+  AgentBiography,
+  BestOfRanking,
 } from '../types';
 import { SECTORS } from '../types';
 import { Agent } from './Agent';
@@ -58,6 +61,7 @@ export class GameEngine {
   private lastDecisionTurn: number = -999;
   private eventChainSignals: Record<string, number> = {};
   private milestoneFlags: Set<string> = new Set();
+  private _newMilestonesThisTurn: MilestoneRecord[] = [];
 
   constructor(seed?: number, scenarioId: ScenarioId = DEFAULT_SCENARIO) {
     this.seed = seed ?? Date.now();
@@ -266,6 +270,7 @@ export class GameEngine {
     }
 
     this.turn++;
+    this._newMilestonesThisTurn = [];
     this.applyPendingPolicies();
     this.market.clearOrders();
 
@@ -404,17 +409,31 @@ export class GameEngine {
   }
 
   private phaseGovernment(agents: Agent[]): void {
+    const rate = this.government.taxRate;
+    const prevTreasuryTax = this.government.treasury;
     const taxCollected = this.government.collectTaxes(agents);
     if (taxCollected > 0) {
-      this.addEvent('info', `稅收 $${taxCollected.toFixed(0)} 入庫。`);
+      const newTreasuryTax = this.government.treasury;
+      this.addEvent('info', `📋 稅率 ${(rate * 100).toFixed(0)}% 生效 → 本回合稅收 $${taxCollected.toFixed(0)}（國庫 $${prevTreasuryTax.toFixed(0)} → $${newTreasuryTax.toFixed(0)}）`);
     }
 
+    const prevTreasuryWelfare = this.government.treasury;
     const welfareSpent = this.government.distributeWelfare(agents);
     if (welfareSpent > 0) {
-      this.addEvent('info', `發放福利 $${welfareSpent.toFixed(0)}。`);
+      const afterTreasuryWelfare = this.government.treasury;
+      const aliveCount = agents.filter(a => a.alive).length;
+      const recipients = Math.floor(aliveCount * CONFIG.WELFARE_THRESHOLD_PERCENTILE);
+      this.addEvent('info', `📋 福利發放 → ${recipients} 人各獲 $${CONFIG.WELFARE_AMOUNT}（國庫 $${prevTreasuryWelfare.toFixed(0)} → $${afterTreasuryWelfare.toFixed(0)}）`);
     }
 
-    this.government.payPublicWorks();
+    const prevTreasuryPW = this.government.treasury;
+    const pwPaid = this.government.payPublicWorks();
+    if (pwPaid) {
+      this.addEvent('info', `📋 公共建設支出 $${CONFIG.PUBLIC_WORKS_COST_PER_TURN} → 全體生產力 +10%`);
+    } else if (this.government.publicWorksActive === false && prevTreasuryPW < CONFIG.PUBLIC_WORKS_COST_PER_TURN && prevTreasuryPW > 0) {
+      // Public works was auto-disabled due to insufficient funds
+      this.addEvent('warning', `公共建設因國庫不足（$${prevTreasuryPW.toFixed(0)} < $${CONFIG.PUBLIC_WORKS_COST_PER_TURN}）自動停用。`);
+    }
   }
 
   private phaseAgentDecisions(agents: Agent[]): void {
@@ -668,7 +687,12 @@ export class GameEngine {
     }
   }
 
+  get newMilestones(): MilestoneRecord[] {
+    return this._newMilestonesThisTurn;
+  }
+
   private addMilestone(record: MilestoneRecord): void {
+    this._newMilestonesThisTurn.push(record);
     this.milestones.unshift(record);
     if (this.milestones.length > 30) {
       this.milestones.pop();
@@ -919,6 +943,111 @@ export class GameEngine {
     return notes.slice(0, 3);
   }
 
+  private buildReflectiveQuestions(): ReflectiveQuestion[] {
+    const history = this.statistics.history;
+    const latest = history[history.length - 1];
+    const questions: ReflectiveQuestion[] = [];
+
+    // Gini comparison
+    const gini = latest?.giniCoefficient ?? 0;
+    const country = gini < 0.3 ? '北歐國家' : gini < 0.35 ? '台灣' : gini < 0.4 ? '美國' : gini < 0.45 ? '巴西' : '南非';
+    questions.push({
+      question: `你的島嶼 Gini=${gini.toFixed(2)}，接近${country}的水平。你覺得不平等是經濟成長的必然代價嗎？`,
+      context: '基尼係數反映財富分配不均的程度。現實中各國選擇了不同的平衡點。',
+      realWorldComparison: '台灣≈0.34, 美國≈0.39, 北歐≈0.27, 巴西≈0.48',
+    });
+
+    // Tax rate reflection
+    const avgTax = history.reduce((s, h) => s + h.government.taxRate, 0) / Math.max(1, history.length);
+    questions.push({
+      question: `你的平均稅率是 ${(avgTax * 100).toFixed(0)}%。高稅率能支撐更多公共服務，但是否壓抑了經濟活力？`,
+      context: '這是經濟學中「效率 vs 公平」的經典取捨。',
+      realWorldComparison: '北歐稅率約 45-55%, 美國約 25-35%, 香港約 15%',
+    });
+
+    return questions.slice(0, 2);
+  }
+
+  private generateNarrative(agent: Agent): string {
+    let text = `${agent.name}（IQ ${agent.intelligence}）`;
+    const jobs = agent.lifeEvents.filter(e => e.category === 'job');
+    const achievements = agent.lifeEvents.filter(e => e.category === 'achievement');
+    if (jobs.length > 0) text += `，歷經 ${jobs.length} 次轉職`;
+    if (achievements.length > 0) text += `，獲得 ${achievements.length} 項成就`;
+    text += `，最終累積財富 $${agent.money.toFixed(0)}`;
+    if (!agent.alive) {
+      const cause = agent.causeOfDeath === 'age' ? '壽終正寢' : agent.causeOfDeath === 'health' ? '因病離世' : '離開了小島';
+      text += `。${Math.floor(agent.age / 12)} 歲時${cause}。`;
+    } else {
+      text += `。至今仍健在（${Math.floor(agent.age / 12)} 歲）。`;
+    }
+    return text;
+  }
+
+  private buildAgentBiographies(): AgentBiography[] {
+    const all = this.agents;
+    const biographies: AgentBiography[] = [];
+
+    // Richest agent
+    const richest = all.reduce((b, a) => a.money > b.money ? a : b);
+    biographies.push({
+      agentId: richest.id,
+      name: richest.name,
+      title: '💰 最富有的島民',
+      narrative: this.generateNarrative(richest),
+      highlights: richest.lifeEvents
+        .filter(e => e.category === 'achievement' || e.category === 'job')
+        .slice(-3)
+        .map(e => e.message),
+    });
+
+    // Oldest agent
+    const oldest = all.reduce((b, a) => a.age > b.age ? a : b);
+    if (oldest.id !== richest.id) {
+      biographies.push({
+        agentId: oldest.id,
+        name: oldest.name,
+        title: '🎂 最年長的島民',
+        narrative: this.generateNarrative(oldest),
+        highlights: oldest.lifeEvents
+          .filter(e => e.category === 'achievement' || e.category === 'job')
+          .slice(-3)
+          .map(e => e.message),
+      });
+    }
+
+    // Most switches (if >= 2)
+    const switcher = all.reduce((b, a) => a.totalSwitches > b.totalSwitches ? a : b);
+    if (switcher.totalSwitches >= 2 && switcher.id !== richest.id && switcher.id !== oldest.id) {
+      biographies.push({
+        agentId: switcher.id,
+        name: switcher.name,
+        title: '🔄 最多轉職的島民',
+        narrative: this.generateNarrative(switcher),
+        highlights: switcher.lifeEvents
+          .filter(e => e.category === 'achievement' || e.category === 'job')
+          .slice(-3)
+          .map(e => e.message),
+      });
+    }
+
+    return biographies;
+  }
+
+  private buildBestOfRankings(): BestOfRanking[] {
+    const all = this.agents;
+    const rankings: BestOfRanking[] = [];
+    const richest = all.reduce((b, a) => a.money > b.money ? a : b);
+    rankings.push({ category: 'wealth', label: '💰 最富有', agentName: richest.name, value: `$${richest.money.toFixed(0)}` });
+    const oldest = all.reduce((b, a) => a.age > b.age ? a : b);
+    rankings.push({ category: 'age', label: '🎂 最長壽', agentName: oldest.name, value: `${Math.floor(oldest.age / 12)} 歲` });
+    const switcher = all.reduce((b, a) => a.totalSwitches > b.totalSwitches ? a : b);
+    if (switcher.totalSwitches > 0) rankings.push({ category: 'career', label: '🔄 最多轉職', agentName: switcher.name, value: `${switcher.totalSwitches} 次` });
+    const smartest = all.reduce((b, a) => a.intelligence > b.intelligence ? a : b);
+    rankings.push({ category: 'iq', label: '🧠 最聰明', agentName: smartest.name, value: `IQ ${smartest.intelligence}` });
+    return rankings;
+  }
+
   private buildGameOverState(reason: GameOverReason): GameOverState {
     const history = this.statistics.history;
     return {
@@ -936,6 +1065,9 @@ export class GameEngine {
           ? history.reduce((s, h) => s + h.avgHealth, 0) / history.length : 0,
         sectorDevelopment: this.buildSectorDevelopment(history),
         counterfactualNotes: this.buildCounterfactualNotes(history),
+        reflectiveQuestions: this.buildReflectiveQuestions(),
+        agentBiographies: this.buildAgentBiographies(),
+        bestOfRankings: this.buildBestOfRankings(),
       },
     };
   }

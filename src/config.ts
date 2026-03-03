@@ -48,9 +48,9 @@ export const CONFIG = {
   JOB_SWITCH_RETURN_PENALTY: 2,   // extra turns required to return to a previous sector
 
   // Health & satisfaction
-  HEALTH_DECAY_PER_UNMET_NEED: 4,
+  HEALTH_DECAY_PER_UNMET_NEED: 3,
   SATISFACTION_DECAY_PER_UNMET_NEED: 3,
-  HEALTH_RECOVERY_ALL_MET: 6,
+  HEALTH_RECOVERY_ALL_MET: 8,
   SATISFACTION_RECOVERY_ALL_MET: 4,
   HEALTH_RECOVERY_PARTIAL: 2,
   DEATH_HEALTH_THRESHOLD: 0,
@@ -84,17 +84,17 @@ export const CONFIG = {
   } as Record<string, number>,
 
   // Demographics
-  BIRTH_BASE_PROBABILITY: 0.03,
-  BIRTH_CAPACITY_FACTOR: 150,
+  BIRTH_BASE_PROBABILITY: 0.08,
+  BIRTH_CAPACITY_FACTOR: 200,
   BIRTH_MIN_REPRO_AGE: 216,  // 18 years — minimum reproductive age
   BIRTH_MAX_REPRO_AGE: 528,  // 44 years — maximum reproductive age
-  BIRTH_MAX_PER_TURN: 3,
+  BIRTH_MAX_PER_TURN: 5,
   MIN_STARTING_AGE: 216,     // 18 years in turns (months)
-  MAX_STARTING_AGE: 660,     // 55 years
+  MAX_STARTING_AGE: 480,     // 40 years
   MIN_LIFESPAN: 600,         // 50 years
   MAX_LIFESPAN: 960,         // 80 years
   AGE_HEALTH_DECAY_START: 540,  // 45 years
-  AGE_HEALTH_DECAY_RATE: 0.5,
+  AGE_HEALTH_DECAY_RATE: 0.2,
 
   // Intelligence
   INTELLIGENCE_MEAN: 100,

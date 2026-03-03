@@ -372,6 +372,9 @@ export class Agent {
     this.turnsInSector++;
     if (this.turnsInSector < 4) return null;
 
+    // Early exit: can't afford to switch and not yet underperforming
+    if (this.money < CONFIG.JOB_SWITCH_COST && this.lowIncomeTurns === 0) return null;
+
     const maxIncomePotential = Math.max(
       ...SECTORS.map(s => marketPrices[s] * CONFIG.BASE_PRODUCTIVITY[s] * this.effectiveProductivity),
       0.01,

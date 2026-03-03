@@ -180,6 +180,12 @@ export interface PolicyTimelineEntry {
   sideEffects: string[];
 }
 
+export interface ScenarioNarrative {
+  title: string;
+  paragraphs: string[];
+  challenge: string;
+}
+
 export interface ScenarioDef {
   id: ScenarioId;
   name: string;
@@ -196,6 +202,7 @@ export interface ScenarioDef {
     topMultiplier: number;
     bottomMultiplier: number;
   };
+  openingNarrative?: ScenarioNarrative;
 }
 
 export interface IslandTerrainState {
@@ -234,6 +241,40 @@ export type GameOverReason =
   | 'max_turns'
   | 'player_exit';
 
+// Toast notification system
+export interface ToastNotification {
+  id: string;
+  type: 'milestone' | 'population' | 'celebration' | 'info';
+  title: string;
+  message: string;
+  createdAt: number;
+  duration: number;
+}
+
+// Reflective question for game over
+export interface ReflectiveQuestion {
+  question: string;
+  context: string;
+  realWorldComparison?: string;
+}
+
+// Agent biography for game over
+export interface AgentBiography {
+  agentId: number;
+  name: string;
+  title: string;
+  narrative: string;
+  highlights: string[];
+}
+
+// Best-of rankings for game over
+export interface BestOfRanking {
+  category: string;
+  label: string;
+  agentName: string;
+  value: string;
+}
+
 export interface GameOverState {
   reason: GameOverReason;
   turn: number;
@@ -247,6 +288,9 @@ export interface GameOverState {
     avgHealth: number;
     sectorDevelopment: Record<SectorType, SectorDevelopmentSummary>;
     counterfactualNotes: string[];
+    reflectiveQuestions: ReflectiveQuestion[];
+    agentBiographies: AgentBiography[];
+    bestOfRankings: BestOfRanking[];
   };
 }
 

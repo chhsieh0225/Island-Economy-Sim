@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useGameEngine } from './hooks/useGameEngine';
 import { Dashboard } from './components/Dashboard/Dashboard';
 import { MarketPanel } from './components/MarketPanel/MarketPanel';
@@ -14,7 +14,10 @@ import { DecisionPanel } from './components/DecisionPanel/DecisionPanel';
 import { SimulationLab } from './components/SimulationLab/SimulationLab';
 import { MilestonePanel } from './components/MilestonePanel/MilestonePanel';
 import { TerrainPanel } from './components/TerrainPanel/TerrainPanel';
-import type { AgentState } from './types';
+import { NarrativeModal } from './components/NarrativeModal/NarrativeModal';
+import { Toast } from './components/Toast/Toast';
+import { SCENARIOS } from './data/scenarios';
+import type { AgentState, ScenarioId, ScenarioNarrative } from './types';
 import styles from './App.module.css';
 
 function App() {
@@ -33,14 +36,25 @@ function App() {
     startAutoPlay,
     stopAutoPlay,
     endGame,
+    toastQueue,
+    dismissToast,
   } = useGameEngine();
 
   const [selectedAgent, setSelectedAgent] = useState<AgentState | null>(null);
   const [rightTab, setRightTab] = useState<'market' | 'terrain' | 'events' | 'milestones'>('terrain');
+  const [narrativeToShow, setNarrativeToShow] = useState<ScenarioNarrative | null>(null);
 
   const handleAgentClick = (agent: AgentState) => {
     setSelectedAgent(agent);
   };
+
+  const handleStartNewRun = useCallback((seed: number, scenarioId: ScenarioId) => {
+    startNewRun(seed, scenarioId);
+    const scenario = SCENARIOS.find(s => s.id === scenarioId);
+    if (scenario?.openingNarrative) {
+      setNarrativeToShow(scenario.openingNarrative);
+    }
+  }, [startNewRun]);
 
   return (
     <div className={styles.app}>
@@ -80,7 +94,7 @@ function App() {
               scenarioId={gameState.scenarioId}
               seed={gameState.seed}
               runHistory={runHistory}
-              onStartRun={startNewRun}
+              onStartRun={handleStartNewRun}
             />
 
             <PolicyPanel
@@ -176,6 +190,15 @@ function App() {
           onChoose={chooseDecision}
         />
       )}
+
+      {narrativeToShow && (
+        <NarrativeModal
+          narrative={narrativeToShow}
+          onDismiss={() => setNarrativeToShow(null)}
+        />
+      )}
+
+      <Toast toasts={toastQueue} onDismiss={dismissToast} />
     </div>
   );
 }

@@ -1,0 +1,93 @@
+.wrapper {
+  position: relative;
+  display: inline;
+  cursor: help;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 3000;
+  background: #0d1b30;
+  border: 1px solid #233554;
+  border-radius: 6px;
+  padding: 8px 12px;
+  max-width: 280px;
+  pointer-events: none;
+  animation: tooltipFadeIn 0.15s ease-out;
+}
+
+.arrow {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+}
+
+.arrowDown {
+  bottom: -6px;
+  border-top: 6px solid #233554;
+}
+
+.arrowDown::after {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: -5px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #0d1b30;
+}
+
+.arrowUp {
+  top: -6px;
+  border-bottom: 6px solid #233554;
+}
+
+.arrowUp::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: -5px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 5px solid #0d1b30;
+}
+
+.content {
+  font-size: 13px;
+  color: #e6f1ff;
+  line-height: 1.4;
+}
+
+.detail {
+  font-size: 12px;
+  color: #8892b0;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+.realWorldRef {
+  font-size: 11px;
+  color: #64ffda;
+  font-style: italic;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

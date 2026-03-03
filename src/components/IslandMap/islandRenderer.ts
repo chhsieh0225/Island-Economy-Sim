@@ -6,7 +6,12 @@ type TextureKind = 'base' | 'farm' | 'industry' | 'urban';
 type ZoneEllipse = { cx: number; cy: number; rx: number; ry: number };
 type Rgb = { r: number; g: number; b: number };
 
+const TILE_CACHE_MAX = 32;
 const TILE_CACHE = new Map<string, HTMLCanvasElement>();
+
+export function clearTileCache(): void {
+  TILE_CACHE.clear();
+}
 const WRAP_SHIFTS = [-1, 0, 1] as const;
 const SECTOR_TEXTURE: Record<SectorType, TextureKind> = {
   food: 'farm',
@@ -286,6 +291,11 @@ function getTextureTile(seed: number, kind: TextureKind): HTMLCanvasElement {
     if (kind === 'urban') paintUrbanTexture(tileCtx, tileSize, rng);
   }
 
+  // LRU eviction: remove oldest entries when cache exceeds limit
+  if (TILE_CACHE.size >= TILE_CACHE_MAX) {
+    const firstKey = TILE_CACHE.keys().next().value;
+    if (firstKey !== undefined) TILE_CACHE.delete(firstKey);
+  }
   TILE_CACHE.set(key, tile);
   return tile;
 }

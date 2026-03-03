@@ -49,22 +49,22 @@ export class Statistics {
     return Math.round(gdp * 100) / 100;
   }
 
+  // O(n log n) Gini using sorted-array formula: G = (2·Σ(i·x_i)) / (n·Σx_i) - (n+1)/n
   private computeGini(agents: Agent[]): number {
     if (agents.length === 0) return 0;
     const wealths = agents.map(a => a.money).sort((a, b) => a - b);
     const n = wealths.length;
-    let sumDiffs = 0;
     let sumWealth = 0;
+    let weightedSum = 0;
 
     for (let i = 0; i < n; i++) {
       sumWealth += wealths[i];
-      for (let j = 0; j < n; j++) {
-        sumDiffs += Math.abs(wealths[i] - wealths[j]);
-      }
+      weightedSum += (i + 1) * wealths[i];
     }
 
     if (sumWealth === 0) return 0;
-    return Math.round((sumDiffs / (2 * n * sumWealth)) * 1000) / 1000;
+    const gini = (2 * weightedSum) / (n * sumWealth) - (n + 1) / n;
+    return Math.round(Math.max(0, Math.min(1, gini)) * 1000) / 1000;
   }
 
   private computeAvg(agents: Agent[], accessor: (a: Agent) => number): number {

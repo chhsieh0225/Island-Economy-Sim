@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import type {
   ActiveRandomEvent,
   GovernmentState,
@@ -7,6 +8,8 @@ import type {
   SectorType,
   TurnSnapshot,
 } from '../../types';
+import { Tooltip } from '../Tooltip/Tooltip';
+import { POLICY_TOOLTIPS } from '../../data/tooltipContent';
 import styles from './PolicyPanel.module.css';
 
 interface Props {
@@ -29,6 +32,12 @@ const SECTOR_LABELS: Record<SectorType, string> = {
   services: '服務補貼 Services',
 };
 
+const SUBSIDY_TOOLTIP_KEY: Record<SectorType, keyof typeof POLICY_TOOLTIPS> = {
+  food: 'subsidyFood',
+  goods: 'subsidyGoods',
+  services: 'subsidyServices',
+};
+
 function pendingSummary(policy: PendingPolicyChange): string {
   switch (policy.type) {
     case 'tax':
@@ -45,6 +54,40 @@ function pendingSummary(policy: PendingPolicyChange): string {
 function signed(value: number, digits: number = 1): string {
   const fixed = value.toFixed(digits);
   return value >= 0 ? `+${fixed}` : fixed;
+}
+
+function computeForecast(
+  government: GovernmentState,
+  stats: TurnSnapshot[],
+  pendingPolicies: PendingPolicyChange[],
+) {
+  const latest = stats[stats.length - 1];
+  if (!latest || latest.population === 0) return null;
+
+  // Effective tax rate (check if pending tax change)
+  const pendingTax = pendingPolicies.find(p => p.type === 'tax');
+  const effectiveTaxRate = pendingTax ? (pendingTax.value as number) : government.taxRate;
+
+  // Estimate taxable income: rough approximation from GDP
+  const estimatedTaxableIncome = latest.gdp * 0.4;
+  const estimatedTaxRevenue = estimatedTaxableIncome * effectiveTaxRate;
+
+  // Welfare cost
+  const welfareRecipients = government.welfareEnabled ? Math.floor(latest.population * 0.25) : 0;
+  const welfareCost = welfareRecipients * 5; // CONFIG.WELFARE_AMOUNT
+
+  // Public works cost
+  const pwCost = government.publicWorksActive ? 50 : 0; // CONFIG.PUBLIC_WORKS_COST_PER_TURN
+
+  const netTreasury = estimatedTaxRevenue - welfareCost - pwCost;
+
+  return {
+    taxRevenue: estimatedTaxRevenue,
+    welfareCost,
+    pwCost,
+    netTreasury,
+    effectiveTaxRate,
+  };
 }
 
 export function PolicyPanel({
@@ -74,6 +117,11 @@ export function PolicyPanel({
   const latest = statistics.length > 0 ? statistics[statistics.length - 1] : null;
   const prev = statistics.length > 1 ? statistics[statistics.length - 2] : null;
 
+  const forecast = useMemo(
+    () => computeForecast(government, statistics, pendingPolicies),
+    [government, statistics, pendingPolicies],
+  );
+
   const shortageRatios = (['food', 'goods', 'services'] as const).map(sector => {
     const demand = market.demand[sector];
     if (demand <= 0.001) return 0;
@@ -97,7 +145,9 @@ export function PolicyPanel({
 
       <div className={styles.control}>
         <div className={styles.controlLabel}>
-          <span>稅率 Tax Rate</span>
+          <Tooltip content={POLICY_TOOLTIPS.taxRate.content} detail={POLICY_TOOLTIPS.taxRate.detail}>
+            <span>稅率 Tax Rate</span>
+          </Tooltip>
           <span className={styles.controlValue}>{taxDisplay.toFixed(0)}%</span>
         </div>
         <input
@@ -115,10 +165,14 @@ export function PolicyPanel({
 
       {(['food', 'goods', 'services'] as const).map(sector => {
         const subsidyDisplay = getSubsidyDisplay(sector);
+        const tooltipKey = SUBSIDY_TOOLTIP_KEY[sector];
+        const tip = POLICY_TOOLTIPS[tooltipKey];
         return (
           <div key={sector} className={styles.control}>
             <div className={styles.controlLabel}>
-              <span>{SECTOR_LABELS[sector]}</span>
+              <Tooltip content={tip.content} detail={tip.detail}>
+                <span>{SECTOR_LABELS[sector]}</span>
+              </Tooltip>
               <span className={styles.controlValue}>{subsidyDisplay.toFixed(0)}%</span>
             </div>
             <input
@@ -143,7 +197,9 @@ export function PolicyPanel({
           checked={welfareDisplay}
           onChange={e => onSetWelfare(e.target.checked)}
         />
-        <span className={styles.toggleLabel}>社會福利 Welfare</span>
+        <Tooltip content={POLICY_TOOLTIPS.welfare.content} detail={POLICY_TOOLTIPS.welfare.detail}>
+          <span className={styles.toggleLabel}>社會福利 Welfare</span>
+        </Tooltip>
       </label>
 
       <label className={styles.toggle}>
@@ -153,8 +209,38 @@ export function PolicyPanel({
           checked={publicWorksDisplay}
           onChange={e => onSetPublicWorks(e.target.checked)}
         />
-        <span className={styles.toggleLabel}>公共建設 Public Works</span>
+        <Tooltip content={POLICY_TOOLTIPS.publicWorks.content} detail={POLICY_TOOLTIPS.publicWorks.detail}>
+          <span className={styles.toggleLabel}>公共建設 Public Works</span>
+        </Tooltip>
       </label>
+
+      {forecast && (
+        <div className={styles.forecastCard}>
+          <div className={styles.forecastTitle}>📊 下回合預測 Next-Turn Forecast</div>
+          <div className={styles.forecastRow}>
+            <span>稅收 Tax Revenue</span>
+            <span className={styles.forecastPositive}>+${forecast.taxRevenue.toFixed(0)}</span>
+          </div>
+          {forecast.welfareCost > 0 && (
+            <div className={styles.forecastRow}>
+              <span>福利支出 Welfare</span>
+              <span className={styles.forecastNegative}>-${forecast.welfareCost.toFixed(0)}</span>
+            </div>
+          )}
+          {forecast.pwCost > 0 && (
+            <div className={styles.forecastRow}>
+              <span>公共建設 Public Works</span>
+              <span className={styles.forecastNegative}>-${forecast.pwCost.toFixed(0)}</span>
+            </div>
+          )}
+          <div className={`${styles.forecastRow} ${styles.forecastTotal}`}>
+            <span>淨國庫變化 Net Treasury</span>
+            <span className={forecast.netTreasury >= 0 ? styles.forecastPositive : styles.forecastNegative}>
+              {forecast.netTreasury >= 0 ? '+' : ''}${forecast.netTreasury.toFixed(0)}
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className={styles.sectionTitle}>政策效果拆解 Policy Impact</div>
       {latest && prev ? (

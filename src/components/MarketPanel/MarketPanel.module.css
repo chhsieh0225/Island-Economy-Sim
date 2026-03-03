@@ -45,7 +45,17 @@
 .terrainUp { color: #64ffda; font-weight: 600; }
 .terrainDown { color: #ff8a80; font-weight: 600; }
 
+.chartToggle { display: flex; gap: 6px; margin-bottom: 8px; }
+.chartToggleBtn { background: transparent; border: 1px solid #233554; color: #8892b0; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; transition: all 0.15s; }
+.chartToggleBtn:hover { border-color: #64ffda; color: #e6f1ff; }
+.chartToggleActive { background: #10253f; border: 1px solid #64ffda; color: #64ffda; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+
 .chartContainer {
   height: 200px;
   width: 100%;
 }
+
+.sdContainer { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.sdChart { text-align: center; }
+.sdLabel { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.sdSvg { width: 100%; height: auto; background: rgba(15, 26, 48, 0.5); border-radius: 6px; }

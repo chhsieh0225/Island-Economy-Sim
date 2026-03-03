@@ -193,3 +193,10 @@
   color: #8bd7b7;
   font-variant-numeric: tabular-nums;
 }
+
+.forecastCard { background: #0d1b30; border: 1px solid #233554; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+.forecastTitle { font-size: 12px; color: #8892b0; margin-bottom: 8px; font-weight: 600; }
+.forecastRow { display: flex; justify-content: space-between; font-size: 13px; color: #ccd6f6; padding: 3px 0; }
+.forecastTotal { border-top: 1px solid #233554; margin-top: 4px; padding-top: 6px; font-weight: 600; }
+.forecastPositive { color: #4caf50; font-variant-numeric: tabular-nums; }
+.forecastNegative { color: #f44336; font-variant-numeric: tabular-nums; }

@@ -1,5 +1,7 @@
 import type { GameState, SectorType } from '../../types';
 import { CONFIG } from '../../config';
+import { Tooltip } from '../Tooltip/Tooltip';
+import { DASHBOARD_TOOLTIPS } from '../../data/tooltipContent';
 import styles from './Dashboard.module.css';
 
 interface Props {
@@ -232,54 +234,72 @@ export function Dashboard({ state }: Props) {
       </div>
 
       <div className={styles.stat}>
-        <div className={styles.label}>回合 Turn</div>
+        <Tooltip content={DASHBOARD_TOOLTIPS.turn.content} detail={DASHBOARD_TOOLTIPS.turn.detail}>
+          <span className={styles.label}>回合 Turn</span>
+        </Tooltip>
         <div className={styles.value}>{state.turn}</div>
       </div>
       <div className={styles.stat}>
-        <div className={styles.label}>人口 Pop</div>
+        <Tooltip content={DASHBOARD_TOOLTIPS.population.content} detail={DASHBOARD_TOOLTIPS.population.detail}>
+          <span className={styles.label}>人口 Pop</span>
+        </Tooltip>
         <div className={styles.value}>
           {pop}
           {trend(pop, prev?.population)}
         </div>
       </div>
       <div className={styles.stat}>
-        <div className={styles.label}>GDP</div>
+        <Tooltip content={DASHBOARD_TOOLTIPS.gdp.content} detail={DASHBOARD_TOOLTIPS.gdp.detail} realWorldRef={DASHBOARD_TOOLTIPS.gdp.realWorldRef}>
+          <span className={styles.label}>GDP</span>
+        </Tooltip>
         <div className={styles.value}>
           ${gdp.toFixed(0)}
           {trend(gdp, prev?.gdp)}
         </div>
       </div>
       <div className={styles.stat}>
-        <div className={styles.label}>滿意度 Sat</div>
+        <Tooltip content={DASHBOARD_TOOLTIPS.satisfaction.content} detail={DASHBOARD_TOOLTIPS.satisfaction.detail}>
+          <span className={styles.label}>滿意度 Sat</span>
+        </Tooltip>
         <div className={styles.value}>
           {avgSat.toFixed(0)}%
           {trend(avgSat, prev?.avgSatisfaction)}
         </div>
       </div>
       <div className={styles.stat}>
-        <div className={styles.label}>健康 HP</div>
+        <Tooltip content={DASHBOARD_TOOLTIPS.health.content} detail={DASHBOARD_TOOLTIPS.health.detail}>
+          <span className={styles.label}>健康 HP</span>
+        </Tooltip>
         <div className={styles.value}>
           {avgHp.toFixed(0)}%
           {trend(avgHp, prev?.avgHealth)}
         </div>
       </div>
       <div className={styles.stat}>
-        <div className={styles.label}>基尼係數 Gini</div>
+        <Tooltip content={DASHBOARD_TOOLTIPS.gini.content} detail={DASHBOARD_TOOLTIPS.gini.detail} realWorldRef={DASHBOARD_TOOLTIPS.gini.realWorldRef}>
+          <span className={styles.label}>基尼係數 Gini</span>
+        </Tooltip>
         <div className={styles.value}>
           {gini.toFixed(3)}
           {trend(-gini, prev ? -prev.giniCoefficient : undefined)}
         </div>
       </div>
       <div className={styles.stat}>
-        <div className={styles.label}>國庫 Treasury</div>
+        <Tooltip content={DASHBOARD_TOOLTIPS.treasury.content} detail={DASHBOARD_TOOLTIPS.treasury.detail}>
+          <span className={styles.label}>國庫 Treasury</span>
+        </Tooltip>
         <div className={styles.value}>${treasury.toFixed(0)}</div>
       </div>
       <div className={styles.stat}>
-        <div className={styles.label}>平均年齡 Avg Age</div>
+        <Tooltip content={DASHBOARD_TOOLTIPS.avgAge.content} detail={DASHBOARD_TOOLTIPS.avgAge.detail}>
+          <span className={styles.label}>平均年齡 Avg Age</span>
+        </Tooltip>
         <div className={styles.value}>{avgAge.toFixed(1)} 歲</div>
       </div>
       <div className={styles.stat}>
-        <div className={styles.label}>出生/死亡</div>
+        <Tooltip content={DASHBOARD_TOOLTIPS.birthDeath.content} detail={DASHBOARD_TOOLTIPS.birthDeath.detail}>
+          <span className={styles.label}>出生/死亡</span>
+        </Tooltip>
         <div className={styles.value}>
           <span style={{ color: '#4caf50' }}>+{births}</span>
           {' / '}

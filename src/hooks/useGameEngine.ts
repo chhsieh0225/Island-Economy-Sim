@@ -1,12 +1,14 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { GameEngine } from '../engine/GameEngine';
 import { computeScore } from '../engine/Scoring';
+import { clearTileCache } from '../components/IslandMap/islandRenderer';
 import type {
   GameState,
   SectorType,
   ScenarioId,
   RunSummary,
   GameOverReason,
+  ToastNotification,
 } from '../types';
 import { CONFIG } from '../config';
 import { DEFAULT_SCENARIO, getScenarioById } from '../data/scenarios';
@@ -51,8 +53,10 @@ export function useGameEngine() {
   const [gameState, setGameState] = useState<GameState>(() => engine.getState());
   const [autoPlaySpeed, setAutoPlaySpeed] = useState<AutoPlaySpeed>(null);
   const [runHistory, setRunHistory] = useState<RunSummary[]>([]);
+  const [toastQueue, setToastQueue] = useState<ToastNotification[]>([]);
   const intervalRef = useRef<number | null>(null);
   const runIdRef = useRef(1);
+  const toastIdRef = useRef(0);
 
   const syncState = useCallback(() => {
     setGameState(engine.getState());
@@ -72,13 +76,32 @@ export function useGameEngine() {
     setRunHistory(prev => [summary, ...prev].slice(0, 12));
   }, [engine]);
 
+  const pushToasts = useCallback((newMilestones: typeof engine.newMilestones) => {
+    if (newMilestones.length === 0) return;
+    const now = Date.now();
+    const toasts: ToastNotification[] = newMilestones.map(m => ({
+      id: `toast-${toastIdRef.current++}`,
+      type: 'milestone' as const,
+      title: m.title,
+      message: m.description,
+      createdAt: now,
+      duration: 4000,
+    }));
+    setToastQueue(prev => [...prev, ...toasts].slice(-6));
+  }, []);
+
+  const dismissToast = useCallback((id: string) => {
+    setToastQueue(prev => prev.filter(t => t.id !== id));
+  }, []);
+
   const advanceTurn = useCallback(() => {
     engine.advanceTurn();
+    pushToasts(engine.newMilestones);
     syncState();
     if (engine.gameOver || engine.pendingDecision) {
       stopAutoPlayInternal();
     }
-  }, [engine, syncState, stopAutoPlayInternal]);
+  }, [engine, syncState, stopAutoPlayInternal, pushToasts]);
 
   const setTaxRate = useCallback((rate: number) => {
     engine.setTaxRate(rate);
@@ -116,6 +139,7 @@ export function useGameEngine() {
     }
 
     engine.reset(seed, scenarioId);
+    clearTileCache();
     syncState();
   }, [engine, pushRunSnapshot, stopAutoPlayInternal, syncState]);
 
@@ -132,12 +156,13 @@ export function useGameEngine() {
     const ms = CONFIG.AUTO_PLAY_SPEEDS[speed];
     intervalRef.current = window.setInterval(() => {
       engine.advanceTurn();
+      pushToasts(engine.newMilestones);
       syncState();
       if (engine.gameOver || engine.pendingDecision) {
         stopAutoPlayInternal();
       }
     }, ms);
-  }, [engine, syncState, stopAutoPlayInternal]);
+  }, [engine, syncState, stopAutoPlayInternal, pushToasts]);
 
   const stopAutoPlay = useCallback(() => {
     stopAutoPlayInternal();
@@ -173,5 +198,7 @@ export function useGameEngine() {
     startAutoPlay,
     stopAutoPlay,
     endGame,
+    toastQueue,
+    dismissToast,
   };
 }

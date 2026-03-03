@@ -242,6 +242,130 @@
   margin-bottom: 0;
 }
 
+/* Reflective Questions Section */
+.reflectiveSection {
+  margin-top: 20px;
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.reflectiveCard {
+  background: #0d1b30;
+  border: 1px solid #233554;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+}
+
+.reflectiveCard:last-child {
+  margin-bottom: 0;
+}
+
+.reflectiveQuestion {
+  color: #e6f1ff;
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 6px;
+  line-height: 1.5;
+}
+
+.reflectiveContext {
+  color: #8892b0;
+  font-size: 12px;
+  margin: 0 0 4px;
+  line-height: 1.4;
+}
+
+.reflectiveRef {
+  color: #64ffda;
+  font-size: 11px;
+  font-style: italic;
+  margin: 0;
+}
+
+/* Agent Biographies Section */
+.biographySection {
+  margin-top: 20px;
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.biographyCard {
+  border-left: 3px solid #64ffda;
+  background: #0d1b30;
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 0 8px 8px 0;
+}
+
+.biographyCard:last-child {
+  margin-bottom: 0;
+}
+
+.biographyHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.biographyTitle {
+  color: #ffd700;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.biographyName {
+  color: #e6f1ff;
+  font-size: 14px;
+}
+
+.biographyNarrative {
+  color: #ccd6f6;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Best Of Rankings Section */
+.bestOfSection {
+  margin-top: 20px;
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.bestOfGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.bestOfCard {
+  background: #0d1b30;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+}
+
+.bestOfLabel {
+  color: #8892b0;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.bestOfName {
+  color: #e6f1ff;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.bestOfValue {
+  color: #64ffda;
+  font-size: 16px;
+  font-weight: 700;
+}
+
 .restartBtn {
   padding: 12px 40px;
   font-size: 16px;

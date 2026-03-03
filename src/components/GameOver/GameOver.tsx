@@ -113,6 +113,49 @@ export function GameOver({ gameOver, onRestart }: Props) {
           ))}
         </div>
 
+        {finalStats.reflectiveQuestions?.length > 0 && (
+          <section className={styles.reflectiveSection}>
+            <h3 className={styles.sectionTitle}>💭 反思 Reflections</h3>
+            {finalStats.reflectiveQuestions.map((q, i) => (
+              <div key={i} className={styles.reflectiveCard}>
+                <p className={styles.reflectiveQuestion}>{q.question}</p>
+                <p className={styles.reflectiveContext}>{q.context}</p>
+                {q.realWorldComparison && <p className={styles.reflectiveRef}>📊 {q.realWorldComparison}</p>}
+              </div>
+            ))}
+          </section>
+        )}
+
+        {finalStats.agentBiographies?.length > 0 && (
+          <section className={styles.biographySection}>
+            <h3 className={styles.sectionTitle}>📖 島民故事 Agent Stories</h3>
+            {finalStats.agentBiographies.map((bio, i) => (
+              <div key={i} className={styles.biographyCard}>
+                <div className={styles.biographyHeader}>
+                  <span className={styles.biographyTitle}>{bio.title}</span>
+                  <span className={styles.biographyName}>{bio.name}</span>
+                </div>
+                <p className={styles.biographyNarrative}>{bio.narrative}</p>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {finalStats.bestOfRankings?.length > 0 && (
+          <section className={styles.bestOfSection}>
+            <h3 className={styles.sectionTitle}>🏆 島上之最 Island Best</h3>
+            <div className={styles.bestOfGrid}>
+              {finalStats.bestOfRankings.map((r, i) => (
+                <div key={i} className={styles.bestOfCard}>
+                  <div className={styles.bestOfLabel}>{r.label}</div>
+                  <div className={styles.bestOfName}>{r.agentName}</div>
+                  <div className={styles.bestOfValue}>{r.value}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <button className={styles.restartBtn} onClick={onRestart}>
           重新開始 Restart
         </button>

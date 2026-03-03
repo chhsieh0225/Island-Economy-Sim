@@ -77,6 +77,32 @@
   line-height: 1.35;
 }
 
+.impactPreview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.impactTag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.impactPositive {
+  background: rgba(100, 255, 218, 0.15);
+  color: #64ffda;
+  border: 1px solid rgba(100, 255, 218, 0.3);
+}
+
+.impactNegative {
+  background: rgba(244, 67, 54, 0.15);
+  color: #ff8a80;
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
 @media (max-width: 760px) {
   .choices {
     grid-template-columns: 1fr;

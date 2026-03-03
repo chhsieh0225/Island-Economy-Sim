@@ -8,13 +8,24 @@ interface LifeDeathPhaseInput {
   agents: Agent[];
   allAgents: Agent[];
   rng: RNG;
-  createNewAgent: (familyId?: number) => Agent;
+  createNewAgent: (familyId?: number, ageTurns?: number, bornOnIsland?: boolean) => Agent;
   addEvent: (type: GameEvent['type'], message: string) => void;
 }
 
-export function runAgingPhase(agents: Agent[]): void {
+interface AgingPhaseInput {
+  turn: number;
+  agents: Agent[];
+  addEvent: (type: GameEvent['type'], message: string) => void;
+}
+
+export function runAgingPhase({ turn, agents, addEvent }: AgingPhaseInput): void {
   for (const agent of agents) {
+    const wasMinor = agent.age < CONFIG.WORKING_AGE;
     agent.ageOneTurn();
+    if (wasMinor && agent.age >= CONFIG.WORKING_AGE) {
+      agent.addLifeEvent(turn, 'join', '成年並開始投入勞動市場。', 'positive');
+      addEvent('info', `${agent.name} 已成年，正式加入勞動市場。`);
+    }
   }
 }
 
@@ -43,7 +54,7 @@ export function runLifeDeathPhase({
       agent.addLifeEvent(turn, 'death', '因健康不佳去世。', 'critical');
       deaths++;
       addEvent('critical', `${agent.name} 因健康不佳而死亡。`);
-    } else if (agent.shouldLeave) {
+    } else if (agent.age >= CONFIG.WORKING_AGE && agent.shouldLeave) {
       agent.alive = false;
       agent.causeOfDeath = 'left';
       agent.addLifeEvent(turn, 'leave', '對小島失去信心，選擇離開。', 'warning');
@@ -70,10 +81,10 @@ export function runLifeDeathPhase({
     if (reproductiveAdults.length === 0) break;
     if (birthProb > 0 && rng.next() < birthProb) {
       const parent = rng.pick(reproductiveAdults);
-      const newAgent = createNewAgent(parent.familyId);
+      const newAgent = createNewAgent(parent.familyId, CONFIG.NEWBORN_STARTING_AGE, true);
       allAgents.push(newAgent);
       births++;
-      addEvent('positive', `新居民 ${newAgent.name} 來到了小島！(${Math.floor(newAgent.age / 12)} 歲)`);
+      addEvent('positive', `島上迎來新生兒 ${newAgent.name}（1 歲）。`);
     }
   }
 

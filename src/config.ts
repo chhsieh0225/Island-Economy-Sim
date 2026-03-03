@@ -89,12 +89,24 @@ export const CONFIG = {
   BIRTH_MIN_REPRO_AGE: 216,  // 18 years — minimum reproductive age
   BIRTH_MAX_REPRO_AGE: 528,  // 44 years — maximum reproductive age
   BIRTH_MAX_PER_TURN: 5,
+  NEWBORN_STARTING_AGE: 12,  // 1 year old
+  WORKING_AGE: 216,          // 18 years old
   MIN_STARTING_AGE: 216,     // 18 years in turns (months)
   MAX_STARTING_AGE: 480,     // 40 years
   MIN_LIFESPAN: 600,         // 50 years
   MAX_LIFESPAN: 960,         // 80 years
   AGE_HEALTH_DECAY_START: 540,  // 45 years
   AGE_HEALTH_DECAY_RATE: 0.2,
+  CAREGIVER_PRODUCTIVITY_PENALTY_PER_CHILD: 0.06,
+  CAREGIVER_PRODUCTIVITY_PENALTY_MAX: 0.3,
+
+  // Progressive economy stages
+  PROGRESSIVE_ECONOMY_ENABLED: true,
+  STAGE_INDUSTRIAL_MIN_TURN: 12,
+  STAGE_INDUSTRIAL_MIN_FOOD_COVERAGE: 1.05,
+  STAGE_SERVICE_MIN_TURN: 24,
+  STAGE_SERVICE_MIN_GOODS_WORKER_SHARE: 0.12,
+  STAGE_SERVICE_MIN_AVG_SATISFACTION: 55,
 
   // Intelligence
   INTELLIGENCE_MEAN: 100,

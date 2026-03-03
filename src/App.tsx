@@ -83,6 +83,7 @@ function App() {
           agents={gameState.agents}
           turn={gameState.turn}
           terrain={gameState.terrain}
+          economyStage={gameState.economyStage}
           activeRandomEvents={gameState.activeRandomEvents}
           autoPlaySpeed={autoPlaySpeed}
           onAgentClick={handleAgentClick}

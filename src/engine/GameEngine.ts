@@ -13,6 +13,7 @@ import type {
   PendingPolicyType,
   ScenarioId,
   DecisionChoice,
+  EconomyStage,
   MilestoneRecord,
   IslandTerrainState,
   SectorDevelopmentLevel,
@@ -42,6 +43,7 @@ export class GameEngine {
   government: Government;
   statistics: Statistics;
   terrain: IslandTerrainState;
+  economyStage: EconomyStage = 'agriculture';
   events: GameEvent[] = [];
   milestones: MilestoneRecord[] = [];
   activeRandomEvents: ActiveRandomEvent[] = [];
@@ -76,14 +78,15 @@ export class GameEngine {
 
   private initializeAgents(): void {
     this.agents = [];
+    this.economyStage = CONFIG.PROGRESSIVE_ECONOMY_ENABLED ? 'agriculture' : 'service';
 
     let i = 0;
     let familyId = 1;
     while (i < CONFIG.INITIAL_POPULATION) {
       const householdSize = this.rng.nextInt(1, 4);
       for (let member = 0; member < householdSize && i < CONFIG.INITIAL_POPULATION; member++, i++) {
-        const sectorIdx = i % SECTORS.length;
-        const sector = SECTORS[sectorIdx];
+        const unlocked = this.getUnlockedSectors();
+        const sector = unlocked[this.rng.nextInt(0, unlocked.length - 1)];
         const gender = this.rng.next() < 0.5 ? 'M' as const : 'F' as const;
         const name = generateName(gender, this.rng);
         const agent = new Agent(i, name, sector, this.rng, { gender, familyId });
@@ -289,6 +292,9 @@ export class GameEngine {
     // Phase 3: Market Clearing
     this.market.clearMarket();
 
+    // Phase 3.2: Economy progression unlock
+    this.phaseEconomyProgression(aliveAgents);
+
     // Phase 3.5: Inventory spoilage
     this.phaseSpoilage(aliveAgents);
 
@@ -342,7 +348,11 @@ export class GameEngine {
   }
 
   private phaseAging(agents: Agent[]): void {
-    runAgingPhase(agents);
+    runAgingPhase({
+      turn: this.turn,
+      agents,
+      addEvent: (type, message) => this.addEvent(type, message),
+    });
   }
 
   private phaseSpoilage(agents: Agent[]): void {
@@ -350,11 +360,16 @@ export class GameEngine {
   }
 
   private phaseProduction(agents: Agent[]): void {
+    const allowedSectors = this.getUnlockedSectors();
     runProductionPhase({
       agents,
       activeRandomEvents: this.activeRandomEvents,
       terrain: this.terrain,
       government: this.government,
+      workingAge: CONFIG.WORKING_AGE,
+      allowedSectors,
+      caregiverPenaltyPerChild: CONFIG.CAREGIVER_PRODUCTIVITY_PENALTY_PER_CHILD,
+      caregiverPenaltyMax: CONFIG.CAREGIVER_PRODUCTIVITY_PENALTY_MAX,
     });
   }
 
@@ -438,8 +453,10 @@ export class GameEngine {
 
   private phaseAgentDecisions(agents: Agent[]): void {
     const prices = { ...this.market.prices };
+    const allowedSectors = this.getUnlockedSectors();
     for (const agent of agents) {
-      const switchTo = agent.evaluateJob(prices, this.rng);
+      if (agent.age < CONFIG.WORKING_AGE) continue;
+      const switchTo = agent.evaluateJob(prices, this.rng, allowedSectors);
       if (switchTo) {
         const oldSector = agent.sector;
         agent.switchJob(switchTo);
@@ -455,12 +472,16 @@ export class GameEngine {
       agents,
       allAgents: this.agents,
       rng: this.rng,
-      createNewAgent: familyId => this.createNewAgent(familyId),
+      createNewAgent: (familyId, ageTurns, bornOnIsland) => this.createNewAgent(familyId, ageTurns, bornOnIsland),
       addEvent: (type, message) => this.addEvent(type, message),
     });
   }
 
-  private createNewAgent(familyId?: number): Agent {
+  private createNewAgent(
+    familyId?: number,
+    ageTurns: number = CONFIG.MIN_STARTING_AGE,
+    bornOnIsland: boolean = false,
+  ): Agent {
     const id = this.nextAgentId++;
     const gender = this.rng.next() < 0.5 ? 'M' as const : 'F' as const;
     const name = generateName(gender, this.rng);
@@ -470,16 +491,62 @@ export class GameEngine {
     for (const a of aliveAgents) {
       sectorCounts[a.sector]++;
     }
-    const sector = SECTORS.reduce((min, s) => sectorCounts[s] < sectorCounts[min] ? s : min);
+    const unlocked = this.getUnlockedSectors();
+    const sector = unlocked.reduce((min, s) => sectorCounts[s] < sectorCounts[min] ? s : min);
 
     const assignedFamilyId = familyId ?? this.nextFamilyId++;
     const agent = new Agent(id, name, sector, this.rng, {
-      age: CONFIG.MIN_STARTING_AGE,
+      age: ageTurns,
       gender,
       familyId: assignedFamilyId,
     });
-    agent.addLifeEvent(this.turn, 'join', `加入小島，就業於${this.sectorLabel(sector)}。`, 'positive');
+    if (bornOnIsland) {
+      agent.addLifeEvent(this.turn, 'join', `在小島出生，目前由家戶照顧中（${Math.floor(ageTurns / 12)} 歲）。`, 'positive');
+    } else {
+      agent.addLifeEvent(this.turn, 'join', `加入小島，就業於${this.sectorLabel(sector)}。`, 'positive');
+    }
     return agent;
+  }
+
+  private getUnlockedSectors(): SectorType[] {
+    switch (this.economyStage) {
+      case 'agriculture':
+        return ['food'];
+      case 'industrial':
+        return ['food', 'goods'];
+      case 'service':
+        return ['food', 'goods', 'services'];
+    }
+  }
+
+  private phaseEconomyProgression(agents: Agent[]): void {
+    if (!CONFIG.PROGRESSIVE_ECONOMY_ENABLED) return;
+
+    if (this.economyStage === 'agriculture') {
+      const foodDemand = this.market.demand.food;
+      const foodSupply = this.market.supply.food;
+      const foodCoverage = foodDemand > 0.01 ? foodSupply / foodDemand : 1;
+      if (this.turn >= CONFIG.STAGE_INDUSTRIAL_MIN_TURN && foodCoverage >= CONFIG.STAGE_INDUSTRIAL_MIN_FOOD_COVERAGE) {
+        this.economyStage = 'industrial';
+        this.addEvent('positive', '產業升級：島嶼進入工業化階段，商品業開始成形。');
+      }
+      return;
+    }
+
+    if (this.economyStage === 'industrial') {
+      const adultWorkers = agents.filter(a => a.age >= CONFIG.WORKING_AGE);
+      const goodsWorkers = adultWorkers.filter(a => a.sector === 'goods').length;
+      const goodsShare = goodsWorkers / Math.max(1, adultWorkers.length);
+      const avgSat = agents.reduce((sum, a) => sum + a.satisfaction, 0) / Math.max(1, agents.length);
+      if (
+        this.turn >= CONFIG.STAGE_SERVICE_MIN_TURN &&
+        goodsShare >= CONFIG.STAGE_SERVICE_MIN_GOODS_WORKER_SHARE &&
+        avgSat >= CONFIG.STAGE_SERVICE_MIN_AVG_SATISFACTION
+      ) {
+        this.economyStage = 'service';
+        this.addEvent('positive', '產業升級：島嶼進入服務化階段，服務業全面展開。');
+      }
+    }
   }
 
   private phaseRandomEvents(): void {
@@ -1176,6 +1243,7 @@ export class GameEngine {
         sectorSuitability: { ...this.terrain.sectorSuitability },
         sectorFeatures: { ...this.terrain.sectorFeatures },
       },
+      economyStage: this.economyStage,
       market: this.market.toState(),
       government: this.government.toState(),
       statistics: [...this.statistics.history],

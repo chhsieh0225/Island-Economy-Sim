@@ -1,4 +1,4 @@
-import type { ActiveRandomEvent, AgentState, IslandTerrainState, SectorType } from '../../types';
+import type { ActiveRandomEvent, AgentState, IslandTerrainState, SectorType, EconomyStage } from '../../types';
 import type { ZoneLayout } from './agentAnimator';
 import { getIslandGeometry } from './islandGeometry';
 
@@ -449,6 +449,12 @@ function getZoneReveal(sector: SectorType, agents: AgentState[], turn: number): 
   return clamp01(turnProgress * (0.28 + workerProgress * 0.72));
 }
 
+function stageAllowsSector(stage: EconomyStage, sector: SectorType): boolean {
+  if (sector === 'food') return true;
+  if (sector === 'goods') return stage === 'industrial' || stage === 'service';
+  return stage === 'service';
+}
+
 function scaleZone(zone: ZoneEllipse, reveal: number): ZoneEllipse {
   const scale = 0.28 + reveal * 0.72;
   return {
@@ -613,6 +619,7 @@ export function drawZones(
   terrain: IslandTerrainState,
   agents: AgentState[],
   turn: number,
+  stage: EconomyStage,
   w: number,
   h: number,
 ): void {
@@ -638,6 +645,7 @@ export function drawZones(
 
   const sectors: SectorType[] = ['food', 'goods', 'services'];
   for (const sector of sectors) {
+    if (!stageAllowsSector(stage, sector)) continue;
     const reveal = reveals[sector];
     if (reveal <= 0.03) continue;
 
@@ -662,6 +670,7 @@ export function drawZoneLabels(
   terrain: IslandTerrainState,
   agents: AgentState[],
   turn: number,
+  stage: EconomyStage,
 ): void {
   ctx.save();
   ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
@@ -696,7 +705,7 @@ export function drawZoneLabels(
 
   // Goods
   const goodsReveal = getZoneReveal('goods', agents, turn);
-  if (goodsReveal > 0.18) {
+  if (stageAllowsSector(stage, 'goods') && goodsReveal > 0.18) {
     ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = `rgba(33, 150, 243, ${0.45 + goodsReveal * 0.35})`;
     ctx.fillText('🏭 工坊 Goods', layout.goods.cx, layout.goods.cy + layout.goods.ry + 12);
@@ -710,7 +719,7 @@ export function drawZoneLabels(
 
   // Services
   const servicesReveal = getZoneReveal('services', agents, turn);
-  if (servicesReveal > 0.2) {
+  if (stageAllowsSector(stage, 'services') && servicesReveal > 0.2) {
     ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = `rgba(255, 152, 0, ${0.42 + servicesReveal * 0.36})`;
     ctx.fillText('🏢 服務 Services', layout.services.cx, layout.services.cy + layout.services.ry + 12);

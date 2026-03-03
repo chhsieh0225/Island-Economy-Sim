@@ -10,6 +10,10 @@ interface ProductionPhaseInput {
   activeRandomEvents: ActiveRandomEvent[];
   terrain: IslandTerrainState;
   government: Government;
+  workingAge: number;
+  allowedSectors: SectorType[];
+  caregiverPenaltyPerChild: number;
+  caregiverPenaltyMax: number;
 }
 
 interface MarketPostingPhaseInput {
@@ -36,6 +40,10 @@ export function runProductionPhase({
   activeRandomEvents,
   terrain,
   government,
+  workingAge,
+  allowedSectors,
+  caregiverPenaltyPerChild,
+  caregiverPenaltyMax,
 }: ProductionPhaseInput): void {
   const productivityMods: Record<SectorType, number> = { food: 1, goods: 1, services: 1 };
   for (const event of activeRandomEvents) {
@@ -51,11 +59,24 @@ export function runProductionPhase({
     }
   }
 
+  const allowed = new Set<SectorType>(allowedSectors);
+  const childCountByFamily = new Map<number, number>();
   for (const agent of agents) {
+    if (agent.age >= workingAge) continue;
+    childCountByFamily.set(agent.familyId, (childCountByFamily.get(agent.familyId) ?? 0) + 1);
+  }
+
+  for (const agent of agents) {
+    if (agent.age < workingAge) continue;
+    if (!allowed.has(agent.sector)) continue;
+
     const terrainMult = terrain.sectorSuitability[agent.sector];
+    const children = childCountByFamily.get(agent.familyId) ?? 0;
+    const caregiverPenalty = Math.min(caregiverPenaltyMax, children * caregiverPenaltyPerChild);
+    const caregiverMultiplier = Math.max(0.55, 1 - caregiverPenalty);
     const subsidyMult = government.getSubsidyMultiplier(agent.sector) * productivityMods[agent.sector] * terrainMult;
     const publicWorksBoost = government.getPublicWorksBoost();
-    agent.produce(subsidyMult, publicWorksBoost);
+    agent.produce(subsidyMult * caregiverMultiplier, publicWorksBoost);
   }
 }
 

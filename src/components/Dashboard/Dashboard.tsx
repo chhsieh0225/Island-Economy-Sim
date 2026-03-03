@@ -32,6 +32,11 @@ const SECTOR_LABELS: Record<SectorType, string> = {
   goods: '商品',
   services: '服務',
 };
+const STAGE_LABELS = {
+  agriculture: '農業',
+  industrial: '工業',
+  service: '服務',
+} as const;
 
 function buildSentimentAlert(state: GameState): SentimentAlert | null {
   const alive = state.agents.filter(a => a.alive);
@@ -238,6 +243,10 @@ export function Dashboard({ state }: Props) {
           <span className={styles.label}>回合 Turn</span>
         </Tooltip>
         <div className={styles.value}>{state.turn}</div>
+      </div>
+      <div className={styles.stat}>
+        <span className={styles.label}>產業階段 Stage</span>
+        <div className={styles.value}>{STAGE_LABELS[state.economyStage]}</div>
       </div>
       <div className={styles.stat}>
         <Tooltip content={DASHBOARD_TOOLTIPS.population.content} detail={DASHBOARD_TOOLTIPS.population.detail}>

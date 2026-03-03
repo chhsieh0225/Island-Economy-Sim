@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
-import type { AgentState, ActiveRandomEvent, IslandTerrainState } from '../../types';
+import type { AgentState, ActiveRandomEvent, IslandTerrainState, EconomyStage } from '../../types';
 import {
   getZoneLayout,
   computeWorkPosition,
@@ -36,6 +36,7 @@ interface Props {
   agents: AgentState[];
   turn: number;
   terrain: IslandTerrainState;
+  economyStage: EconomyStage;
   activeRandomEvents: ActiveRandomEvent[];
   autoPlaySpeed: AutoPlaySpeed;
   onAgentClick: (agent: AgentState) => void;
@@ -143,7 +144,7 @@ function zoneDistributionSignature(agents: AgentState[], turn: number): string {
   return `t${turn}|a${alive}|f${food}|g${goods}|s${services}`;
 }
 
-export function IslandMap({ agents, turn, terrain, activeRandomEvents, autoPlaySpeed, onAgentClick }: Props) {
+export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEvents, autoPlaySpeed, onAgentClick }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
@@ -165,7 +166,7 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, autoPlayS
   const activeEventsRef = useRef(activeRandomEvents);
   const autoPlaySpeedRef = useRef(autoPlaySpeed);
   const terrainSigRef = useRef(terrainSignature(terrain));
-  const zoneSigRef = useRef(zoneDistributionSignature(agents, turn));
+  const zoneSigRef = useRef(`${economyStage}|${zoneDistributionSignature(agents, turn)}`);
   const [showPerfDebug] = useState(readPerfDebugFlag);
   const perfCountersRef = useRef<PerfCounters>({
     frameCount: 0,
@@ -186,8 +187,8 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, autoPlayS
     activeEventsRef.current = activeRandomEvents;
     autoPlaySpeedRef.current = autoPlaySpeed;
     terrainSigRef.current = terrainSignature(terrain);
-    zoneSigRef.current = zoneDistributionSignature(agents, turn);
-  }, [agents, turn, terrain, activeRandomEvents, autoPlaySpeed]);
+    zoneSigRef.current = `${economyStage}|${zoneDistributionSignature(agents, turn)}`;
+  }, [agents, turn, terrain, economyStage, activeRandomEvents, autoPlaySpeed]);
 
   // Trigger animation on turn change
   useEffect(() => {
@@ -295,7 +296,7 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, autoPlayS
         zoneLayerRef.current = null;
         const layer = createLayerCanvas(w, h, dpr);
         if (layer) {
-          drawZones(layer.ctx, layout, currentTerrain, currentAgents, currentTurn, w, h);
+          drawZones(layer.ctx, layout, currentTerrain, currentAgents, currentTurn, economyStage, w, h);
           zoneLayerRef.current = { key: zonesKey, canvas: layer.canvas };
         }
       } else if (perfEnabled) {
@@ -304,12 +305,12 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, autoPlayS
       if (zoneLayerRef.current) {
         ctx.drawImage(zoneLayerRef.current.canvas, 0, 0, w, h);
       } else {
-        drawZones(ctx, layout, currentTerrain, currentAgents, currentTurn, w, h);
+        drawZones(ctx, layout, currentTerrain, currentAgents, currentTurn, economyStage, w, h);
       }
 
       drawEventOverlays(ctx, layout, currentEvents, w, h, time);
       drawMarket(ctx, layout);
-      drawZoneLabels(ctx, layout, currentTerrain, currentAgents, currentTurn);
+      drawZoneLabels(ctx, layout, currentTerrain, currentAgents, currentTurn, economyStage);
 
       // Draw agents
       const aliveAgents = currentAgents.filter(a => a.alive);
@@ -401,7 +402,7 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, autoPlayS
       disposed = true;
       cancelAnimationFrame(animRef.current);
     };
-  }, [showPerfDebug]);
+  }, [showPerfDebug, economyStage]);
 
   // Mouse move handler for hover detection
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {

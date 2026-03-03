@@ -368,26 +368,35 @@ export class Agent {
     );
   }
 
-  evaluateJob(marketPrices: Record<SectorType, number>, rng: RNG): SectorType | null {
+  evaluateJob(
+    marketPrices: Record<SectorType, number>,
+    rng: RNG,
+    allowedSectors: SectorType[] = SECTORS,
+  ): SectorType | null {
+    const allowed = allowedSectors.length > 0 ? allowedSectors : SECTORS;
+    const isAllowed = (sector: SectorType) => allowed.includes(sector);
+    const mustLeaveCurrent = !isAllowed(this.sector);
+
     this.turnsInSector++;
-    if (this.turnsInSector < 4) return null;
+    if (this.turnsInSector < 4 && !mustLeaveCurrent) return null;
 
     // Early exit: can't afford to switch and not yet underperforming
-    if (this.money < CONFIG.JOB_SWITCH_COST && this.lowIncomeTurns === 0) return null;
+    if (!mustLeaveCurrent && this.money < CONFIG.JOB_SWITCH_COST && this.lowIncomeTurns === 0) return null;
 
     const maxIncomePotential = Math.max(
-      ...SECTORS.map(s => marketPrices[s] * CONFIG.BASE_PRODUCTIVITY[s] * this.effectiveProductivity),
+      ...allowed.map(s => marketPrices[s] * CONFIG.BASE_PRODUCTIVITY[s] * this.effectiveProductivity),
       0.01,
     );
 
-    let bestSector: SectorType = this.sector;
+    let bestSector: SectorType = allowed[0] ?? this.sector;
     let bestEstimatedUtility = Number.NEGATIVE_INFINITY;
     let bestBaseUtility = Number.NEGATIVE_INFINITY;
-    const utilities: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
+    const currentBaseUtility = isAllowed(this.sector)
+      ? this.estimateSectorUtility(this.sector, marketPrices, maxIncomePotential)
+      : Number.NEGATIVE_INFINITY;
 
-    for (const sector of SECTORS) {
+    for (const sector of allowed) {
       const baseUtility = this.estimateSectorUtility(sector, marketPrices, maxIncomePotential);
-      utilities[sector] = baseUtility;
 
       const noise = (rng.next() * 2 - 1) * this.decisionNoiseAmplitude;
       const estimated = baseUtility + noise;
@@ -398,7 +407,15 @@ export class Agent {
       }
     }
 
-    const currentUtility = utilities[this.sector] + this.goalWeights.stability * 0.06;
+    if (mustLeaveCurrent) {
+      if (this.money >= CONFIG.JOB_SWITCH_COST) {
+        return bestSector;
+      }
+      this.lowIncomeTurns = Math.min(this.lowIncomeTurns + 1, 999);
+      return null;
+    }
+
+    const currentUtility = currentBaseUtility + this.goalWeights.stability * 0.06;
     if (bestSector === this.sector) {
       this.lowIncomeTurns = Math.max(0, this.lowIncomeTurns - 1);
       return null;

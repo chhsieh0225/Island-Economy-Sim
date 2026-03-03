@@ -3,6 +3,7 @@ export type Gender = 'M' | 'F';
 export type AgeGroup = 'youth' | 'adult' | 'senior';
 export type ScenarioId = 'baseline' | 'inflation' | 'inequality' | 'aging';
 export type AgentGoalType = 'survival' | 'wealth' | 'happiness' | 'balanced';
+export type EconomyStage = 'agriculture' | 'industrial' | 'service';
 
 export const SECTORS: SectorType[] = ['food', 'goods', 'services'];
 
@@ -326,6 +327,7 @@ export interface GameState {
   turn: number;
   agents: AgentState[];
   terrain: IslandTerrainState;
+  economyStage: EconomyStage;
   market: MarketState;
   government: GovernmentState;
   statistics: TurnSnapshot[];

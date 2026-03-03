@@ -6,7 +6,6 @@ import {
   computeResidencePosition,
   computeAnimatedPosition,
   getAnimPhase,
-  shouldCommuteThisTurn,
   shouldVisitMarketThisTurn,
   getRoutineAnchor,
   computeIdlePosition,
@@ -80,10 +79,10 @@ interface PerfCounters {
 }
 
 function getAnimDurationMs(autoPlaySpeed: AutoPlaySpeed): number {
-  if (autoPlaySpeed === 'slow') return 1200;
-  if (autoPlaySpeed === 'medium') return 750;
-  if (autoPlaySpeed === 'fast') return 220;
-  return 1400;
+  if (autoPlaySpeed === 'slow') return 1400;
+  if (autoPlaySpeed === 'medium') return 800;
+  if (autoPlaySpeed === 'fast') return 240;
+  return 1600; // manual click
 }
 
 function createLayerCanvas(
@@ -320,15 +319,12 @@ export function IslandMap({ agents, turn, terrain, activeRandomEvents, autoPlayS
         const home = computeResidencePosition(agent.id, agent.familyId, agent.sector, layout, currentTerrain, w, h);
         const work = computeWorkPosition(agent.id, agent.sector, layout, currentTerrain, w, h);
         const market = { x: layout.market.cx, y: layout.market.cy };
-        const marketClock = currentSpeed === 'fast' ? Math.floor(currentTurn / 2) : currentTurn;
-        const visitMarket = shouldVisitMarketThisTurn(agent, marketClock);
-        const commuteThisTurn = currentSpeed === 'fast' ? false : shouldCommuteThisTurn(agent, currentTurn);
-        const shouldAnimateTravel = visitMarket || commuteThisTurn;
+        const visitMarket = shouldVisitMarketThisTurn(agent, currentTurn);
 
         let pos: Point;
-        if (isAnimatingRef.current && shouldAnimateTravel) {
-          pos = computeAnimatedPosition(home, work, market, animProgress, agent.id, time, visitMarket);
-          const { phase } = getAnimPhase(animProgress, visitMarket);
+        if (isAnimatingRef.current && visitMarket) {
+          pos = computeAnimatedPosition(work, market, animProgress, agent.id, time);
+          const { phase } = getAnimPhase(animProgress);
 
           if (phase === 'working') {
             drawWorkParticle(ctx, pos.x, pos.y, getAgentColor(agent), animProgress);

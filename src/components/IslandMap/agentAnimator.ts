@@ -18,8 +18,8 @@ export interface ZoneLayout {
   market: { cx: number; cy: number; r: number };
 }
 
-// Animation phases within a turn cycle
-export type AnimPhase = 'toWork' | 'working' | 'toMarket' | 'atMarket' | 'toHome';
+// Animation phases within a turn cycle (phase-synced: produce → trade → return)
+export type AnimPhase = 'working' | 'toMarket' | 'atMarket' | 'returning';
 
 export function getZoneLayout(w: number, h: number, terrain: IslandTerrainState): ZoneLayout {
   // Island center
@@ -205,61 +205,28 @@ export function shouldVisitMarketThisTurn(agent: AgentState, turn: number): bool
   return emergencyRoll < 0.5;
 }
 
-export function shouldCommuteThisTurn(agent: AgentState, turn: number): boolean {
-  const iqPlanning = clamp01((agent.intelligence - 75) / 70);
-  const ageSlowdown = clamp01((agent.age - 420) / 420); // older residents commute less frequently
-  const goalMobility = agent.goalType === 'wealth' ? 0.92
-    : agent.goalType === 'balanced' ? 0.8
-    : agent.goalType === 'survival' ? 0.72
-    : 0.64;
-
-  // Commute cadence by personality + IQ: roughly every 2-5 turns.
-  const intervalRaw = 2 + (1 - iqPlanning) * 1.4 + (1 - goalMobility) * 1.2 + ageSlowdown * 0.6;
-  const interval = Math.max(2, Math.min(5, Math.round(intervalRaw)));
-  const phaseSeed = seededRandom(agent.id * 59 + Math.abs(agent.familyId) * 31 + 23);
-  const phase = Math.floor(phaseSeed * interval);
-  return (turn + phase) % interval === 0;
-}
-
 export function getRoutineAnchor(agent: AgentState, turn: number, home: Point, work: Point): Point {
-  const iqPlanning = clamp01((agent.intelligence - 75) / 70);
-  const homeBias = agent.goalType === 'happiness' ? 0.56
-    : agent.goalType === 'survival' ? 0.48
-    : agent.goalType === 'balanced' ? 0.4
-    : 0.34;
-
-  // Six-slot routine gives longer stretches at home/work instead of per-turn flips.
-  const cycle = 6;
+  // Strongly biased toward work: agents spend ~92% of idle time at their workplace.
+  // Every 12 turns one slot sends them home so residential zones aren't ghost towns.
+  const cycle = 12;
   const phaseSeed = seededRandom(agent.id * 83 + Math.abs(agent.familyId) * 17 + 3);
   const phase = Math.floor(phaseSeed * cycle);
   const slot = (turn + phase) % cycle;
-  const homeSlots = Math.max(1, Math.min(4, Math.round((homeBias + (1 - iqPlanning) * 0.08) * cycle)));
-  return slot < homeSlots ? home : work;
+  return slot === 0 ? home : work;
 }
 
 export function getAnimPhase(
   progress: number,
-  visitMarket: boolean,
 ): { phase: AnimPhase; phaseProgress: number } {
-  if (visitMarket) {
-    if (progress < 0.22) {
-      return { phase: 'toWork', phaseProgress: progress / 0.22 };
-    } else if (progress < 0.54) {
-      return { phase: 'working', phaseProgress: (progress - 0.22) / 0.32 };
-    } else if (progress < 0.7) {
-      return { phase: 'toMarket', phaseProgress: (progress - 0.54) / 0.16 };
-    } else if (progress < 0.82) {
-      return { phase: 'atMarket', phaseProgress: (progress - 0.7) / 0.12 };
-    }
-    return { phase: 'toHome', phaseProgress: (progress - 0.82) / 0.18 };
+  // Phase-synced to economic cycle: produce → travel to market → trade → return to work
+  if (progress < 0.30) {
+    return { phase: 'working', phaseProgress: progress / 0.30 };
+  } else if (progress < 0.55) {
+    return { phase: 'toMarket', phaseProgress: (progress - 0.30) / 0.25 };
+  } else if (progress < 0.78) {
+    return { phase: 'atMarket', phaseProgress: (progress - 0.55) / 0.23 };
   }
-
-  if (progress < 0.24) {
-    return { phase: 'toWork', phaseProgress: progress / 0.24 };
-  } else if (progress < 0.76) {
-    return { phase: 'working', phaseProgress: (progress - 0.24) / 0.52 };
-  }
-  return { phase: 'toHome', phaseProgress: (progress - 0.76) / 0.24 };
+  return { phase: 'returning', phaseProgress: (progress - 0.78) / 0.22 };
 }
 
 // Ease in-out cubic
@@ -272,15 +239,13 @@ function lerp(a: number, b: number, t: number): number {
 }
 
 export function computeAnimatedPosition(
-  home: Point,
   work: Point,
   market: Point,
   animProgress: number,
   agentId: number,
   time: number,
-  visitMarket: boolean,
 ): Point {
-  const { phase, phaseProgress } = getAnimPhase(animProgress, visitMarket);
+  const { phase, phaseProgress } = getAnimPhase(animProgress);
   const t = ease(phaseProgress);
   const marketAngle = seededRandom(agentId * 19 + 7) * Math.PI * 2;
   const marketRadius = 4 + seededRandom(agentId * 31 + 13) * 18;
@@ -289,45 +254,39 @@ export function computeAnimatedPosition(
     y: market.y + Math.sin(marketAngle) * marketRadius * 0.72,
   };
 
-  // Small wobble based on time
+  // Wobble: strong when stationary, subtle when moving
   const wobbleX = Math.sin(time * 3 + agentId * 2.1) * 2;
   const wobbleY = Math.cos(time * 2.7 + agentId * 1.7) * 2;
 
   let x: number, y: number;
 
   switch (phase) {
-    case 'toWork':
-      x = lerp(home.x, work.x + wobbleX * 0.8, t);
-      y = lerp(home.y, work.y + wobbleY * 0.8, t);
-      break;
     case 'working':
       x = work.x + wobbleX * 1.6;
       y = work.y + wobbleY * 1.6;
       break;
     case 'toMarket':
-      x = lerp(work.x, marketAnchor.x + wobbleX, t);
-      y = lerp(work.y, marketAnchor.y + wobbleY, t);
+      x = lerp(work.x, marketAnchor.x + wobbleX * 0.4, t);
+      y = lerp(work.y, marketAnchor.y + wobbleY * 0.4, t);
       break;
     case 'atMarket':
       x = marketAnchor.x + wobbleX * 1.4;
       y = marketAnchor.y + wobbleY * 1.4;
       break;
-    case 'toHome': {
-      const start = visitMarket ? marketAnchor : work;
-      x = lerp(start.x + wobbleX * 0.6, home.x, t);
-      y = lerp(start.y + wobbleY * 0.6, home.y, t);
+    case 'returning':
+      x = lerp(marketAnchor.x + wobbleX * 0.4, work.x, t);
+      y = lerp(marketAnchor.y + wobbleY * 0.4, work.y, t);
       break;
-    }
   }
 
   return { x, y };
 }
 
-// Position for when no animation is playing (idle)
-export function computeIdlePosition(home: Point, agentId: number, time: number): Point {
+// Position for when no animation is playing (idle at anchor — usually work, occasionally home)
+export function computeIdlePosition(anchor: Point, agentId: number, time: number): Point {
   const wobbleX = Math.sin(time * 0.8 + agentId * 2.1) * 1.5;
   const wobbleY = Math.cos(time * 0.6 + agentId * 1.7) * 1.5;
-  return { x: home.x + wobbleX, y: home.y + wobbleY };
+  return { x: anchor.x + wobbleX, y: anchor.y + wobbleY };
 }
 
 const SECTOR_COLORS: Record<SectorType, string> = {

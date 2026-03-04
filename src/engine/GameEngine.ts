@@ -509,17 +509,24 @@ export class GameEngine {
 
   private phaseMarketPosting(aliveAgents: Agent[]): void {
     const demandMultipliers = this.getCurrentNeedMultipliers();
+    const allowedSectors = this.getUnlockedSectors();
     runMarketPostingPhase({
       agents: aliveAgents,
       activeRandomEvents: this.activeRandomEvents,
       market: this.market,
       demandMultipliers,
+      allowedSectors,
     });
   }
 
   private phaseConsumption(agents: Agent[]): ConsumptionPhaseSummary {
     const demandMultipliers = this.getCurrentNeedMultipliers();
-    return runConsumptionPhase(agents, this.activeRandomEvents, demandMultipliers);
+    return runConsumptionPhase(
+      agents,
+      this.activeRandomEvents,
+      demandMultipliers,
+      this.getUnlockedSectors(),
+    );
   }
 
   private phaseFamilySupport(agents: Agent[]): void {

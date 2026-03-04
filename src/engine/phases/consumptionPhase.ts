@@ -13,6 +13,7 @@ export function runConsumptionPhase(
   agents: Agent[],
   activeRandomEvents: ActiveRandomEvent[],
   demandMultipliers?: Partial<Record<SectorType, number>>,
+  allowedSectors: SectorType[] = ['food', 'goods', 'services'],
 ): ConsumptionPhaseSummary {
   let eventHealthDamage = 0;
   for (const event of activeRandomEvents) {
@@ -37,7 +38,7 @@ export function runConsumptionPhase(
   };
 
   for (const agent of agents) {
-    const outcome = agent.consumeNeeds(demandMultipliers);
+    const outcome = agent.consumeNeeds(demandMultipliers, allowedSectors);
     summary.needsSatisfactionDelta += outcome.satisfactionDelta;
     summary.needsHealthDelta += outcome.healthDelta;
     summary.unmetNeedCount += outcome.unmetNeeds.length;

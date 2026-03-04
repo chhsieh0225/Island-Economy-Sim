@@ -215,10 +215,16 @@ export class Agent {
 
   private getMarshallianBudgetShares(
     demandModifiers?: Partial<Record<SectorType, number>>,
+    allowedSectors: SectorType[] = SECTORS,
   ): Record<SectorType, number> {
+    const allowed = new Set<SectorType>(allowedSectors.length > 0 ? allowedSectors : SECTORS);
     const calibration = this.getEconomicCalibration();
     const raw: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
     for (const sector of SECTORS) {
+      if (!allowed.has(sector)) {
+        raw[sector] = 0;
+        continue;
+      }
       const priority = this.getSectorPriority(sector);
       const demandWeight = Math.max(calibration.lesMinDemandWeight, demandModifiers?.[sector] ?? 1);
       raw[sector] = Math.max(0.05, priority * demandWeight);
@@ -281,9 +287,15 @@ export class Agent {
     market.addSellOrder(order);
   }
 
-  postBuyOrders(market: Market, demandModifiers?: Partial<Record<SectorType, number>>): void {
+  postBuyOrders(
+    market: Market,
+    demandModifiers?: Partial<Record<SectorType, number>>,
+    allowedSectors: SectorType[] = SECTORS,
+  ): void {
     this._incomeThisTurn = 0;
     this._spentThisTurn = 0;
+    const allowed = allowedSectors.length > 0 ? allowedSectors : SECTORS;
+    const allowedSet = new Set<SectorType>(allowed);
 
     const weights = this.goalWeights;
     const reserve =
@@ -294,27 +306,32 @@ export class Agent {
     if (budgetPool <= 0.01) return;
 
     const calibration = this.getEconomicCalibration();
-    const budgetShares = this.getMarshallianBudgetShares(demandModifiers);
+    const budgetShares = this.getMarshallianBudgetShares(demandModifiers, allowed);
     const requiredNow: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
     const targetGap: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
     const marketPrices: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
 
     for (const sector of SECTORS) {
+      marketPrices[sector] = market.getPrice(sector);
+      if (!allowedSet.has(sector)) {
+        requiredNow[sector] = 0;
+        targetGap[sector] = 0;
+        continue;
+      }
       const demandMult = demandModifiers?.[sector] ?? 1;
       const need = this.getNeedForSector(sector, demandMult);
       const targetStock = need * this.getTargetBufferTurns(sector);
       requiredNow[sector] = Math.max(0, need * calibration.lesSubsistenceMultiplier - this.inventory[sector]);
       targetGap[sector] = Math.max(0, targetStock - this.inventory[sector]);
-      marketPrices[sector] = market.getPrice(sector);
     }
 
-    const subsistenceCost = SECTORS.reduce(
+    const subsistenceCost = allowed.reduce(
       (sum, sector) => sum + requiredNow[sector] * Math.max(0.01, marketPrices[sector]),
       0,
     );
     const supernumeraryBudget = Math.max(0, budgetPool - subsistenceCost);
 
-    const candidateSectors = [...SECTORS].sort((a, b) => this.getSectorPriority(b) - this.getSectorPriority(a));
+    const candidateSectors = [...allowed].sort((a, b) => this.getSectorPriority(b) - this.getSectorPriority(a));
     for (const sector of candidateSectors) {
       const maxDesired = targetGap[sector];
       if (maxDesired <= 0.01) continue;
@@ -363,12 +380,15 @@ export class Agent {
 
   consumeNeeds(
     demandMultipliers?: Partial<Record<SectorType, number>>,
+    allowedSectors: SectorType[] = SECTORS,
   ): { unmetNeeds: SectorType[]; healthDelta: number; satisfactionDelta: number } {
     const unmetNeeds: SectorType[] = [];
     const prevHealth = this.health;
     const prevSatisfaction = this.satisfaction;
+    const allowed = new Set<SectorType>(allowedSectors.length > 0 ? allowedSectors : SECTORS);
 
     for (const sector of SECTORS) {
+      if (!allowed.has(sector)) continue;
       const required = this.getNeedForSector(sector, demandMultipliers?.[sector] ?? 1);
       if (this.inventory[sector] >= required) {
         this.inventory[sector] -= required;

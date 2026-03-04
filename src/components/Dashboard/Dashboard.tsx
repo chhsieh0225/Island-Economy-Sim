@@ -1,4 +1,4 @@
-import type { GameState, SectorType, TurnCausalReplay } from '../../types';
+import type { EconomyStage, GameState, SectorType, TurnCausalReplay } from '../../types';
 import { CONFIG } from '../../config';
 import { Tooltip } from '../Tooltip/Tooltip';
 import { DASHBOARD_TOOLTIPS } from '../../data/tooltipContent';
@@ -26,7 +26,6 @@ interface GovernorObjective {
   done: boolean;
 }
 
-const SECTORS: SectorType[] = ['food', 'goods', 'services'];
 const SECTOR_LABELS: Record<SectorType, string> = {
   food: '食物',
   goods: '商品',
@@ -37,6 +36,17 @@ const STAGE_LABELS = {
   industrial: '工業',
   service: '服務',
 } as const;
+
+function getUnlockedSectors(stage: EconomyStage): SectorType[] {
+  switch (stage) {
+    case 'agriculture':
+      return ['food'];
+    case 'industrial':
+      return ['food', 'goods'];
+    case 'service':
+      return ['food', 'goods', 'services'];
+  }
+}
 
 function buildSentimentAlert(state: GameState): SentimentAlert | null {
   const alive = state.agents.filter(a => a.alive);
@@ -55,7 +65,8 @@ function buildSentimentAlert(state: GameState): SentimentAlert | null {
   const lowSatRate = lowSatCount / alive.length;
   const nearLeaveRate = nearLeaveCount / alive.length;
 
-  const shortages = SECTORS.filter(sector => {
+  const unlockedSectors = getUnlockedSectors(state.economyStage);
+  const shortages = unlockedSectors.filter(sector => {
     const demand = state.market.demand[sector];
     const supply = state.market.supply[sector];
     if (demand <= 0.01) return false;

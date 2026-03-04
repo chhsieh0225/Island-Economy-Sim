@@ -271,6 +271,32 @@ test('LES demand allocation lowers quantity demanded when relative price rises',
   assert.equal(lowPriceDemand > highPriceDemand, true);
 });
 
+test('locked sectors do not create unmet-need penalties in early agriculture stage', () => {
+  const rng = new RNG(20260319);
+  const resident = new Agent(10, 'Early Farmer', 'food', rng, {
+    age: 260,
+    maxAge: 900,
+    intelligence: 100,
+    baseLuck: 0,
+    gender: 'M',
+    familyId: 2,
+    goalType: 'balanced',
+  });
+
+  resident.inventory.food = 4;
+  resident.inventory.goods = 0;
+  resident.inventory.services = 0;
+
+  const outcome = resident.consumeNeeds(
+    { food: 1, goods: 0.18, services: 0.12 },
+    ['food'],
+  );
+
+  assert.equal(outcome.unmetNeeds.includes('goods'), false);
+  assert.equal(outcome.unmetNeeds.includes('services'), false);
+  assert.equal(outcome.satisfactionDelta >= 0, true);
+});
+
 test('sector output follows diminishing labor returns under Cobb-Douglas scaling', () => {
   const terrain: IslandTerrainState = {
     seed: 1,

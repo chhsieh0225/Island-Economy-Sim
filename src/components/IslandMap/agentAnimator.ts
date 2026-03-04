@@ -180,29 +180,41 @@ export function shouldVisitMarketThisTurn(agent: AgentState, turn: number): bool
   const moneyPressure = clamp01((95 - agent.money) / 95);
   const moodPressure = clamp01((55 - agent.satisfaction) / 55);
 
-  const goalBias = agent.goalType === 'survival' ? 0.55
-    : agent.goalType === 'happiness' ? 0.4
-    : agent.goalType === 'balanced' ? 0.2
+  const survivalBias = agent.goalType === 'survival' ? 0.65
+    : agent.goalType === 'happiness' ? 0.32
+    : agent.goalType === 'balanced' ? 0.22
     : 0;
 
-  // Baseline cadence: every 3-5 turns, shifted by IQ, goal preference and current pressure.
-  const intervalRaw = 5 - iqTendency * 1.05 - goalBias - (inventoryPressure * 0.45 + moneyPressure * 0.3 + moodPressure * 0.25) * 0.75;
-  const interval = Math.max(3, Math.min(5, Math.round(intervalRaw)));
+  // Lower-frequency baseline: roughly every 6-11 turns, compressed under pressure.
+  const pressureMix = inventoryPressure * 0.52 + moneyPressure * 0.31 + moodPressure * 0.17;
+  const intervalRaw = 10.4 - iqTendency * 1.85 - survivalBias * 1.6 - pressureMix * 4.3;
+  const interval = Math.max(6, Math.min(11, Math.round(intervalRaw)));
 
   const phaseSeed = seededRandom(agent.id * 41 + Math.abs(agent.familyId) * 17 + 5);
   const phase = Math.floor(phaseSeed * interval);
   const scheduled = (turn + phase) % interval === 0;
-  if (scheduled) return true;
+
+  if (scheduled) {
+    // Crowd gate: even scheduled residents do not all move in the same turn.
+    const gate = clamp01(
+      0.3
+      + pressureMix * 0.52
+      + survivalBias * 0.12
+      - iqTendency * 0.08,
+    );
+    const crowdRoll = seededRandom(agent.id * 131 + turn * 53 + Math.abs(agent.familyId) * 7 + 17);
+    if (crowdRoll < gate) return true;
+  }
 
   // Emergency trip if supplies or cash are critically low.
   const emergency = Math.max(
     clamp01((1.05 - (agent.inventory.food + agent.inventory.goods * 0.85 + agent.inventory.services * 0.65)) / 1.05),
     clamp01((26 - agent.money) / 26),
   );
-  if (emergency < 0.92) return false;
+  if (emergency < 0.9) return false;
 
-  const emergencyRoll = seededRandom(agent.id * 191 + turn * 67 + 29);
-  return emergencyRoll < 0.5;
+  const emergencyRoll = seededRandom(agent.id * 191 + turn * 67 + Math.abs(agent.familyId) * 13 + 29);
+  return emergencyRoll < 0.58;
 }
 
 export function getRoutineAnchor(agent: AgentState, turn: number, home: Point, work: Point): Point {

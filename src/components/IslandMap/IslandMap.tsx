@@ -125,6 +125,31 @@ function shouldRenderWorkParticle(
   return true;
 }
 
+function seededTurnRoll(agentId: number, turn: number, salt: number): number {
+  const x = Math.sin((agentId + 1) * 12.9898 + (turn + 1) * 78.233 + salt * 37.719);
+  const raw = x * 43758.5453;
+  return raw - Math.floor(raw);
+}
+
+function shouldAnimateCommute(
+  agent: AgentState,
+  turn: number,
+  autoPlaySpeed: AutoPlaySpeed,
+): boolean {
+  if (autoPlaySpeed === null || autoPlaySpeed === 'slow') return true;
+
+  const inventoryTotal = agent.inventory.food + agent.inventory.goods + agent.inventory.services;
+  const inventoryPressure = Math.max(0, Math.min(1, (2.5 - inventoryTotal) / 2.5));
+  const moneyPressure = Math.max(0, Math.min(1, (70 - agent.money) / 70));
+  const emergencyPressure = Math.max(inventoryPressure, moneyPressure);
+  if (emergencyPressure >= 0.86) return true;
+
+  const baseQuota = autoPlaySpeed === 'fast' ? 0.32 : 0.55;
+  const quota = Math.min(0.9, baseQuota + emergencyPressure * 0.28);
+  const roll = seededTurnRoll(agent.id, turn, Math.abs(agent.familyId) + 11);
+  return roll < quota;
+}
+
 function createLayerCanvas(
   w: number,
   h: number,
@@ -405,9 +430,10 @@ export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEve
         const work = computeWorkPosition(agent.id, agent.sector, layout, currentTerrain, w, h);
         const market = { x: layout.market.cx, y: layout.market.cy };
         const visitMarket = shouldVisitMarketThisTurn(agent, currentTurn);
+        const animateCommute = visitMarket && shouldAnimateCommute(agent, currentTurn, currentSpeed);
 
         let pos: Point;
-        if (isAnimatingRef.current && visitMarket) {
+        if (isAnimatingRef.current && animateCommute) {
           pos = computeAnimatedPosition(work, market, animProgress, agent.id, time);
           const { phase } = getAnimPhase(animProgress);
 

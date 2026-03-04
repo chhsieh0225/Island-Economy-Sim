@@ -86,6 +86,44 @@ function getAnimDurationMs(autoPlaySpeed: AutoPlaySpeed): number {
   return 1600; // manual click
 }
 
+function getTargetFps(
+  isAnimating: boolean,
+  autoPlaySpeed: AutoPlaySpeed,
+  isHovering: boolean,
+  hasActiveEvents: boolean,
+  documentHidden: boolean,
+): number {
+  if (documentHidden) return 2;
+
+  if (isAnimating) {
+    if (autoPlaySpeed === 'fast') return 52;
+    if (autoPlaySpeed === 'medium') return 46;
+    if (autoPlaySpeed === 'slow') return 40;
+    return 48;
+  }
+
+  if (autoPlaySpeed === 'fast') return 34;
+  if (autoPlaySpeed === 'medium') return 28;
+  if (autoPlaySpeed === 'slow') return 22;
+  if (isHovering) return 28;
+  if (hasActiveEvents) return 20;
+  return 14;
+}
+
+function shouldRenderWorkParticle(
+  agentId: number,
+  autoPlaySpeed: AutoPlaySpeed,
+  aliveCount: number,
+): boolean {
+  if (autoPlaySpeed === 'fast') {
+    return agentId % 3 === 0;
+  }
+  if (autoPlaySpeed === 'medium' || aliveCount > 150) {
+    return agentId % 2 === 0;
+  }
+  return true;
+}
+
 function createLayerCanvas(
   w: number,
   h: number,
@@ -178,6 +216,7 @@ export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEve
     zoneHits: 0,
     zoneMisses: 0,
   });
+  const lastDrawTsRef = useRef(0);
   const [perfSnapshot, setPerfSnapshot] = useState<PerfSnapshot | null>(null);
 
   useEffect(() => {
@@ -188,6 +227,7 @@ export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEve
     autoPlaySpeedRef.current = autoPlaySpeed;
     terrainSigRef.current = terrainSignature(terrain);
     zoneSigRef.current = `${economyStage}|${zoneDistributionSignature(agents, turn)}`;
+    lastDrawTsRef.current = 0;
   }, [agents, turn, terrain, economyStage, activeRandomEvents, autoPlaySpeed]);
 
   // Trigger animation on turn change
@@ -196,6 +236,7 @@ export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEve
       animStartRef.current = performance.now();
       isAnimatingRef.current = true;
       prevTurnRef.current = turn;
+      lastDrawTsRef.current = 0;
     }
   }, [turn]);
 
@@ -225,6 +266,28 @@ export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEve
       const currentZoneSig = zoneSigRef.current;
       const perfEnabled = showPerfDebug;
       const perfCounters = perfCountersRef.current;
+      const documentHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+      const targetFps = getTargetFps(
+        isAnimatingRef.current,
+        currentSpeed,
+        hoveredAgentRef.current !== null,
+        currentEvents.length > 0,
+        documentHidden,
+      );
+      const frameIntervalMs = 1000 / Math.max(1, targetFps);
+      if (
+        lastDrawTsRef.current > 0 &&
+        timestamp - lastDrawTsRef.current < frameIntervalMs
+      ) {
+        animRef.current = requestAnimationFrame(renderFrame);
+        return;
+      }
+      lastDrawTsRef.current = timestamp;
+
+      if (documentHidden) {
+        animRef.current = requestAnimationFrame(renderFrame);
+        return;
+      }
 
       const rect = canvas.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
@@ -315,6 +378,7 @@ export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEve
       // Draw agents
       const aliveAgents = currentAgents.filter(a => a.alive);
       const rendered: AgentRenderState[] = [];
+      const aliveCount = aliveAgents.length;
 
       for (const agent of aliveAgents) {
         const home = computeResidencePosition(agent.id, agent.familyId, agent.sector, layout, currentTerrain, w, h);
@@ -327,7 +391,7 @@ export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEve
           pos = computeAnimatedPosition(work, market, animProgress, agent.id, time);
           const { phase } = getAnimPhase(animProgress);
 
-          if (phase === 'working') {
+          if (phase === 'working' && shouldRenderWorkParticle(agent.id, currentSpeed, aliveCount)) {
             drawWorkParticle(ctx, pos.x, pos.y, getAgentColor(agent), animProgress);
           }
         } else {
@@ -420,6 +484,9 @@ export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEve
         break;
       }
     }
+    if ((hoveredAgentRef.current?.id ?? -1) !== (found?.id ?? -1)) {
+      lastDrawTsRef.current = 0;
+    }
     hoveredAgentRef.current = found;
 
     if (canvas) {
@@ -429,6 +496,7 @@ export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEve
 
   const handleMouseLeave = useCallback(() => {
     hoveredAgentRef.current = null;
+    lastDrawTsRef.current = 0;
     const canvas = canvasRef.current;
     if (canvas) {
       canvas.style.cursor = 'default';

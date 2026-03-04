@@ -80,3 +80,16 @@ test('ui smoke: feature clicks trigger transient highlight pulse', () => {
   assert.match(islandMap, /FEATURE_HIGHLIGHT_MS = 1700/);
   assert.match(islandMap, /drawFeatureHighlight\(/);
 });
+
+test('ui smoke: learning journey includes coach guidance scaffolding', () => {
+  const panel = readProjectFile('src/components/LearningJourneyPanel/LearningJourneyPanel.tsx');
+  const journey = readProjectFile('src/learning/journey.ts');
+
+  assert.match(panel, /經濟教練 Coach/);
+  assert.match(panel, /下一步操作（建議順序）/);
+  assert.match(panel, /coach\.actions\.map/);
+
+  assert.match(journey, /interface LearningCoachBrief/);
+  assert.match(journey, /phaseLabel:/);
+  assert.match(journey, /keywords:/);
+});

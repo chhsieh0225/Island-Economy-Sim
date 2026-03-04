@@ -61,6 +61,133 @@
   letter-spacing: 0.4px;
 }
 
+.coachGoal {
+  margin-top: 7px;
+  font-size: 12px;
+  color: #e6f1ff;
+  font-weight: 700;
+}
+
+.coachDiagnosis {
+  margin-top: 5px;
+  font-size: 11px;
+  color: #b8c9e5;
+  line-height: 1.4;
+}
+
+.coachKeywords {
+  margin-top: 7px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.keywordChip {
+  font-size: 10px;
+  color: #d6e6ff;
+  background: #12375b;
+  border: 1px solid #2d5a87;
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+
+.coachBlockTitle {
+  margin-top: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #7cc8ff;
+  letter-spacing: 0.3px;
+}
+
+.coachNarrative {
+  margin-top: 5px;
+  display: grid;
+  gap: 4px;
+}
+
+.coachLine {
+  font-size: 11px;
+  color: #a8bbd9;
+  line-height: 1.35;
+}
+
+.coachActionList {
+  margin-top: 6px;
+  display: grid;
+  gap: 7px;
+}
+
+.coachActionItem {
+  border: 1px solid #2a4368;
+  border-radius: 7px;
+  background: #11253f;
+  padding: 7px 8px;
+}
+
+.coachActionHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.coachActionIndex {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #1b4f7d;
+  color: #d9ecff;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.coachActionTitle {
+  font-size: 11px;
+  color: #e6f1ff;
+  font-weight: 700;
+}
+
+.coachStep {
+  margin-top: 3px;
+  font-size: 11px;
+  color: #a6bbd8;
+  line-height: 1.3;
+}
+
+.coachSignal {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #6ce0b6;
+  line-height: 1.3;
+}
+
+.watchList {
+  margin-top: 5px;
+  display: grid;
+  gap: 4px;
+}
+
+.watchItem {
+  font-size: 11px;
+  color: #b8cae4;
+  line-height: 1.35;
+}
+
+.coachFoot {
+  margin-top: 9px;
+  border-top: 1px solid #254368;
+  padding-top: 7px;
+  display: grid;
+  gap: 4px;
+  font-size: 11px;
+  color: #9db3d2;
+  line-height: 1.35;
+}
+
 .progressBar {
   margin-top: 6px;
   height: 6px;

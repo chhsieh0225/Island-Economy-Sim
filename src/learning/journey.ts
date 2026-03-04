@@ -22,7 +22,28 @@ export interface LearningKnowledgeNode {
   unlocked: boolean;
 }
 
+export interface LearningCoachAction {
+  id: string;
+  title: string;
+  rationale: string;
+  steps: string[];
+  expectedSignal: string;
+}
+
+export interface LearningCoachBrief {
+  phaseLabel: string;
+  phaseGoal: string;
+  diagnosis: string;
+  turnNarrative: string[];
+  actions: LearningCoachAction[];
+  watchlist: string[];
+  pitfall: string;
+  economicsLink: string;
+  keywords: string[];
+}
+
 export interface LearningJourneyState {
+  coach: LearningCoachBrief;
   quests: LearningQuest[];
   knowledgeNodes: LearningKnowledgeNode[];
 }
@@ -35,9 +56,21 @@ function fmtPct(value: number): string {
   return `${(value * 100).toFixed(0)}%`;
 }
 
+function signed(value: number, digits: number = 1): string {
+  const text = value.toFixed(digits);
+  return value >= 0 ? `+${text}` : text;
+}
+
 function latestOrNull(state: GameState) {
   if (state.statistics.length === 0) return null;
   return state.statistics[state.statistics.length - 1];
+}
+
+function topDriverLabel(metric: { drivers: Array<{ label: string; value: number }> }): string {
+  if (metric.drivers.length === 0) return '無顯著變化';
+  const top = [...metric.drivers]
+    .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))[0];
+  return top?.label ?? '無顯著變化';
 }
 
 export function buildLearningJourney(state: GameState): LearningJourneyState {
@@ -73,6 +106,16 @@ export function buildLearningJourney(state: GameState): LearningJourneyState {
   const hasRandomShock = state.activeRandomEvents.some(
     event => event.def.id === 'drought' || event.def.id === 'flood' || event.def.id === 'inflation_spike',
   );
+
+  const turnNarrative = latest
+    ? [
+      `滿意度 ${signed(latest.causalReplay.satisfaction.net, 2)}，主因：${topDriverLabel(latest.causalReplay.satisfaction)}。`,
+      `健康 ${signed(latest.causalReplay.health.net, 2)}，主因：${topDriverLabel(latest.causalReplay.health)}。`,
+      `人口流出 ${latest.causalReplay.departures.net > 0 ? `+${latest.causalReplay.departures.net}` : latest.causalReplay.departures.net}，主因：${topDriverLabel(latest.causalReplay.departures)}。`,
+    ]
+    : [
+      '尚未累積足夠回合，先跑 1-3 回合建立觀察基線。',
+    ];
 
   const q1Progress = clamp01(state.turn / 3);
   const q2Progress = clamp01(foodCoverage / 1);
@@ -223,5 +266,184 @@ export function buildLearningJourney(state: GameState): LearningJourneyState {
     },
   ];
 
-  return { quests, knowledgeNodes };
+  const coach = (() => {
+    if (state.turn < 3) {
+      return {
+        phaseLabel: 'Phase 1｜建立基線',
+        phaseGoal: '先看懂市場怎麼自己動，再動政策。',
+        diagnosis: '你正在建立「沒有干預時，供需與價格自然變化」的觀察基線。',
+        turnNarrative,
+        actions: [
+          {
+            id: 'baseline_run',
+            title: '先跑到第 3 回合',
+            rationale: '太早改政策，會失去比較基準。',
+            steps: [
+              '先用慢速自動或手動前進，暫時不調任何滑桿。',
+              '連看 3 回合的食物供需與價格變化。',
+            ],
+            expectedSignal: '你會看到價格跟短缺方向一致，建立第一個因果直覺。',
+          },
+        ],
+        watchlist: [
+          '食物覆蓋率（Supply / Demand）',
+          '食物價格變化（是否連續上升）',
+          '平均滿意度（是否開始下滑）',
+        ],
+        pitfall: '常見錯誤：第一回合就同時改稅率、補貼、福利，之後很難判斷是誰造成效果。',
+        economicsLink: '經濟學核心是「先觀察訊號，再介入」，不是先猜結論。',
+        keywords: ['供需', '價格訊號', '基線'],
+      } satisfies LearningCoachBrief;
+    }
+
+    if (foodCoverage < 1) {
+      return {
+        phaseLabel: 'Phase 2｜民生穩定',
+        phaseGoal: '先把基本需求補齊，再談成長。',
+        diagnosis: `目前食物覆蓋率 ${fmtPct(Math.max(0, Math.min(1.8, foodCoverage))).replace('%', '')}% ，短缺正在放大民心壓力。`,
+        turnNarrative,
+        actions: [
+          {
+            id: 'food_patch',
+            title: '優先補食物，不要同時大改三產業',
+            rationale: '食物短缺會先打擊健康與滿意度，造成連鎖離島。',
+            steps: [
+              '把食物補貼提高 5%-10%。',
+              '維持 2 回合觀察後再決定下一步。',
+            ],
+            expectedSignal: '食物覆蓋率接近或超過 100%，食物價格漲幅收斂。',
+          },
+          {
+            id: 'tax_soften',
+            title: '若民心下滑快，先小幅降稅 2%',
+            rationale: '提高可支配所得可緩衝短缺造成的滿意度下滑。',
+            steps: [
+              '只調 1 次稅率，避免連續上下震盪。',
+            ],
+            expectedSignal: '平均滿意度跌幅縮小，人口流出壓力下降。',
+          },
+        ],
+        watchlist: [
+          '食物覆蓋率是否連續 2 回合 >= 100%',
+          '平均滿意度是否停止快速下滑',
+          '食物價格是否由急漲轉為平穩',
+        ],
+        pitfall: '常見錯誤：同時拉高所有補貼，短期看起來有效，國庫卻快速惡化。',
+        economicsLink: '這是在學「稀缺管理」：先處理瓶頸資源，再談擴張。',
+        keywords: ['稀缺', '民生優先', '供給瓶頸'],
+      } satisfies LearningCoachBrief;
+    }
+
+    if (!hasPolicyRequested) {
+      return {
+        phaseLabel: 'Phase 3｜政策時滯',
+        phaseGoal: '有意識地體驗「政策不是即時生效」。',
+        diagnosis: '你已穩住基本盤，下一步是用一個單點政策做因果實驗。',
+        turnNarrative,
+        actions: [
+          {
+            id: 'single_policy',
+            title: '只下達 1 個政策，觀察完整 3 回合',
+            rationale: '一次只改一個變數，才能知道因果方向。',
+            steps: [
+              '在政策面板選「稅率」或「單一產業補貼」其中一個。',
+              '下達後至少看 3 回合，不要中途再加碼。',
+            ],
+            expectedSignal: '你會在政策時間線看到「待生效 → 已生效」，並在因果回放看到傳導。',
+          },
+        ],
+        watchlist: [
+          '政策時間線狀態',
+          '滿意度/國庫/GDP 的方向變化',
+          '人均可支配現金 Δ',
+        ],
+        pitfall: '常見錯誤：政策還沒生效就反向操作，造成「政策打架」。',
+        economicsLink: '這是在學公共政策的「時滯與預期管理」。',
+        keywords: ['政策時滯', '因果識別', '單一變數'],
+      } satisfies LearningCoachBrief;
+    }
+
+    if (avgSat < 60 || gini > 0.42) {
+      const satIssue = avgSat < 60;
+      const equityIssue = gini > 0.42;
+      return {
+        phaseLabel: 'Phase 4｜成長與公平平衡',
+        phaseGoal: '在不犧牲系統穩定下，修復民心與分配。',
+        diagnosis: [
+          satIssue ? `平均滿意度 ${avgSat.toFixed(1)} 偏低` : '',
+          equityIssue ? `Gini ${gini.toFixed(3)} 偏高` : '',
+        ].filter(Boolean).join('，') + '。',
+        turnNarrative,
+        actions: [
+          {
+            id: 'social_mix',
+            title: '啟用或維持福利，搭配小幅稅率微調',
+            rationale: '先補底層購買力，再看財政承受度調整。',
+            steps: [
+              '福利先開，觀察 2 回合。',
+              '若國庫壓力大，再把稅率上調 1%-2%。',
+            ],
+            expectedSignal: '滿意度回升、離島壓力下降，國庫不會瞬間失控。',
+          },
+          {
+            id: 'sector_focus',
+            title: '找出短缺最嚴重產業做精準補貼',
+            rationale: '廣撒補貼效率低，且容易製造財政負擔。',
+            steps: [
+              '從市場面板找 supply/demand 缺口最大的產業。',
+              '僅提高該產業補貼 5%，其餘先不動。',
+            ],
+            expectedSignal: '缺口收斂且價格波動降低，滿意度修復更穩定。',
+          },
+        ],
+        watchlist: [
+          '平均滿意度是否回到 60+',
+          'Gini 是否回落到 0.42 以下',
+          '國庫淨變化是否維持可持續',
+        ],
+        pitfall: '常見錯誤：只追 GDP，忽略分配惡化，最後民心和留島率一起崩。',
+        economicsLink: '這是在學經典取捨：效率、公平、穩定三者難以同時極大化。',
+        keywords: ['效率 vs 公平', '分配', '社會穩定'],
+      } satisfies LearningCoachBrief;
+    }
+
+    return {
+      phaseLabel: 'Phase 5｜系統治理與反事實',
+      phaseGoal: '從單點調參升級成可驗證的政策路線。',
+      diagnosis: '你已跨過新手期，建議改用「小步、可比較、可回顧」的實驗式治理。',
+      turnNarrative,
+      actions: [
+        {
+          id: 'one_knob',
+          title: '固定 5 回合只調 1 個政策旋鈕',
+          rationale: '維持可比較性，避免混合干擾。',
+          steps: [
+            '先選一個主目標（成長/公平/穩定）。',
+            '只動一個政策，觀察完整窗口。',
+          ],
+          expectedSignal: '因果回放會更乾淨，決策準確度大幅提升。',
+        },
+        {
+          id: 'counterfactual_note',
+          title: '每 5 回合記錄一次「若不做這步會怎樣」',
+          rationale: '建立反事實思維，才是真正的經濟治理能力。',
+          steps: [
+            '在心中設定對照組：維持原政策不變。',
+            '比較兩者對滿意度/GDP/Gini 的差異。',
+          ],
+          expectedSignal: '你會更快找到對當前局勢最有效的政策組合。',
+        },
+      ],
+      watchlist: [
+        'GDP、Gini、滿意度三指標是否同時可接受',
+        '政策時間線是否過度擁塞',
+        '隨機衝擊下系統恢復速度',
+      ],
+      pitfall: '常見錯誤：指標好轉就連續加碼，反而讓系統過熱後反噬。',
+      economicsLink: '這是在學總體政策協調與韌性治理，接近真實世界決策節奏。',
+      keywords: ['政策組合', '反事實', '韌性'],
+    } satisfies LearningCoachBrief;
+  })();
+
+  return { coach, quests, knowledgeNodes };
 }

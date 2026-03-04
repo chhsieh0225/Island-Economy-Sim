@@ -17,7 +17,7 @@ function firstIncomplete(items: ReturnType<typeof buildLearningJourney>['quests'
 export function LearningJourneyPanel({ state, tutorialToastsEnabled, onSetTutorialToasts }: Props) {
   const [activeQuestId, setActiveQuestId] = useState<string>('turn_3');
   const [activeNodeId, setActiveNodeId] = useState<string>('market_signal');
-  const { quests, knowledgeNodes } = useMemo(() => buildLearningJourney(state), [state]);
+  const { coach, quests, knowledgeNodes } = useMemo(() => buildLearningJourney(state), [state]);
 
   const completedQuestCount = quests.filter(item => item.done).length;
   const activeQuest = quests.find(item => item.id === activeQuestId) ?? quests[0];
@@ -39,6 +39,57 @@ export function LearningJourneyPanel({ state, tutorialToastsEnabled, onSetTutori
         >
           教學推播：{tutorialToastsEnabled ? '開' : '關'}
         </button>
+      </div>
+
+      <div className={styles.section}>
+        <div className={styles.sectionHead}>
+          <span>經濟教練 Coach</span>
+          <span>{coach.phaseLabel}</span>
+        </div>
+        <div className={styles.coachGoal}>{coach.phaseGoal}</div>
+        <div className={styles.coachDiagnosis}>{coach.diagnosis}</div>
+
+        <div className={styles.coachKeywords}>
+          {coach.keywords.map(word => (
+            <span key={word} className={styles.keywordChip}>{word}</span>
+          ))}
+        </div>
+
+        <div className={styles.coachBlockTitle}>本回合解讀</div>
+        <div className={styles.coachNarrative}>
+          {coach.turnNarrative.map(line => (
+            <div key={line} className={styles.coachLine}>{line}</div>
+          ))}
+        </div>
+
+        <div className={styles.coachBlockTitle}>下一步操作（建議順序）</div>
+        <div className={styles.coachActionList}>
+          {coach.actions.map((action, index) => (
+            <div key={action.id} className={styles.coachActionItem}>
+              <div className={styles.coachActionHead}>
+                <span className={styles.coachActionIndex}>{index + 1}</span>
+                <span className={styles.coachActionTitle}>{action.title}</span>
+              </div>
+              <div className={styles.coachLine}>原因：{action.rationale}</div>
+              {action.steps.map(step => (
+                <div key={step} className={styles.coachStep}>- {step}</div>
+              ))}
+              <div className={styles.coachSignal}>預期訊號：{action.expectedSignal}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className={styles.coachBlockTitle}>盯盤清單</div>
+        <div className={styles.watchList}>
+          {coach.watchlist.map(item => (
+            <div key={item} className={styles.watchItem}>{item}</div>
+          ))}
+        </div>
+
+        <div className={styles.coachFoot}>
+          <div>避坑提醒：{coach.pitfall}</div>
+          <div>經濟學對照：{coach.economicsLink}</div>
+        </div>
       </div>
 
       <div className={styles.section}>

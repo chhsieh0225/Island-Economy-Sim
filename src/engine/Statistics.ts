@@ -86,6 +86,14 @@ export class Statistics {
           unit: 'count',
           drivers: [{ id: 'flat', label: '本回合無人口流出', value: 0 }],
         },
+        policy: {
+          taxCollected: 0,
+          welfarePaid: 0,
+          welfareRecipients: 0,
+          publicWorksCost: 0,
+          perCapitaCashDelta: 0,
+          treasuryDelta: 0,
+        },
       },
     };
 

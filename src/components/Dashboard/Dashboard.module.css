@@ -209,6 +209,29 @@
   font-size: 11px;
   color: #d8e5ff;
   padding: 2px 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.causalTimelineRow::-webkit-details-marker {
+  display: none;
+}
+
+.causalTimelineItem {
+  border-top: 1px solid rgba(131, 155, 206, 0.18);
+  padding: 4px 0;
+}
+
+.causalTimelineItem:first-of-type {
+  border-top: none;
+}
+
+.causalTimelineDetail {
+  margin: 4px 0 2px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #9fb3d9;
+  padding-left: 6px;
 }
 
 .stat {

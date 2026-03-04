@@ -312,7 +312,7 @@ export class GameEngine {
     this.phaseFamilySupport(aliveAgents);
 
     // Phase 5: Government
-    this.phaseGovernment(aliveAgents);
+    const governmentSummary = this.phaseGovernment(aliveAgents);
 
     // Phase 6: Agent Decisions
     this.phaseAgentDecisions(aliveAgents);
@@ -335,7 +335,6 @@ export class GameEngine {
     const endAliveAgents = this.agents.filter(a => a.alive);
     const turnEndAvgSatisfaction = this.averageAgentMetric(endAliveAgents, agent => agent.satisfaction);
     const turnEndAvgHealth = this.averageAgentMetric(endAliveAgents, agent => agent.health);
-    const policySatisfactionEstimate = this.estimatePolicySatisfactionDelta();
     const causalReplay = this.buildTurnCausalReplay({
       startPopulation: turnStartPopulation,
       startAvgSatisfaction: turnStartAvgSatisfaction,
@@ -344,7 +343,7 @@ export class GameEngine {
       endAvgHealth: turnEndAvgHealth,
       consumptionSummary,
       agingHealthDelta,
-      policySatisfactionEstimate,
+      governmentSummary,
       demographics,
     });
 
@@ -456,7 +455,17 @@ export class GameEngine {
     }
   }
 
-  private phaseGovernment(agents: Agent[]): void {
+  private phaseGovernment(agents: Agent[]): {
+    taxCollected: number;
+    welfareSpent: number;
+    welfareRecipients: number;
+    publicWorksSpent: number;
+    treasuryDelta: number;
+    perCapitaCashDelta: number;
+  } {
+    const aliveCount = agents.filter(a => a.alive).length;
+    const treasuryStart = this.government.treasury;
+
     const rate = this.government.taxRate;
     const prevTreasuryTax = this.government.treasury;
     const taxCollected = this.government.collectTaxes(agents);
@@ -466,22 +475,34 @@ export class GameEngine {
     }
 
     const prevTreasuryWelfare = this.government.treasury;
-    const welfareSpent = this.government.distributeWelfare(agents);
+    const welfareResult = this.government.distributeWelfare(agents);
+    const welfareSpent = welfareResult.totalSpent;
+    const welfareRecipients = welfareResult.recipients;
     if (welfareSpent > 0) {
       const afterTreasuryWelfare = this.government.treasury;
-      const aliveCount = agents.filter(a => a.alive).length;
-      const recipients = Math.floor(aliveCount * CONFIG.WELFARE_THRESHOLD_PERCENTILE);
-      this.addEvent('info', `📋 福利發放 → ${recipients} 人各獲 $${CONFIG.WELFARE_AMOUNT}（國庫 $${prevTreasuryWelfare.toFixed(0)} → $${afterTreasuryWelfare.toFixed(0)}）`);
+      this.addEvent('info', `📋 福利發放 → ${welfareRecipients} 人獲補助（國庫 $${prevTreasuryWelfare.toFixed(0)} → $${afterTreasuryWelfare.toFixed(0)}）`);
     }
 
     const prevTreasuryPW = this.government.treasury;
     const pwPaid = this.government.payPublicWorks();
+    const publicWorksSpent = pwPaid ? CONFIG.PUBLIC_WORKS_COST_PER_TURN : 0;
     if (pwPaid) {
       this.addEvent('info', `📋 公共建設支出 $${CONFIG.PUBLIC_WORKS_COST_PER_TURN} → 全體生產力 +10%`);
     } else if (this.government.publicWorksActive === false && prevTreasuryPW < CONFIG.PUBLIC_WORKS_COST_PER_TURN && prevTreasuryPW > 0) {
       // Public works was auto-disabled due to insufficient funds
       this.addEvent('warning', `公共建設因國庫不足（$${prevTreasuryPW.toFixed(0)} < $${CONFIG.PUBLIC_WORKS_COST_PER_TURN}）自動停用。`);
     }
+
+    const treasuryDelta = this.government.treasury - treasuryStart;
+    const perCapitaCashDelta = aliveCount > 0 ? (welfareSpent - taxCollected) / aliveCount : 0;
+    return {
+      taxCollected,
+      welfareSpent,
+      welfareRecipients,
+      publicWorksSpent,
+      treasuryDelta,
+      perCapitaCashDelta,
+    };
   }
 
   private phaseAgentDecisions(agents: Agent[]): void {
@@ -594,25 +615,15 @@ export class GameEngine {
         unit: 'count',
         drivers: [{ id: 'flat', label: '本回合無人口流出', value: 0 }],
       },
+      policy: {
+        taxCollected: 0,
+        welfarePaid: 0,
+        welfareRecipients: 0,
+        publicWorksCost: 0,
+        perCapitaCashDelta: 0,
+        treasuryDelta: 0,
+      },
     };
-  }
-
-  private estimatePolicySatisfactionDelta(): number {
-    const shortageRatios = SECTORS.map(sector => {
-      const demand = this.market.demand[sector];
-      if (demand <= 0.001) return 0;
-      return Math.max(0, (demand - this.market.supply[sector]) / demand);
-    });
-    const shortagePressure = shortageRatios.reduce((sum, ratio) => sum + ratio, 0) / shortageRatios.length;
-    const shortagePenalty = -Math.min(7, shortagePressure * 8.5);
-    const taxPenalty = -Math.max(0, (this.government.taxRate - 0.1) * 24);
-    const welfareBoost = this.government.welfareEnabled ? 1.4 : 0;
-    const publicWorksBoost = this.government.publicWorksActive ? 0.9 : 0;
-    const eventBoost = this.activeRandomEvents.reduce(
-      (sum, event) => sum + (event.def.effects.satisfactionBoost ?? 0) - (event.def.effects.healthDamage ?? 0) * 0.28,
-      0,
-    );
-    return shortagePenalty + taxPenalty + welfareBoost + publicWorksBoost + eventBoost;
   }
 
   private buildTurnCausalReplay({
@@ -623,7 +634,7 @@ export class GameEngine {
     endAvgHealth,
     consumptionSummary,
     agingHealthDelta,
-    policySatisfactionEstimate,
+    governmentSummary,
     demographics,
   }: {
     startPopulation: number;
@@ -633,16 +644,22 @@ export class GameEngine {
     endAvgHealth: number;
     consumptionSummary: ConsumptionPhaseSummary;
     agingHealthDelta: number;
-    policySatisfactionEstimate: number;
+    governmentSummary: {
+      taxCollected: number;
+      welfareSpent: number;
+      welfareRecipients: number;
+      publicWorksSpent: number;
+      treasuryDelta: number;
+      perCapitaCashDelta: number;
+    };
     demographics: DemographyPhaseSummary;
   }): TurnCausalReplay {
     if (startPopulation <= 0) return this.buildZeroCausalReplay();
 
     const satNeeds = this.perCapitaDelta(consumptionSummary.needsSatisfactionDelta, startPopulation);
     const satEvents = this.perCapitaDelta(consumptionSummary.eventSatisfactionDelta, startPopulation);
-    const satPolicyEstimate = policySatisfactionEstimate;
     const satNet = endAvgSatisfaction - startAvgSatisfaction;
-    const satResidual = satNet - satNeeds - satEvents - satPolicyEstimate;
+    const satResidual = satNet - satNeeds - satEvents;
 
     const healthNeeds = this.perCapitaDelta(consumptionSummary.needsHealthDelta, startPopulation);
     const healthEvents = this.perCapitaDelta(consumptionSummary.eventHealthDelta, startPopulation);
@@ -666,11 +683,6 @@ export class GameEngine {
             id: 'events',
             label: '事件衝擊',
             value: this.roundMetric(satEvents),
-          },
-          {
-            id: 'policy_est',
-            label: '政策壓力（估算）',
-            value: this.roundMetric(satPolicyEstimate),
           },
           {
             id: 'residual',
@@ -730,6 +742,14 @@ export class GameEngine {
             value: -demographics.births,
           },
         ]),
+      },
+      policy: {
+        taxCollected: this.roundMetric(governmentSummary.taxCollected),
+        welfarePaid: this.roundMetric(governmentSummary.welfareSpent),
+        welfareRecipients: governmentSummary.welfareRecipients,
+        publicWorksCost: this.roundMetric(governmentSummary.publicWorksSpent),
+        perCapitaCashDelta: this.roundMetric(governmentSummary.perCapitaCashDelta),
+        treasuryDelta: this.roundMetric(governmentSummary.treasuryDelta),
       },
     };
   }

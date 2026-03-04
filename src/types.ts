@@ -114,6 +114,16 @@ export interface TurnCausalReplay {
   satisfaction: CausalMetricReplay;
   health: CausalMetricReplay;
   departures: CausalMetricReplay;
+  policy: PolicyExecutionReplay;
+}
+
+export interface PolicyExecutionReplay {
+  taxCollected: number;
+  welfarePaid: number;
+  welfareRecipients: number;
+  publicWorksCost: number;
+  perCapitaCashDelta: number; // (welfare - tax) / population
+  treasuryDelta: number; // tax - welfare - public works
 }
 
 export interface GameEvent {

@@ -28,8 +28,8 @@ export class Government {
     return totalTax;
   }
 
-  distributeWelfare(agents: Agent[]): number {
-    if (!this.welfareEnabled) return 0;
+  distributeWelfare(agents: Agent[]): { totalSpent: number; recipients: number } {
+    if (!this.welfareEnabled) return { totalSpent: 0, recipients: 0 };
 
     const alive = agents.filter(a => a.alive);
     const sorted = [...alive].sort((a, b) => a.money - b.money);
@@ -37,14 +37,16 @@ export class Government {
     const recipients = sorted.slice(0, threshold);
 
     let totalSpent = 0;
+    let servedRecipients = 0;
     for (const agent of recipients) {
       const amount = Math.min(CONFIG.WELFARE_AMOUNT, this.treasury);
       if (amount <= 0) break;
       agent.receiveWelfare(amount);
       this.treasury -= amount;
       totalSpent += amount;
+      servedRecipients++;
     }
-    return totalSpent;
+    return { totalSpent, recipients: servedRecipients };
   }
 
   payPublicWorks(): boolean {

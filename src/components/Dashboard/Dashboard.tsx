@@ -122,6 +122,11 @@ function topDrivers(metric: TurnCausalReplay['satisfaction']) {
     .slice(0, 3);
 }
 
+function leadDriverLabel(metric: TurnCausalReplay['satisfaction']): string {
+  const first = topDrivers(metric)[0];
+  return first ? first.label : '無顯著變化';
+}
+
 function buildObjectives(state: GameState): GovernorObjective[] {
   const latest = state.statistics[state.statistics.length - 1];
   const alive = state.agents.filter(a => a.alive);
@@ -311,17 +316,57 @@ export function Dashboard({ state }: Props) {
                 </div>
               ))}
             </div>
+
+            <div className={styles.causalMetric}>
+              <div className={styles.causalHead}>
+                <span>政策執行（實績）</span>
+                <span className={causal.policy.treasuryDelta >= 0 ? styles.causalUp : styles.causalDown}>
+                  國庫 {signed(causal.policy.treasuryDelta)}
+                </span>
+              </div>
+              <div className={styles.causalDriver}>
+                <span>稅收</span>
+                <span className={styles.causalUp}>+${causal.policy.taxCollected.toFixed(0)}</span>
+              </div>
+              <div className={styles.causalDriver}>
+                <span>福利（{causal.policy.welfareRecipients} 人）</span>
+                <span className={styles.causalDown}>-${causal.policy.welfarePaid.toFixed(0)}</span>
+              </div>
+              <div className={styles.causalDriver}>
+                <span>公共建設</span>
+                <span className={styles.causalDown}>-${causal.policy.publicWorksCost.toFixed(0)}</span>
+              </div>
+              <div className={styles.causalDriver}>
+                <span>人均可支配現金 Δ</span>
+                <span className={causal.policy.perCapitaCashDelta >= 0 ? styles.causalUp : styles.causalDown}>
+                  {signed(causal.policy.perCapitaCashDelta)}
+                </span>
+              </div>
+            </div>
           </div>
 
           <div className={styles.causalTimeline}>
-            <div className={styles.causalTimelineTitle}>最近 6 回合</div>
+            <div className={styles.causalTimelineTitle}>最近 6 回合（點擊展開）</div>
             {stats.slice(-6).reverse().map(s => (
-              <div key={s.turn} className={styles.causalTimelineRow}>
-                <span>T{s.turn}</span>
-                <span>Sat {signed(s.causalReplay.satisfaction.net, 1)}</span>
-                <span>HP {signed(s.causalReplay.health.net, 1)}</span>
-                <span>流出 {s.causalReplay.departures.net > 0 ? '+' : ''}{s.causalReplay.departures.net}</span>
-              </div>
+              <details key={s.turn} className={styles.causalTimelineItem}>
+                <summary className={styles.causalTimelineRow}>
+                  <span>T{s.turn}</span>
+                  <span>Sat {signed(s.causalReplay.satisfaction.net, 1)}</span>
+                  <span>HP {signed(s.causalReplay.health.net, 1)}</span>
+                  <span>流出 {s.causalReplay.departures.net > 0 ? '+' : ''}{s.causalReplay.departures.net}</span>
+                </summary>
+                <div className={styles.causalTimelineDetail}>
+                  <div>滿意度主因：{leadDriverLabel(s.causalReplay.satisfaction)}</div>
+                  <div>健康主因：{leadDriverLabel(s.causalReplay.health)}</div>
+                  <div>
+                    政策實績：稅收 +${s.causalReplay.policy.taxCollected.toFixed(0)}
+                    ，福利 -${s.causalReplay.policy.welfarePaid.toFixed(0)}（{s.causalReplay.policy.welfareRecipients} 人）
+                    ，公建 -${s.causalReplay.policy.publicWorksCost.toFixed(0)}
+                    ，人均現金Δ {signed(s.causalReplay.policy.perCapitaCashDelta, 2)}
+                    ，國庫Δ {signed(s.causalReplay.policy.treasuryDelta, 1)}
+                  </div>
+                </div>
+              </details>
             ))}
           </div>
         </div>

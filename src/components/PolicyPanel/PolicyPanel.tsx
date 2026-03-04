@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import type {
   ActiveRandomEvent,
   GovernmentState,
-  MarketState,
   PendingPolicyChange,
   PolicyTimelineEntry,
   SectorType,
@@ -15,7 +14,6 @@ import styles from './PolicyPanel.module.css';
 interface Props {
   turn: number;
   government: GovernmentState;
-  market: MarketState;
   statistics: TurnSnapshot[];
   activeRandomEvents: ActiveRandomEvent[];
   pendingPolicies: PendingPolicyChange[];
@@ -56,6 +54,12 @@ function signed(value: number, digits: number = 1): string {
   return value >= 0 ? `+${fixed}` : fixed;
 }
 
+function topDrivers(drivers: { id: string; label: string; value: number }[]) {
+  return [...drivers]
+    .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+    .slice(0, 3);
+}
+
 function computeForecast(
   government: GovernmentState,
   stats: TurnSnapshot[],
@@ -93,7 +97,6 @@ function computeForecast(
 export function PolicyPanel({
   turn,
   government,
-  market,
   statistics,
   activeRandomEvents,
   pendingPolicies,
@@ -115,28 +118,12 @@ export function PolicyPanel({
   const welfareDisplay = pendingWelfare ? pendingWelfare.value as boolean : government.welfareEnabled;
   const publicWorksDisplay = pendingPublicWorks ? pendingPublicWorks.value as boolean : government.publicWorksActive;
   const latest = statistics.length > 0 ? statistics[statistics.length - 1] : null;
-  const prev = statistics.length > 1 ? statistics[statistics.length - 2] : null;
+  const activeEventCount = activeRandomEvents.length;
 
   const forecast = useMemo(
     () => computeForecast(government, statistics, pendingPolicies),
     [government, statistics, pendingPolicies],
   );
-
-  const shortageRatios = (['food', 'goods', 'services'] as const).map(sector => {
-    const demand = market.demand[sector];
-    if (demand <= 0.001) return 0;
-    return Math.max(0, (demand - market.supply[sector]) / demand);
-  });
-  const shortagePressure = shortageRatios.reduce((s, v) => s + v, 0) / shortageRatios.length;
-  const shortagePenalty = -Math.min(7, shortagePressure * 8.5);
-  const taxPenalty = -Math.max(0, (government.taxRate - 0.1) * 24);
-  const welfareBoost = government.welfareEnabled ? 1.4 : 0;
-  const publicWorksBoost = government.publicWorksActive ? 0.9 : 0;
-  const eventBoost = activeRandomEvents.reduce((sum, event) => (
-    sum + (event.def.effects.satisfactionBoost ?? 0) - (event.def.effects.healthDamage ?? 0) * 0.28
-  ), 0);
-  const modelDelta = shortagePenalty + taxPenalty + welfareBoost + publicWorksBoost + eventBoost;
-  const actualSatDelta = latest && prev ? latest.avgSatisfaction - prev.avgSatisfaction : null;
 
   return (
     <div className={styles.panel}>
@@ -239,42 +226,54 @@ export function PolicyPanel({
               {forecast.netTreasury >= 0 ? '+' : ''}${forecast.netTreasury.toFixed(0)}
             </span>
           </div>
+          {activeEventCount > 0 && (
+            <div className={styles.forecastRow}>
+              <span>進行中事件 Active Events</span>
+              <span>{activeEventCount}</span>
+            </div>
+          )}
         </div>
       )}
 
       <div className={styles.sectionTitle}>政策效果拆解 Policy Impact</div>
-      {latest && prev ? (
+      {latest ? (
         <div className={styles.impactCard}>
           <div className={styles.impactHeadline}>
             本回合滿意度 ΔSat:
-            <span className={actualSatDelta! >= 0 ? styles.impactUp : styles.impactDown}>
-              {signed(actualSatDelta!, 2)}%
+            <span className={latest.causalReplay.satisfaction.net >= 0 ? styles.impactUp : styles.impactDown}>
+              {signed(latest.causalReplay.satisfaction.net, 2)}%
             </span>
           </div>
+          {topDrivers(latest.causalReplay.satisfaction.drivers).map(driver => (
+            <div key={driver.id} className={styles.impactLine}>
+              <span>{driver.label}</span>
+              <span className={driver.value >= 0 ? styles.impactUp : styles.impactDown}>{signed(driver.value)}</span>
+            </div>
+          ))}
           <div className={styles.impactLine}>
-            <span>需求短缺壓力</span>
-            <span className={shortagePenalty >= 0 ? styles.impactUp : styles.impactDown}>{signed(shortagePenalty)}</span>
+            <span>稅收實績</span>
+            <span className={styles.impactUp}>+${latest.causalReplay.policy.taxCollected.toFixed(0)}</span>
           </div>
           <div className={styles.impactLine}>
-            <span>稅率負擔（{(government.taxRate * 100).toFixed(0)}%）</span>
-            <span className={taxPenalty >= 0 ? styles.impactUp : styles.impactDown}>{signed(taxPenalty)}</span>
+            <span>福利發放（{latest.causalReplay.policy.welfareRecipients} 人）</span>
+            <span className={styles.impactDown}>-${latest.causalReplay.policy.welfarePaid.toFixed(0)}</span>
           </div>
           <div className={styles.impactLine}>
-            <span>福利/公共建設加成</span>
-            <span className={(welfareBoost + publicWorksBoost) >= 0 ? styles.impactUp : styles.impactDown}>
-              {signed(welfareBoost + publicWorksBoost)}
+            <span>公共建設支出</span>
+            <span className={styles.impactDown}>-${latest.causalReplay.policy.publicWorksCost.toFixed(0)}</span>
+          </div>
+          <div className={styles.impactLine}>
+            <span>人均可支配現金 Δ</span>
+            <span className={latest.causalReplay.policy.perCapitaCashDelta >= 0 ? styles.impactUp : styles.impactDown}>
+              {signed(latest.causalReplay.policy.perCapitaCashDelta, 2)}
             </span>
-          </div>
-          <div className={styles.impactLine}>
-            <span>事件影響</span>
-            <span className={eventBoost >= 0 ? styles.impactUp : styles.impactDown}>{signed(eventBoost)}</span>
           </div>
           <div className={styles.impactFoot}>
-            模型估計合計 {signed(modelDelta)}，可與實際 ΔSat 對照理解政策延遲與市場波動。
+            本區塊改為「純實際執行追蹤」，不再使用估算模型。
           </div>
         </div>
       ) : (
-        <div className={styles.empty}>需要至少 2 回合資料才能拆解效果。</div>
+        <div className={styles.empty}>需要至少 1 回合資料才能拆解效果。</div>
       )}
 
       <div className={styles.sectionTitle}>待生效政策 Pending</div>

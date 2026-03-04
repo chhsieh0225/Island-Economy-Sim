@@ -60,6 +60,14 @@ function makeSnapshot(overrides: Partial<TurnSnapshot>): TurnSnapshot {
         unit: 'count',
         drivers: [{ id: 'flat', label: '本回合無人口流出', value: 0 }],
       },
+      policy: {
+        taxCollected: 0,
+        welfarePaid: 0,
+        welfareRecipients: 0,
+        publicWorksCost: 0,
+        perCapitaCashDelta: 0,
+        treasuryDelta: 0,
+      },
     },
   };
   return { ...base, ...overrides };
@@ -209,6 +217,9 @@ test('turn snapshot includes causal replay breakdown', () => {
   assert.equal(typeof snapshot.causalReplay.satisfaction.net, 'number');
   assert.equal(typeof snapshot.causalReplay.health.net, 'number');
   assert.equal(typeof snapshot.causalReplay.departures.net, 'number');
+  assert.equal(typeof snapshot.causalReplay.policy.taxCollected, 'number');
+  assert.equal(typeof snapshot.causalReplay.policy.welfarePaid, 'number');
+  assert.equal(typeof snapshot.causalReplay.policy.treasuryDelta, 'number');
   assert.equal(snapshot.causalReplay.satisfaction.drivers.length > 0, true);
   assert.equal(snapshot.causalReplay.health.drivers.length > 0, true);
   assert.equal(snapshot.causalReplay.departures.drivers.length > 0, true);

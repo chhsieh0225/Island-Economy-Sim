@@ -14,10 +14,16 @@
   letter-spacing: 0.5px;
 }
 
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 16px;
+  min-width: 620px;
 }
 
 .table th {
@@ -59,3 +65,25 @@
 .sdChart { text-align: center; }
 .sdLabel { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
 .sdSvg { width: 100%; height: auto; background: rgba(15, 26, 48, 0.5); border-radius: 6px; }
+
+@media (max-width: 1024px) {
+  .sdContainer {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .title {
+    font-size: 13px;
+  }
+
+  .chartToggle {
+    flex-wrap: wrap;
+  }
+
+  .chartToggleBtn,
+  .chartToggleActive {
+    flex: 1 1 120px;
+    text-align: center;
+  }
+}

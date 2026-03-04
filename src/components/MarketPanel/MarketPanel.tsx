@@ -113,34 +113,36 @@ export function MarketPanel({ market, terrain }: Props) {
   return (
     <div className={styles.panel}>
       <div className={styles.title}>市場價格 Market Prices</div>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>產業</th>
-            <th>價格</th>
-            <th>趨勢</th>
-            <th>供給</th>
-            <th>需求</th>
-            <th>成交量</th>
-            <th>地貌</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(['food', 'goods', 'services'] as const).map(sector => (
-            <tr key={sector}>
-              <td className={styles[sector]}>{SECTOR_LABELS[sector]}</td>
-              <td>${market.prices[sector].toFixed(1)}</td>
-              <td className={trendClass(sector)}>{priceTrend(sector)}</td>
-              <td>{market.supply[sector].toFixed(1)}</td>
-              <td>{market.demand[sector].toFixed(1)}</td>
-              <td>{market.volume[sector].toFixed(1)}</td>
-              <td className={terrain.sectorSuitability[sector] >= 1 ? styles.terrainUp : styles.terrainDown}>
-                {(terrain.sectorSuitability[sector] >= 1 ? '+' : '') + ((terrain.sectorSuitability[sector] - 1) * 100).toFixed(0)}%
-              </td>
+      <div className={styles.tableWrap}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>產業</th>
+              <th>價格</th>
+              <th>趨勢</th>
+              <th>供給</th>
+              <th>需求</th>
+              <th>成交量</th>
+              <th>地貌</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {(['food', 'goods', 'services'] as const).map(sector => (
+              <tr key={sector}>
+                <td className={styles[sector]}>{SECTOR_LABELS[sector]}</td>
+                <td>${market.prices[sector].toFixed(1)}</td>
+                <td className={trendClass(sector)}>{priceTrend(sector)}</td>
+                <td>{market.supply[sector].toFixed(1)}</td>
+                <td>{market.demand[sector].toFixed(1)}</td>
+                <td>{market.volume[sector].toFixed(1)}</td>
+                <td className={terrain.sectorSuitability[sector] >= 1 ? styles.terrainUp : styles.terrainDown}>
+                  {(terrain.sectorSuitability[sector] >= 1 ? '+' : '') + ((terrain.sectorSuitability[sector] - 1) * 100).toFixed(0)}%
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <div className={styles.chartToggle}>
         <button

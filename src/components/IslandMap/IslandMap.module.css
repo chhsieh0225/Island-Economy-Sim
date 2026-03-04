@@ -10,7 +10,7 @@
 .canvas {
   display: block;
   width: 100%;
-  height: 420px;
+  height: clamp(260px, 44vw, 420px);
   cursor: default;
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -41,4 +41,25 @@
   line-height: 1.25;
   pointer-events: none;
   font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 980px) {
+  .canvas {
+    height: min(54vw, 420px);
+    min-height: 260px;
+  }
+}
+
+@media (max-width: 640px) {
+  .canvas {
+    height: min(66vw, 340px);
+    min-height: 220px;
+  }
+
+  .title {
+    top: 6px;
+    left: 8px;
+    font-size: 11px;
+    letter-spacing: 0.35px;
+  }
 }

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   ECONOMIC_CALIBRATION_REFERENCES,
   getEconomicCalibrationProfile,
@@ -16,12 +17,22 @@ function fmt(value: number, digits: number = 2): string {
 }
 
 export function EconomyCalibrationPanel({ mode, onChangeMode }: Props) {
+  const [expanded, setExpanded] = useState(false);
   const current = getEconomicCalibrationProfile(mode);
   const profiles = getEconomicCalibrationProfiles();
 
   return (
     <div className={styles.panel}>
-      <div className={styles.title}>經濟校準 Economic Calibration</div>
+      <div className={styles.headerRow}>
+        <div className={styles.title}>經濟校準 Economic Calibration</div>
+        <button
+          className={styles.toggleBtn}
+          onClick={() => setExpanded(prev => !prev)}
+          aria-expanded={expanded}
+        >
+          {expanded ? '收合細節' : '查看細節'}
+        </button>
+      </div>
 
       <div className={styles.modeRow}>
         {profiles.map(profile => (
@@ -35,48 +46,58 @@ export function EconomyCalibrationPanel({ mode, onChangeMode }: Props) {
         ))}
       </div>
 
-      <div className={styles.desc}>{current.description}</div>
-      <div className={styles.sourceSummary}>參數來源：{current.sourceSummary}</div>
-
-      <div className={styles.table}>
-        <div className={styles.row}>
-          <span className={styles.key}>α_food</span>
-          <span className={styles.value}>{fmt(current.productionLaborElasticity.food)}</span>
-        </div>
-        <div className={styles.row}>
-          <span className={styles.key}>α_goods</span>
-          <span className={styles.value}>{fmt(current.productionLaborElasticity.goods)}</span>
-        </div>
-        <div className={styles.row}>
-          <span className={styles.key}>α_services</span>
-          <span className={styles.value}>{fmt(current.productionLaborElasticity.services)}</span>
-        </div>
-        <div className={styles.row}>
-          <span className={styles.key}>k (tatonnement)</span>
-          <span className={styles.value}>{fmt(current.tatonnementGain, 3)}</span>
-        </div>
-        <div className={styles.row}>
-          <span className={styles.key}>λ (價格平滑)</span>
-          <span className={styles.value}>{fmt(current.priceSmoothing, 2)}</span>
-        </div>
-        <div className={styles.row}>
-          <span className={styles.key}>LES 最低需求</span>
-          <span className={styles.value}>{fmt(current.lesSubsistenceMultiplier, 2)}</span>
-        </div>
+      <div className={styles.summaryRow}>
+        <span className={styles.summaryLabel}>目前模式</span>
+        <span className={styles.summaryValue}>{current.label}</span>
       </div>
+      <div className={styles.summaryHint}>學術參數與文獻區間已收合，想看再展開。</div>
 
-      <div className={styles.refTitle}>文獻常見區間</div>
-      <div className={styles.refs}>
-        {ECONOMIC_CALIBRATION_REFERENCES.map(ref => (
-          <div key={ref.key} className={styles.refItem}>
-            <div className={styles.refHead}>
-              <span>{ref.label}</span>
-              <span className={styles.refRange}>{ref.range}</span>
+      {expanded && (
+        <>
+          <div className={styles.desc}>{current.description}</div>
+          <div className={styles.sourceSummary}>參數來源：{current.sourceSummary}</div>
+
+          <div className={styles.table}>
+            <div className={styles.row}>
+              <span className={styles.key}>α_food</span>
+              <span className={styles.value}>{fmt(current.productionLaborElasticity.food)}</span>
             </div>
-            <div className={styles.refSource}>{ref.source}</div>
+            <div className={styles.row}>
+              <span className={styles.key}>α_goods</span>
+              <span className={styles.value}>{fmt(current.productionLaborElasticity.goods)}</span>
+            </div>
+            <div className={styles.row}>
+              <span className={styles.key}>α_services</span>
+              <span className={styles.value}>{fmt(current.productionLaborElasticity.services)}</span>
+            </div>
+            <div className={styles.row}>
+              <span className={styles.key}>k (tatonnement)</span>
+              <span className={styles.value}>{fmt(current.tatonnementGain, 3)}</span>
+            </div>
+            <div className={styles.row}>
+              <span className={styles.key}>λ (價格平滑)</span>
+              <span className={styles.value}>{fmt(current.priceSmoothing, 2)}</span>
+            </div>
+            <div className={styles.row}>
+              <span className={styles.key}>LES 最低需求</span>
+              <span className={styles.value}>{fmt(current.lesSubsistenceMultiplier, 2)}</span>
+            </div>
           </div>
-        ))}
-      </div>
+
+          <div className={styles.refTitle}>文獻常見區間</div>
+          <div className={styles.refs}>
+            {ECONOMIC_CALIBRATION_REFERENCES.map(ref => (
+              <div key={ref.key} className={styles.refItem}>
+                <div className={styles.refHead}>
+                  <span>{ref.label}</span>
+                  <span className={styles.refRange}>{ref.range}</span>
+                </div>
+                <div className={styles.refSource}>{ref.source}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

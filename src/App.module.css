@@ -1,12 +1,13 @@
 .app {
-  min-height: 100vh;
+  min-height: 100dvh;
   background: #0a192f;
   color: #e6f1ff;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans TC', sans-serif;
+  overflow-x: hidden;
 }
 
 .header {
-  padding: 16px 24px;
+  padding: 16px clamp(12px, 3vw, 24px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -26,23 +27,23 @@
 }
 
 .content {
-  padding: 16px 24px;
-  max-width: 1400px;
+  padding: 16px clamp(12px, 3vw, 24px);
+  max-width: 1440px;
   margin: 0 auto;
 }
 
 .columns {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
   gap: 16px;
+  align-items: start;
 }
 
 .leftColumn {
-  flex: 0 0 340px;
-  min-width: 300px;
+  min-width: 0;
 }
 
 .rightColumn {
-  flex: 1;
   min-width: 0;
 }
 
@@ -62,6 +63,7 @@
   font-size: 12px;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap;
 }
 
 .rightTabBtn:hover {
@@ -75,12 +77,57 @@
   background: #10253f;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1200px) {
   .columns {
-    flex-direction: column;
+    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
   }
+}
+
+@media (max-width: 980px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+
   .leftColumn {
-    flex: none;
     width: 100%;
+  }
+
+  .rightTabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .headerTitle {
+    font-size: 17px;
+    letter-spacing: 0.3px;
+  }
+
+  .headerSub {
+    font-size: 11px;
+  }
+
+  .content {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+}
+
+@media (max-width: 560px) {
+  .rightTabs {
+    gap: 6px;
+  }
+
+  .rightTabBtn {
+    padding: 6px 9px;
+    font-size: 11px;
   }
 }

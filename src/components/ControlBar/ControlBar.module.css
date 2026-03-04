@@ -132,3 +132,35 @@
   color: #ffb74d;
   font-weight: 600;
 }
+
+@media (max-width: 768px) {
+  .bar {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .autoGroup {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .speedBtn {
+    flex: 1 1 80px;
+    text-align: center;
+  }
+
+  .nextTurnBtn,
+  .pauseBtn {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .endGameBtn,
+  .resetBtn {
+    width: 100%;
+    margin-left: 0;
+    text-align: center;
+  }
+}

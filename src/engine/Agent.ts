@@ -10,6 +10,7 @@ import type {
   BuyOrder,
 } from '../types';
 import { SECTORS } from '../types';
+import { getActiveEconomicCalibration } from './economicCalibration';
 import type { Market } from './Market';
 import type { RNG } from './RNG';
 
@@ -206,10 +207,11 @@ export class Agent {
   private getMarshallianBudgetShares(
     demandModifiers?: Partial<Record<SectorType, number>>,
   ): Record<SectorType, number> {
+    const calibration = getActiveEconomicCalibration();
     const raw: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
     for (const sector of SECTORS) {
       const priority = this.getSectorPriority(sector);
-      const demandWeight = Math.max(0.2, demandModifiers?.[sector] ?? 1);
+      const demandWeight = Math.max(calibration.lesMinDemandWeight, demandModifiers?.[sector] ?? 1);
       raw[sector] = Math.max(0.05, priority * demandWeight);
     }
 
@@ -282,6 +284,7 @@ export class Agent {
     let budgetPool = Math.max(0, this.money - reserve);
     if (budgetPool <= 0.01) return;
 
+    const calibration = getActiveEconomicCalibration();
     const budgetShares = this.getMarshallianBudgetShares(demandModifiers);
     const requiredNow: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
     const targetGap: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
@@ -291,7 +294,7 @@ export class Agent {
       const demandMult = demandModifiers?.[sector] ?? 1;
       const need = this.getNeedForSector(sector, demandMult);
       const targetStock = need * this.getTargetBufferTurns(sector);
-      requiredNow[sector] = Math.max(0, need - this.inventory[sector]);
+      requiredNow[sector] = Math.max(0, need * calibration.lesSubsistenceMultiplier - this.inventory[sector]);
       targetGap[sector] = Math.max(0, targetStock - this.inventory[sector]);
       marketPrices[sector] = market.getPrice(sector);
     }

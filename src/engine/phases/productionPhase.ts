@@ -1,6 +1,7 @@
 import { CONFIG } from '../../config';
 import type { ActiveRandomEvent, IslandTerrainState, SectorType } from '../../types';
 import { SECTORS } from '../../types';
+import { getActiveEconomicCalibration } from '../economicCalibration';
 import type { Agent } from '../Agent';
 import type { Government } from '../Government';
 import type { Market } from '../Market';
@@ -61,6 +62,7 @@ export function runProductionPhase({
   }
 
   const allowed = new Set<SectorType>(allowedSectors);
+  const calibration = getActiveEconomicCalibration();
   const sectorLaborCount: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
   for (const agent of agents) {
     if (agent.age < workingAge) continue;
@@ -75,7 +77,7 @@ export function runProductionPhase({
       laborScaleBySector[sector] = 0;
       continue;
     }
-    const alpha = CONFIG.PRODUCTION_LABOR_ELASTICITY[sector];
+    const alpha = calibration.productionLaborElasticity[sector];
     laborScaleBySector[sector] = Math.pow(labor, alpha - 1);
   }
 

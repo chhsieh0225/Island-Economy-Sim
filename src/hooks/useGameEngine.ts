@@ -13,6 +13,11 @@ import type {
 } from '../types';
 import { CONFIG } from '../config';
 import { DEFAULT_SCENARIO, getScenarioById } from '../data/scenarios';
+import type { EconomicCalibrationProfileId } from '../engine/economicCalibration';
+import {
+  getActiveEconomicCalibrationProfileId,
+  setEconomicCalibrationProfile,
+} from '../engine/economicCalibration';
 
 export type AutoPlaySpeed = 'slow' | 'medium' | 'fast' | null;
 
@@ -55,6 +60,9 @@ export function useGameEngine() {
   const [autoPlaySpeed, setAutoPlaySpeed] = useState<AutoPlaySpeed>(null);
   const [runHistory, setRunHistory] = useState<RunSummary[]>([]);
   const [toastQueue, setToastQueue] = useState<ToastNotification[]>([]);
+  const [economicCalibrationMode, setEconomicCalibrationModeState] = useState<EconomicCalibrationProfileId>(
+    () => getActiveEconomicCalibrationProfileId(),
+  );
   const intervalRef = useRef<number | null>(null);
   const runIdRef = useRef(1);
   const toastIdRef = useRef(0);
@@ -175,6 +183,11 @@ export function useGameEngine() {
     syncState();
   }, [engine, syncState, stopAutoPlayInternal]);
 
+  const setEconomicMode = useCallback((mode: EconomicCalibrationProfileId) => {
+    setEconomicCalibrationProfile(mode);
+    setEconomicCalibrationModeState(mode);
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -199,6 +212,8 @@ export function useGameEngine() {
     startAutoPlay,
     stopAutoPlay,
     endGame,
+    economicCalibrationMode,
+    setEconomicMode,
     toastQueue,
     dismissToast,
   };

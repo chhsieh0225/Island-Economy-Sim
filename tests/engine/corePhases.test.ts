@@ -11,6 +11,10 @@ import { Government } from '../../src/engine/Government';
 import { Market } from '../../src/engine/Market';
 import { RNG } from '../../src/engine/RNG';
 import { runProductionPhase } from '../../src/engine/phases/productionPhase';
+import {
+  getActiveEconomicCalibrationProfileId,
+  setEconomicCalibrationProfile,
+} from '../../src/engine/economicCalibration';
 
 function makeSnapshot(overrides: Partial<TurnSnapshot>): TurnSnapshot {
   const base: TurnSnapshot = {
@@ -334,4 +338,33 @@ test('sector output follows diminishing labor returns under Cobb-Douglas scaling
 
   assert.equal(output20 > output10, true);
   assert.equal(output20 < output10 * 2, true);
+});
+
+test('academic calibration mode uses gentler price adjustment than baseline mode', () => {
+  const previousMode = getActiveEconomicCalibrationProfileId();
+
+  const simulateOnePriceUpdate = (mode: 'baseline' | 'academic'): number => {
+    setEconomicCalibrationProfile(mode);
+    const market = new Market();
+    const internals = market as unknown as {
+      supply: Record<SectorType, number>;
+      demand: Record<SectorType, number>;
+      adjustPrices: () => void;
+    };
+
+    internals.supply = { food: 100, goods: 0, services: 0 };
+    internals.demand = { food: 200, goods: 0, services: 0 };
+    internals.adjustPrices();
+    return market.prices.food;
+  };
+
+  try {
+    const baselinePrice = simulateOnePriceUpdate('baseline');
+    const academicPrice = simulateOnePriceUpdate('academic');
+    const baselineDelta = Math.abs(baselinePrice - CONFIG.INITIAL_PRICES.food);
+    const academicDelta = Math.abs(academicPrice - CONFIG.INITIAL_PRICES.food);
+    assert.equal(baselineDelta > academicDelta, true);
+  } finally {
+    setEconomicCalibrationProfile(previousMode);
+  }
 });

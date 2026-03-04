@@ -187,6 +187,16 @@ export function useGameEngine() {
     syncState();
   }, [engine, syncState]);
 
+  const setPolicyRate = useCallback((rate: number) => {
+    engine.setPolicyRate(rate);
+    syncState();
+  }, [engine, syncState]);
+
+  const setLiquiditySupport = useCallback((active: boolean) => {
+    engine.setLiquiditySupport(active);
+    syncState();
+  }, [engine, syncState]);
+
   const chooseDecision = useCallback((choiceId: string) => {
     const resolved = engine.resolveDecision(choiceId);
     if (resolved) {
@@ -271,6 +281,8 @@ export function useGameEngine() {
     setSubsidy,
     setWelfare,
     setPublicWorks,
+    setPolicyRate,
+    setLiquiditySupport,
     reset,
     startNewRun,
     startAutoPlay,

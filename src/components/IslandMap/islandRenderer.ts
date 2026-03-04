@@ -737,9 +737,13 @@ export function drawZoneLabels(
 // Draw market at center
 export function drawMarket(ctx: CanvasRenderingContext2D, layout: ZoneLayout): void {
   const { cx, cy, r } = layout.market;
+  const marketX = cx - r * 0.34;
+  const bankX = cx + r * 0.34;
+  const nodeRadius = Math.max(8, r * 0.32);
 
-  // Market building
   ctx.save();
+
+  // Shared civic hub aura.
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
@@ -748,11 +752,62 @@ export function drawMarket(ctx: CanvasRenderingContext2D, layout: ZoneLayout): v
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  ctx.font = '13px -apple-system, BlinkMacSystemFont, sans-serif';
+  const drawNode = (
+    x: number,
+    icon: string,
+    label: string,
+    fillStyle: string,
+    strokeStyle: string,
+    iconColor: string,
+  ) => {
+    ctx.beginPath();
+    ctx.arc(x, cy, nodeRadius, 0, Math.PI * 2);
+    ctx.fillStyle = fillStyle;
+    ctx.fill();
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    ctx.font = `${Math.max(12, Math.round(nodeRadius * 1.12))}px -apple-system, BlinkMacSystemFont, sans-serif`;
+    ctx.fillStyle = iconColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(icon, x, cy - 0.5);
+
+    ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillStyle = 'rgba(224, 235, 255, 0.88)';
+    ctx.fillText(label, x, cy + nodeRadius + 8);
+  };
+
+  drawNode(
+    marketX,
+    '🏪',
+    '市場',
+    'rgba(255, 215, 0, 0.2)',
+    'rgba(255, 215, 0, 0.48)',
+    'rgba(255, 215, 0, 0.92)',
+  );
+  drawNode(
+    bankX,
+    '🏦',
+    '銀行',
+    'rgba(120, 180, 255, 0.2)',
+    'rgba(120, 180, 255, 0.5)',
+    'rgba(188, 225, 255, 0.95)',
+  );
+
+  ctx.beginPath();
+  ctx.moveTo(marketX + nodeRadius * 0.72, cy);
+  ctx.lineTo(bankX - nodeRadius * 0.72, cy);
+  ctx.strokeStyle = 'rgba(204, 224, 255, 0.34)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.font = '9px -apple-system, BlinkMacSystemFont, sans-serif';
   ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = 'rgba(255, 215, 0, 0.8)';
-  ctx.fillText('🏪', cx, cy);
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = 'rgba(226, 238, 255, 0.72)';
+  ctx.fillText('金融中心 Financial Hub', cx, cy + r * 0.9);
 
   ctx.restore();
 }

@@ -91,6 +91,8 @@ export class Statistics {
           welfarePaid: 0,
           welfareRecipients: 0,
           publicWorksCost: 0,
+          liquidityInjected: 0,
+          policyRate: government.policyRate,
           perCapitaCashDelta: 0,
           treasuryDelta: 0,
         },
@@ -116,7 +118,7 @@ export class Statistics {
   // O(n log n) Gini using sorted-array formula: G = (2·Σ(i·x_i)) / (n·Σx_i) - (n+1)/n
   private computeGini(agents: Agent[]): number {
     if (agents.length === 0) return 0;
-    const wealths = agents.map(a => a.money).sort((a, b) => a - b);
+    const wealths = agents.map(a => a.money + a.savings).sort((a, b) => a - b);
     const n = wealths.length;
     let sumWealth = 0;
     let weightedSum = 0;

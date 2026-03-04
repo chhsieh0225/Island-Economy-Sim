@@ -38,6 +38,8 @@ function makeSnapshot(overrides: Partial<TurnSnapshot>): TurnSnapshot {
       subsidies: { food: 0, goods: 0, services: 0 },
       welfareEnabled: false,
       publicWorksActive: false,
+      policyRate: 0.018,
+      liquiditySupportActive: false,
     },
     births: 0,
     deaths: 0,
@@ -74,6 +76,8 @@ function makeSnapshot(overrides: Partial<TurnSnapshot>): TurnSnapshot {
         welfarePaid: 0,
         welfareRecipients: 0,
         publicWorksCost: 0,
+        liquidityInjected: 0,
+        policyRate: 0.018,
         perCapitaCashDelta: 0,
         treasuryDelta: 0,
       },
@@ -295,6 +299,30 @@ test('locked sectors do not create unmet-need penalties in early agriculture sta
   assert.equal(outcome.unmetNeeds.includes('goods'), false);
   assert.equal(outcome.unmetNeeds.includes('services'), false);
   assert.equal(outcome.satisfactionDelta >= 0, true);
+});
+
+test('banking savings and positive net income can ease dissatisfaction', () => {
+  const rng = new RNG(20260320);
+  const resident = new Agent(11, 'Saver', 'food', rng, {
+    age: 300,
+    maxAge: 900,
+    intelligence: 105,
+    baseLuck: 0,
+    gender: 'F',
+    familyId: 3,
+    goalType: 'balanced',
+  });
+
+  resident.satisfaction = 42;
+  resident.money = 220;
+  resident.receiveMoney(36);
+  resident.spendMoney(8);
+
+  const satDelta = resident.runHouseholdBanking();
+
+  assert.equal(resident.savings > 0, true);
+  assert.equal(resident.lastNetIncome > 0, true);
+  assert.equal(satDelta > 0, true);
 });
 
 test('sector output follows diminishing labor returns under Cobb-Douglas scaling', () => {

@@ -7,6 +7,9 @@ export interface TurnGovernmentSummary {
   welfareSpent: number;
   welfareRecipients: number;
   publicWorksSpent: number;
+  liquidityInjected: number;
+  liquidityRecipients: number;
+  policyRate: number;
   treasuryDelta: number;
   perCapitaCashDelta: number;
 }
@@ -23,6 +26,7 @@ interface RunTurnPipelineInput {
   phaseConsumption: (agents: Agent[]) => ConsumptionPhaseSummary;
   phaseFamilySupport: (agents: Agent[]) => void;
   phaseGovernment: (agents: Agent[]) => TurnGovernmentSummary;
+  phaseHouseholdFinance: (agents: Agent[]) => number;
   phaseAgentDecisions: (agents: Agent[]) => void;
   phaseAging: (agents: Agent[]) => void;
   phaseLifeDeath: (agents: Agent[]) => DemographyPhaseSummary;
@@ -38,6 +42,7 @@ export interface TurnPipelineResult {
   endAvgHealth: number;
   agingHealthDelta: number;
   consumptionSummary: ConsumptionPhaseSummary;
+  financialSatisfactionDelta: number;
   governmentSummary: TurnGovernmentSummary;
   demographics: DemographyPhaseSummary;
   endAliveAgents: Agent[];
@@ -55,6 +60,7 @@ export function runTurnPipeline({
   phaseConsumption,
   phaseFamilySupport,
   phaseGovernment,
+  phaseHouseholdFinance,
   phaseAgentDecisions,
   phaseAging,
   phaseLifeDeath,
@@ -74,6 +80,7 @@ export function runTurnPipeline({
   const consumptionSummary = phaseConsumption(aliveAgents);
   phaseFamilySupport(aliveAgents);
   const governmentSummary = phaseGovernment(aliveAgents);
+  const financialSatisfactionDelta = phaseHouseholdFinance(aliveAgents);
   phaseAgentDecisions(aliveAgents);
 
   const healthBeforeAging = averageMetric(aliveAgents, agent => agent.health);
@@ -98,9 +105,9 @@ export function runTurnPipeline({
     endAvgHealth,
     agingHealthDelta,
     consumptionSummary,
+    financialSatisfactionDelta,
     governmentSummary,
     demographics,
     endAliveAgents,
   };
 }
-

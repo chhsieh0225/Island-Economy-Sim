@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { CONFIG } from '../../config';
 import type {
   ActiveRandomEvent,
   GovernmentState,
@@ -27,6 +28,8 @@ interface Props {
   onSetSubsidy: (sector: SectorType, amount: number) => void;
   onSetWelfare: (enabled: boolean) => void;
   onSetPublicWorks: (active: boolean) => void;
+  onSetPolicyRate: (rate: number) => void;
+  onSetLiquiditySupport: (active: boolean) => void;
 }
 
 const SECTOR_LABELS: Record<SectorType, string> = {
@@ -51,6 +54,10 @@ function pendingSummary(policy: PendingPolicyChange): string {
       return `福利 → ${(policy.value as boolean) ? '開' : '關'}`;
     case 'publicWorks':
       return `公共建設 → ${(policy.value as boolean) ? '開' : '關'}`;
+    case 'policyRate':
+      return `政策利率 → ${((policy.value as number) * 100).toFixed(2)}%`;
+    case 'liquiditySupport':
+      return `流動性支持 → ${(policy.value as boolean) ? '開' : '關'}`;
   }
 }
 
@@ -99,25 +106,47 @@ function computeForecast(
 
   // Effective tax rate (check if pending tax change)
   const pendingTax = pendingPolicies.find(p => p.type === 'tax');
+  const pendingPolicyRate = pendingPolicies.find(p => p.type === 'policyRate');
+  const pendingWelfare = pendingPolicies.find(p => p.type === 'welfare');
+  const pendingPublicWorks = pendingPolicies.find(p => p.type === 'publicWorks');
+  const pendingLiquidity = pendingPolicies.find(p => p.type === 'liquiditySupport');
   const effectiveTaxRate = pendingTax ? (pendingTax.value as number) : government.taxRate;
+  const effectivePolicyRate = pendingPolicyRate
+    ? (pendingPolicyRate.value as number)
+    : government.policyRate;
+  const welfareEnabled = pendingWelfare
+    ? (pendingWelfare.value as boolean)
+    : government.welfareEnabled;
+  const publicWorksEnabled = pendingPublicWorks
+    ? (pendingPublicWorks.value as boolean)
+    : government.publicWorksActive;
 
   // Estimate taxable income: rough approximation from GDP
   const estimatedTaxableIncome = latest.gdp * 0.4;
   const estimatedTaxRevenue = estimatedTaxableIncome * effectiveTaxRate;
 
   // Welfare cost
-  const welfareRecipients = government.welfareEnabled ? Math.floor(latest.population * 0.25) : 0;
+  const welfareRecipients = welfareEnabled ? Math.floor(latest.population * 0.25) : 0;
   const welfareCost = welfareRecipients * 5; // CONFIG.WELFARE_AMOUNT
 
   // Public works cost
-  const pwCost = government.publicWorksActive ? 50 : 0; // CONFIG.PUBLIC_WORKS_COST_PER_TURN
+  const pwCost = publicWorksEnabled ? 50 : 0; // CONFIG.PUBLIC_WORKS_COST_PER_TURN
+  const liquidityEnabled = pendingLiquidity
+    ? (pendingLiquidity.value as boolean)
+    : government.liquiditySupportActive;
+  const liquidityRecipients = liquidityEnabled
+    ? Math.floor(latest.population * CONFIG.MONETARY_LIQUIDITY_TARGET_PERCENTILE)
+    : 0;
+  const liquidityCost = liquidityRecipients * CONFIG.MONETARY_LIQUIDITY_TRANSFER_PER_AGENT;
 
-  const netTreasury = estimatedTaxRevenue - welfareCost - pwCost;
+  const netTreasury = estimatedTaxRevenue - welfareCost - pwCost - liquidityCost;
 
   return {
     taxRevenue: estimatedTaxRevenue,
     welfareCost,
     pwCost,
+    liquidityCost,
+    effectivePolicyRate,
     netTreasury,
     effectiveTaxRate,
   };
@@ -134,18 +163,26 @@ export function PolicyPanel({
   onSetSubsidy,
   onSetWelfare,
   onSetPublicWorks,
+  onSetPolicyRate,
+  onSetLiquiditySupport,
 }: Props) {
   const pendingTax = pendingPolicies.find(p => p.type === 'tax');
+  const pendingPolicyRate = pendingPolicies.find(p => p.type === 'policyRate');
   const pendingWelfare = pendingPolicies.find(p => p.type === 'welfare');
   const pendingPublicWorks = pendingPolicies.find(p => p.type === 'publicWorks');
+  const pendingLiquiditySupport = pendingPolicies.find(p => p.type === 'liquiditySupport');
   const getSubsidyDisplay = (sector: SectorType): number => (
     (pendingPolicies.find(p => p.type === 'subsidy' && p.sector === sector)?.value as number | undefined)
     ?? government.subsidies[sector]
   );
 
   const taxDisplay = (pendingTax ? pendingTax.value as number : government.taxRate) * 100;
+  const policyRateDisplay = (pendingPolicyRate ? pendingPolicyRate.value as number : government.policyRate) * 100;
   const welfareDisplay = pendingWelfare ? pendingWelfare.value as boolean : government.welfareEnabled;
   const publicWorksDisplay = pendingPublicWorks ? pendingPublicWorks.value as boolean : government.publicWorksActive;
+  const liquiditySupportDisplay = pendingLiquiditySupport
+    ? pendingLiquiditySupport.value as boolean
+    : government.liquiditySupportActive;
   const latest = statistics.length > 0 ? statistics[statistics.length - 1] : null;
   const activeEventCount = activeRandomEvents.length;
 
@@ -255,6 +292,37 @@ export function PolicyPanel({
         </Tooltip>
       </label>
 
+      <div className={styles.sectionTitle}>貨幣政策 Monetary</div>
+      <div className={styles.control}>
+        <div className={styles.controlLabel}>
+          <Tooltip content={POLICY_TOOLTIPS.policyRate.content} detail={POLICY_TOOLTIPS.policyRate.detail}>
+            <span>政策利率 Policy Rate</span>
+          </Tooltip>
+          <span className={styles.controlValue}>{policyRateDisplay.toFixed(2)}%</span>
+        </div>
+        <input
+          type="range"
+          className={styles.slider}
+          min="0"
+          max="8"
+          step="0.25"
+          value={policyRateDisplay}
+          onChange={e => onSetPolicyRate(Number(e.target.value) / 100)}
+        />
+      </div>
+
+      <label className={styles.toggle}>
+        <input
+          type="checkbox"
+          className={styles.checkbox}
+          checked={liquiditySupportDisplay}
+          onChange={e => onSetLiquiditySupport(e.target.checked)}
+        />
+        <Tooltip content={POLICY_TOOLTIPS.liquiditySupport.content} detail={POLICY_TOOLTIPS.liquiditySupport.detail}>
+          <span className={styles.toggleLabel}>流動性支持 Liquidity Support</span>
+        </Tooltip>
+      </label>
+
       {forecast && (
         <div className={styles.forecastCard}>
           <div className={styles.forecastTitle}>📊 下回合預測 Next-Turn Forecast</div>
@@ -274,6 +342,16 @@ export function PolicyPanel({
               <span className={styles.forecastNegative}>-${forecast.pwCost.toFixed(0)}</span>
             </div>
           )}
+          {forecast.liquidityCost > 0 && (
+            <div className={styles.forecastRow}>
+              <span>流動性注入 Liquidity</span>
+              <span className={styles.forecastNegative}>-${forecast.liquidityCost.toFixed(0)}</span>
+            </div>
+          )}
+          <div className={styles.forecastRow}>
+            <span>政策利率 Policy Rate</span>
+            <span>{(forecast.effectivePolicyRate * 100).toFixed(2)}%</span>
+          </div>
           <div className={`${styles.forecastRow} ${styles.forecastTotal}`}>
             <span>淨國庫變化 Net Treasury</span>
             <span className={forecast.netTreasury >= 0 ? styles.forecastPositive : styles.forecastNegative}>
@@ -315,6 +393,14 @@ export function PolicyPanel({
           <div className={styles.impactLine}>
             <span>公共建設支出</span>
             <span className={styles.impactDown}>-${latest.causalReplay.policy.publicWorksCost.toFixed(0)}</span>
+          </div>
+          <div className={styles.impactLine}>
+            <span>流動性注入</span>
+            <span className={styles.impactDown}>-${latest.causalReplay.policy.liquidityInjected.toFixed(0)}</span>
+          </div>
+          <div className={styles.impactLine}>
+            <span>政策利率</span>
+            <span>{(latest.causalReplay.policy.policyRate * 100).toFixed(2)}%</span>
           </div>
           <div className={styles.impactLine}>
             <span>人均可支配現金 Δ</span>

@@ -44,6 +44,12 @@ export function applyPendingPoliciesPhase({
       case 'publicWorks':
         government.setPublicWorks(policy.value as boolean);
         break;
+      case 'policyRate':
+        government.setPolicyRate(policy.value as number);
+        break;
+      case 'liquiditySupport':
+        government.setLiquiditySupport(policy.value as boolean);
+        break;
     }
 
     markPolicyApplied(policy);

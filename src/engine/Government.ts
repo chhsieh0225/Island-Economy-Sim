@@ -8,6 +8,8 @@ export class Government {
   subsidies: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
   welfareEnabled: boolean = false;
   publicWorksActive: boolean = false;
+  policyRate: number = CONFIG.MONETARY_POLICY_RATE_DEFAULT;
+  liquiditySupportActive: boolean = false;
 
   getSubsidyMultiplier(sector: SectorType): number {
     return 1 + this.subsidies[sector] / 100;
@@ -76,6 +78,17 @@ export class Government {
     this.publicWorksActive = active;
   }
 
+  setPolicyRate(rate: number): void {
+    this.policyRate = Math.max(
+      CONFIG.MONETARY_POLICY_RATE_MIN,
+      Math.min(CONFIG.MONETARY_POLICY_RATE_MAX, rate),
+    );
+  }
+
+  setLiquiditySupport(active: boolean): void {
+    this.liquiditySupportActive = active;
+  }
+
   toState(previous?: GovernmentState): GovernmentState {
     const treasury = Math.round(this.treasury * 100) / 100;
     if (
@@ -86,7 +99,9 @@ export class Government {
       previous.subsidies.goods === this.subsidies.goods &&
       previous.subsidies.services === this.subsidies.services &&
       previous.welfareEnabled === this.welfareEnabled &&
-      previous.publicWorksActive === this.publicWorksActive
+      previous.publicWorksActive === this.publicWorksActive &&
+      previous.policyRate === this.policyRate &&
+      previous.liquiditySupportActive === this.liquiditySupportActive
     ) {
       return previous;
     }
@@ -97,6 +112,8 @@ export class Government {
       subsidies: { ...this.subsidies },
       welfareEnabled: this.welfareEnabled,
       publicWorksActive: this.publicWorksActive,
+      policyRate: this.policyRate,
+      liquiditySupportActive: this.liquiditySupportActive,
     };
   }
 
@@ -106,5 +123,7 @@ export class Government {
     this.subsidies = { food: 0, goods: 0, services: 0 };
     this.welfareEnabled = false;
     this.publicWorksActive = false;
+    this.policyRate = CONFIG.MONETARY_POLICY_RATE_DEFAULT;
+    this.liquiditySupportActive = false;
   }
 }

@@ -64,4 +64,12 @@ export const POLICY_TOOLTIPS = {
     content: '每回合花費 $50 國庫支出，換取全體生產力提升 10%。',
     detail: '$50/turn for +10% global productivity boost.',
   },
+  policyRate: {
+    content: '政策利率偏高可抑制價格波動，但會降低消費與成長動能；偏低則相反。',
+    detail: 'Higher policy rate stabilizes prices but cools demand; lower rate boosts demand with inflation risk.',
+  },
+  liquiditySupport: {
+    content: '對低資產家戶注入現金，短期有助民心與交易，但會增加國庫壓力。',
+    detail: 'Injects cash to low-asset households; supports sentiment but costs treasury.',
+  },
 } as const;

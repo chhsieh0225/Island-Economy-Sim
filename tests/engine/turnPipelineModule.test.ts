@@ -49,9 +49,17 @@ test('turn pipeline module: runs phases in order and returns phase summaries', (
         welfareSpent: 2,
         welfareRecipients: 1,
         publicWorksSpent: 0,
+        liquidityInjected: 0,
+        liquidityRecipients: 0,
+        policyRate: 0.02,
         treasuryDelta: 8,
         perCapitaCashDelta: -4,
       };
+    },
+    phaseHouseholdFinance: current => {
+      calls.push('finance');
+      current[0].satisfaction += 1;
+      return 1;
     },
     phaseAgentDecisions: current => {
       calls.push('decisions');
@@ -88,6 +96,7 @@ test('turn pipeline module: runs phases in order and returns phase summaries', (
     'consumption',
     'family',
     'government',
+    'finance',
     'decisions',
     'aging',
     'lifeDeath',
@@ -99,10 +108,10 @@ test('turn pipeline module: runs phases in order and returns phase summaries', (
   assert.equal(result.startAvgSatisfaction, 50);
   assert.equal(result.startAvgHealth, 75);
   assert.equal(result.agingHealthDelta, -1);
+  assert.equal(result.financialSatisfactionDelta, 1);
   assert.equal(result.endAliveAgents.length, 1);
-  assert.equal(result.endAvgSatisfaction, 66);
+  assert.equal(result.endAvgSatisfaction, 67);
   assert.equal(result.endAvgHealth, 79);
   assert.equal(result.demographics.deaths, 1);
   assert.equal(result.governmentSummary.taxCollected, 10);
 });
-

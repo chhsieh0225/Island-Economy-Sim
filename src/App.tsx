@@ -61,6 +61,8 @@ function App() {
     setSubsidy,
     setWelfare,
     setPublicWorks,
+    setPolicyRate,
+    setLiquiditySupport,
     reset,
     startNewRun,
     startAutoPlay,
@@ -154,6 +156,8 @@ function App() {
               onSetSubsidy={setSubsidy}
               onSetWelfare={setWelfare}
               onSetPublicWorks={setPublicWorks}
+              onSetPolicyRate={setPolicyRate}
+              onSetLiquiditySupport={setLiquiditySupport}
             />
 
             <AgentRoster

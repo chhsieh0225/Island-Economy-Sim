@@ -48,7 +48,7 @@ test('baseline seed regression snapshot remains deterministic at turn 18', () =>
     totals.deaths,
   ].join('|');
 
-  assert.equal(signature, '18|industrial|101|96.9|98.9|0.069|49.63|1|0');
+  assert.equal(signature, '18|industrial|101|97.0|98.9|0.044|34.56|1|0');
 });
 
 test('progressive economy unlocks industrial stage under baseline seed', () => {
@@ -66,7 +66,10 @@ test('policy replay cashflow is internally consistent', () => {
 
   for (const snap of history) {
     const replay = snap.causalReplay.policy;
-    const expectedTreasuryDelta = replay.taxCollected - replay.welfarePaid - replay.publicWorksCost;
+    const expectedTreasuryDelta = replay.taxCollected
+      - replay.welfarePaid
+      - replay.publicWorksCost
+      - replay.liquidityInjected;
     assert.equal(Math.abs(replay.treasuryDelta - expectedTreasuryDelta) < 0.02, true);
   }
 });

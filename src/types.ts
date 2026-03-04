@@ -12,6 +12,7 @@ export interface AgentState {
   name: string;
   sector: SectorType;
   money: number;
+  savings: number;
   inventory: Record<SectorType, number>;
   health: number;
   satisfaction: number;
@@ -19,6 +20,7 @@ export interface AgentState {
   alive: boolean;
   lowIncomeTurns: number;
   incomeHistory: number[];
+  lastNetIncome: number;
   turnsInSector: number;
   age: number;           // in turns (1 turn = 1 month)
   maxAge: number;        // natural death age in turns
@@ -69,6 +71,8 @@ export interface GovernmentState {
   subsidies: Record<SectorType, number>;
   welfareEnabled: boolean;
   publicWorksActive: boolean;
+  policyRate: number; // annual policy rate
+  liquiditySupportActive: boolean;
 }
 
 export interface TurnSnapshot {
@@ -122,8 +126,10 @@ export interface PolicyExecutionReplay {
   welfarePaid: number;
   welfareRecipients: number;
   publicWorksCost: number;
-  perCapitaCashDelta: number; // (welfare - tax) / population
-  treasuryDelta: number; // tax - welfare - public works
+  liquidityInjected: number;
+  policyRate: number;
+  perCapitaCashDelta: number; // (welfare + liquidity - tax) / population
+  treasuryDelta: number; // tax - welfare - public works - liquidity
 }
 
 export interface GameEvent {
@@ -195,7 +201,13 @@ export interface ActiveRandomEvent {
   turnsRemaining: number;
 }
 
-export type PendingPolicyType = 'tax' | 'subsidy' | 'welfare' | 'publicWorks';
+export type PendingPolicyType =
+  | 'tax'
+  | 'subsidy'
+  | 'welfare'
+  | 'publicWorks'
+  | 'policyRate'
+  | 'liquiditySupport';
 
 export interface PendingPolicyChange {
   id: string;
@@ -233,9 +245,11 @@ export interface ScenarioDef {
   description: string;
   initialTreasury?: number;
   initialTaxRate?: number;
+  initialPolicyRate?: number;
   initialSubsidies?: Partial<Record<SectorType, number>>;
   enableWelfare?: boolean;
   enablePublicWorks?: boolean;
+  enableLiquiditySupport?: boolean;
   priceMultiplier?: Partial<Record<SectorType, number>>;
   ageShiftTurns?: number;
   wealthSkew?: {

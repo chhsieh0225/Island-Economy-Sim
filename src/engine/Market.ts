@@ -22,6 +22,8 @@ export class Market {
   private sellOrders: Map<SectorType, SellOrder[]>;
   private buyOrders: Map<SectorType, BuyOrder[]>;
   private agents: Map<number, Agent>;
+  private policyRate: number;
+  private liquiditySupportActive: boolean;
   private readonly getEconomicCalibration: () => EconomicCalibrationProfile;
 
   constructor(options?: MarketOptions) {
@@ -37,6 +39,8 @@ export class Market {
     this.sellOrders = new Map();
     this.buyOrders = new Map();
     this.agents = new Map();
+    this.policyRate = CONFIG.MONETARY_POLICY_RATE_DEFAULT;
+    this.liquiditySupportActive = false;
     this.getEconomicCalibration = options?.getEconomicCalibration ?? (
       () => getEconomicCalibrationProfile(DEFAULT_ECONOMIC_CALIBRATION_PROFILE_ID)
     );
@@ -64,6 +68,14 @@ export class Market {
 
   addBuyOrder(order: BuyOrder): void {
     this.buyOrders.get(order.sector)!.push(order);
+  }
+
+  setMonetaryStance(policyRate: number, liquiditySupportActive: boolean): void {
+    this.policyRate = Math.max(
+      CONFIG.MONETARY_POLICY_RATE_MIN,
+      Math.min(CONFIG.MONETARY_POLICY_RATE_MAX, policyRate),
+    );
+    this.liquiditySupportActive = liquiditySupportActive;
   }
 
   clearOrders(): void {
@@ -142,12 +154,31 @@ export class Market {
       // Walrasian tatonnement on log prices:
       // ln p_{t+1} = ln p_t + k * (D - S) / (D + S + eps)
       const excessDemandRatio = (demandTotal - supplyTotal) / Math.max(1, demandTotal + supplyTotal);
+      const policyDelta = this.policyRate - CONFIG.MONETARY_POLICY_NEUTRAL_RATE;
+      const gainMultiplier = Math.max(
+        0.55,
+        Math.min(
+          1.45,
+          1 - policyDelta * CONFIG.MONETARY_RATE_TATONNEMENT_SENSITIVITY
+            + (this.liquiditySupportActive ? CONFIG.MONETARY_LIQUIDITY_TATONNEMENT_BONUS : 0),
+        ),
+      );
+      const effectiveGain = calibration.tatonnementGain * gainMultiplier;
       const logPrice = Math.log(Math.max(CONFIG.MIN_PRICE, this.prices[sector]));
-      const rawNewPrice = Math.exp(logPrice + calibration.tatonnementGain * excessDemandRatio);
+      const rawNewPrice = Math.exp(logPrice + effectiveGain * excessDemandRatio);
+
+      const stepBase = this.liquiditySupportActive
+        ? CONFIG.MONETARY_MAX_PRICE_STEP_LIQUIDITY
+        : CONFIG.MONETARY_MAX_PRICE_STEP_BASE;
+      const tightening = Math.max(0, policyDelta) * CONFIG.MONETARY_MAX_PRICE_STEP_RATE_SENSITIVITY;
+      const maxStep = Math.max(0.08, stepBase - tightening);
+      const lowerBound = this.prices[sector] * (1 - maxStep);
+      const upperBound = this.prices[sector] * (1 + maxStep);
+      const boundedRaw = Math.max(lowerBound, Math.min(upperBound, rawNewPrice));
 
       // Smooth with previous price
       const smoothed =
-        calibration.priceSmoothing * rawNewPrice
+        calibration.priceSmoothing * boundedRaw
         + (1 - calibration.priceSmoothing) * this.prices[sector];
       this.prices[sector] = Math.max(CONFIG.MIN_PRICE, Math.min(CONFIG.MAX_PRICE, smoothed));
 
@@ -226,6 +257,8 @@ export class Market {
     this.supply = { food: 0, goods: 0, services: 0 };
     this.demand = { food: 0, goods: 0, services: 0 };
     this.volume = { food: 0, goods: 0, services: 0 };
+    this.policyRate = CONFIG.MONETARY_POLICY_RATE_DEFAULT;
+    this.liquiditySupportActive = false;
     this.clearOrders();
   }
 }

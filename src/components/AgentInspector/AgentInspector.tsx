@@ -43,6 +43,9 @@ export function AgentInspector({ agent, onClose }: Props) {
   const luckDisplay = agent.baseLuck >= 0
     ? `+${(agent.baseLuck * 100).toFixed(0)}%`
     : `${(agent.baseLuck * 100).toFixed(0)}%`;
+  const netIncomeDisplay = agent.lastNetIncome >= 0
+    ? `+$${agent.lastNetIncome.toFixed(1)}`
+    : `-$${Math.abs(agent.lastNetIncome).toFixed(1)}`;
 
   const causeLabel = agent.causeOfDeath === 'age' ? '因年老去世'
     : agent.causeOfDeath === 'health' ? '因病去世'
@@ -106,6 +109,19 @@ export function AgentInspector({ agent, onClose }: Props) {
           <div className={styles.stat}>
             <div className={styles.statLabel}>金錢 Money</div>
             <div className={styles.statValue}>${agent.money.toFixed(1)}</div>
+          </div>
+          <div className={styles.stat}>
+            <div className={styles.statLabel}>存款 Savings</div>
+            <div className={styles.statValue}>${agent.savings.toFixed(1)}</div>
+          </div>
+          <div className={styles.stat}>
+            <div className={styles.statLabel}>淨收入 Net/Turn</div>
+            <div
+              className={styles.statValue}
+              style={{ color: agent.lastNetIncome >= 0 ? '#4caf50' : '#ff7043' }}
+            >
+              {netIncomeDisplay}
+            </div>
           </div>
           <div className={styles.stat}>
             <div className={styles.statLabel}>生產力 Productivity</div>

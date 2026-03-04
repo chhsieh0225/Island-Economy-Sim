@@ -7,6 +7,9 @@ interface GovernmentPhaseSummary {
   welfareSpent: number;
   welfareRecipients: number;
   publicWorksSpent: number;
+  liquidityInjected: number;
+  liquidityRecipients: number;
+  policyRate: number;
   treasuryDelta: number;
   perCapitaCashDelta: number;
 }
@@ -18,6 +21,7 @@ export interface BuildTurnCausalReplayInput {
   startAvgHealth: number;
   endAvgHealth: number;
   consumptionSummary: ConsumptionPhaseSummary;
+  financialSatisfactionDelta: number;
   agingHealthDelta: number;
   governmentSummary: GovernmentPhaseSummary;
   demographics: DemographyPhaseSummary;
@@ -60,6 +64,8 @@ export function buildZeroCausalReplay(): TurnCausalReplay {
       welfarePaid: 0,
       welfareRecipients: 0,
       publicWorksCost: 0,
+      liquidityInjected: 0,
+      policyRate: 0,
       perCapitaCashDelta: 0,
       treasuryDelta: 0,
     },
@@ -73,6 +79,7 @@ export function buildTurnCausalReplay({
   startAvgHealth,
   endAvgHealth,
   consumptionSummary,
+  financialSatisfactionDelta,
   agingHealthDelta,
   governmentSummary,
   demographics,
@@ -81,8 +88,9 @@ export function buildTurnCausalReplay({
 
   const satNeeds = perCapitaDelta(consumptionSummary.needsSatisfactionDelta, startPopulation);
   const satEvents = perCapitaDelta(consumptionSummary.eventSatisfactionDelta, startPopulation);
+  const satFinance = perCapitaDelta(financialSatisfactionDelta, startPopulation);
   const satNet = endAvgSatisfaction - startAvgSatisfaction;
-  const satResidual = satNet - satNeeds - satEvents;
+  const satResidual = satNet - satNeeds - satEvents - satFinance;
 
   const healthNeeds = perCapitaDelta(consumptionSummary.needsHealthDelta, startPopulation);
   const healthEvents = perCapitaDelta(consumptionSummary.eventHealthDelta, startPopulation);
@@ -106,6 +114,11 @@ export function buildTurnCausalReplay({
           id: 'events',
           label: '事件衝擊',
           value: roundMetric(satEvents),
+        },
+        {
+          id: 'finance',
+          label: '收入與存款安全感',
+          value: roundMetric(satFinance),
         },
         {
           id: 'residual',
@@ -171,6 +184,8 @@ export function buildTurnCausalReplay({
       welfarePaid: roundMetric(governmentSummary.welfareSpent),
       welfareRecipients: governmentSummary.welfareRecipients,
       publicWorksCost: roundMetric(governmentSummary.publicWorksSpent),
+      liquidityInjected: roundMetric(governmentSummary.liquidityInjected),
+      policyRate: roundMetric(governmentSummary.policyRate * 100) / 100,
       perCapitaCashDelta: roundMetric(governmentSummary.perCapitaCashDelta),
       treasuryDelta: roundMetric(governmentSummary.treasuryDelta),
     },

@@ -170,6 +170,19 @@ export function getPolicySideEffects(type: PendingPolicyType, value: number | bo
       return value
         ? ['全體生產力短期提升', '每回合固定消耗國庫']
         : ['停止固定支出', '失去公共建設加成'];
+    case 'policyRate': {
+      const numeric = value as number;
+      if (numeric >= 0.045) {
+        return ['抑制價格波動與通膨', '消費與成長動能偏弱'];
+      }
+      if (numeric <= 0.015) {
+        return ['刺激消費與交易需求', '價格壓力可能上升'];
+      }
+      return ['接近中性利率', '兼顧穩定與成長'];
+    }
+    case 'liquiditySupport':
+      return value
+        ? ['向低資產家戶注入流動性', '短期穩定民心但增加國庫支出']
+        : ['停止注入以保留財政空間', '弱勢現金壓力可能回升'];
   }
 }
-

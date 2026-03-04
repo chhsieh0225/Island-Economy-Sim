@@ -67,6 +67,7 @@ export class Agent {
   name: string;
   sector: SectorType;
   money: number;
+  savings: number;
   inventory: Record<SectorType, number>;
   health: number;
   satisfaction: number;
@@ -74,6 +75,7 @@ export class Agent {
   alive: boolean;
   lowIncomeTurns: number;
   incomeHistory: number[];
+  lastNetIncome: number;
   turnsInSector: number;
 
   age: number;
@@ -100,12 +102,14 @@ export class Agent {
     this.name = name;
     this.sector = sector;
     this.money = CONFIG.INITIAL_MONEY;
+    this.savings = 0;
     this.inventory = { food: 2, goods: 1, services: 1 };
     this.health = 100;
     this.satisfaction = 100;
     this.alive = true;
     this.lowIncomeTurns = 0;
     this.incomeHistory = [];
+    this.lastNetIncome = 0;
     this.turnsInSector = 0;
 
     this.totalSwitches = 0;
@@ -196,6 +200,23 @@ export class Agent {
     if (this.health < 45) turns += 0.6;
 
     return Math.max(1, Math.min(4.2, turns));
+  }
+
+  private getCashReserveTarget(): number {
+    const weights = this.goalWeights;
+    return (
+      CONFIG.GOAL_EMERGENCY_CASH +
+      weights.survival * CONFIG.GOAL_RESERVE_SURVIVAL_WEIGHT +
+      weights.wealth * CONFIG.GOAL_RESERVE_WEALTH_WEIGHT
+    );
+  }
+
+  private withdrawFromSavings(amount: number): number {
+    const withdrawal = Math.max(0, Math.min(this.savings, amount));
+    if (withdrawal <= 0) return 0;
+    this.savings -= withdrawal;
+    this.money += withdrawal;
+    return withdrawal;
   }
 
   private getSectorPriority(sector: SectorType): number {
@@ -297,11 +318,10 @@ export class Agent {
     const allowed = allowedSectors.length > 0 ? allowedSectors : SECTORS;
     const allowedSet = new Set<SectorType>(allowed);
 
-    const weights = this.goalWeights;
-    const reserve =
-      CONFIG.GOAL_EMERGENCY_CASH +
-      weights.survival * CONFIG.GOAL_RESERVE_SURVIVAL_WEIGHT +
-      weights.wealth * CONFIG.GOAL_RESERVE_WEALTH_WEIGHT;
+    const reserve = this.getCashReserveTarget();
+    if (this.money < reserve && this.savings > 0) {
+      this.withdrawFromSavings(reserve - this.money);
+    }
     let budgetPool = Math.max(0, this.money - reserve);
     if (budgetPool <= 0.01) return;
 
@@ -419,6 +439,7 @@ export class Agent {
   }
 
   recordIncome(): void {
+    this.lastNetIncome = this._incomeThisTurn - this._spentThisTurn;
     this.incomeHistory.push(this._incomeThisTurn);
     if (this.incomeHistory.length > 10) {
       this.incomeHistory.shift();
@@ -536,6 +557,7 @@ export class Agent {
 
   switchJob(newSector: SectorType): void {
     this.money -= CONFIG.JOB_SWITCH_COST;
+    this._spentThisTurn += CONFIG.JOB_SWITCH_COST;
     this.sector = newSector;
     this.turnsInSector = 0;
     this.lowIncomeTurns = 0;
@@ -549,11 +571,52 @@ export class Agent {
     const taxable = this._incomeThisTurn;
     const tax = Math.max(0, taxable * rate);
     this.money -= tax;
+    this._spentThisTurn += tax;
     return tax;
   }
 
   receiveWelfare(amount: number): void {
     this.money += amount;
+    this._incomeThisTurn += amount;
+  }
+
+  runHouseholdBanking(policyRateAnnual: number = CONFIG.MONETARY_POLICY_RATE_DEFAULT): number {
+    const prevSatisfaction = this.satisfaction;
+
+    const reserve = this.getCashReserveTarget();
+    const withdrawFloor = reserve * CONFIG.BANK_WITHDRAW_TRIGGER_RATIO;
+    if (this.money < withdrawFloor && this.savings > 0) {
+      this.withdrawFromSavings(withdrawFloor - this.money);
+    }
+
+    const excessCash = Math.max(0, this.money - reserve);
+    if (excessCash > 0.01) {
+      const deposit = excessCash * CONFIG.BANK_DEPOSIT_RATE;
+      this.money -= deposit;
+      this.savings += deposit;
+    }
+
+    if (this.savings > 0.01) {
+      const policyPassThrough = Math.max(0, policyRateAnnual / 12) + CONFIG.BANK_INTEREST_SPREAD_PER_TURN;
+      const effectiveRate = Math.max(CONFIG.BANK_INTEREST_RATE_PER_TURN, policyPassThrough);
+      const interest = this.savings * effectiveRate;
+      this.savings += interest;
+      this.money += interest;
+      this._incomeThisTurn += interest;
+    }
+
+    const netIncome = this._incomeThisTurn - this._spentThisTurn;
+    this.lastNetIncome = netIncome;
+
+    const incomeGain = Math.max(0, Math.min(1, netIncome / CONFIG.BANK_SAT_INCOME_NORMALIZER));
+    const securityGoal = Math.max(1, reserve * 2);
+    const securityGain = Math.max(0, Math.min(1, this.savings / securityGoal));
+    const satBoost = incomeGain * CONFIG.BANK_SAT_INCOME_MAX + securityGain * CONFIG.BANK_SAT_SECURITY_MAX;
+    if (satBoost > 0) {
+      this.satisfaction = Math.min(100, this.satisfaction + satBoost);
+    }
+
+    return this.satisfaction - prevSatisfaction;
   }
 
   ageOneTurn(): void {
@@ -620,6 +683,7 @@ export class Agent {
       name: this.name,
       sector: this.sector,
       money: Math.round(this.money * 100) / 100,
+      savings: Math.round(this.savings * 100) / 100,
       inventory: { ...this.inventory },
       health: Math.round(this.health * 10) / 10,
       satisfaction: Math.round(this.satisfaction * 10) / 10,
@@ -627,6 +691,7 @@ export class Agent {
       alive: this.alive,
       lowIncomeTurns: this.lowIncomeTurns,
       incomeHistory: [...this.incomeHistory],
+      lastNetIncome: Math.round(this.lastNetIncome * 100) / 100,
       turnsInSector: this.turnsInSector,
       age: this.age,
       maxAge: this.maxAge,

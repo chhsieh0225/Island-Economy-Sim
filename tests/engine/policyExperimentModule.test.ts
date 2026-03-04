@@ -26,6 +26,8 @@ function snapshot(turn: number, overrides?: Partial<TurnSnapshot>): TurnSnapshot
       subsidies: { food: 0, goods: 0, services: 0 },
       welfareEnabled: false,
       publicWorksActive: false,
+      policyRate: 0.018,
+      liquiditySupportActive: false,
     },
     births: 0,
     deaths: 0,
@@ -50,6 +52,8 @@ function snapshot(turn: number, overrides?: Partial<TurnSnapshot>): TurnSnapshot
         welfarePaid: 0,
         welfareRecipients: 0,
         publicWorksCost: 0,
+        liquidityInjected: 0,
+        policyRate: 0.018,
         perCapitaCashDelta: 0,
         treasuryDelta: 0,
       },
@@ -116,4 +120,3 @@ test('policy experiment module: applied policy is collecting when window not com
   assert.equal(cards[0].observedTurn, 6);
   assert.notEqual(cards[0].metrics, null);
 });
-

@@ -12,6 +12,8 @@ function government(overrides?: Partial<GovernmentState>): GovernmentState {
     subsidies: { food: 20, goods: 20, services: 20 },
     welfareEnabled: false,
     publicWorksActive: false,
+    policyRate: 0.018,
+    liquiditySupportActive: false,
     ...overrides,
   };
 }

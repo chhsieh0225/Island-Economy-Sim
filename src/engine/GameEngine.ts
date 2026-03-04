@@ -308,6 +308,9 @@ export class GameEngine {
     if (scenario.initialTaxRate !== undefined) {
       this.government.setTaxRate(scenario.initialTaxRate);
     }
+    if (scenario.initialPolicyRate !== undefined) {
+      this.government.setPolicyRate(scenario.initialPolicyRate);
+    }
     if (scenario.initialSubsidies) {
       for (const [sector, amount] of Object.entries(scenario.initialSubsidies)) {
         this.government.setSubsidy(sector as SectorType, amount ?? 0);
@@ -318,6 +321,9 @@ export class GameEngine {
     }
     if (scenario.enablePublicWorks !== undefined) {
       this.government.setPublicWorks(scenario.enablePublicWorks);
+    }
+    if (scenario.enableLiquiditySupport !== undefined) {
+      this.government.setLiquiditySupport(scenario.enableLiquiditySupport);
     }
 
     if (scenario.priceMultiplier) {
@@ -346,6 +352,8 @@ export class GameEngine {
         }
       }
     }
+
+    this.market.setMonetaryStance(this.government.policyRate, this.government.liquiditySupportActive);
   }
 
   advanceTurn(): TurnSnapshot {
@@ -369,11 +377,15 @@ export class GameEngine {
       phaseRollLuck: agents => this.phaseRollLuck(agents),
       phaseProduction: agents => this.phaseProduction(agents),
       phaseMarketPosting: agents => this.phaseMarketPosting(agents),
-      clearMarket: () => this.market.clearMarket(),
+      clearMarket: () => {
+        this.market.setMonetaryStance(this.government.policyRate, this.government.liquiditySupportActive);
+        this.market.clearMarket();
+      },
       phaseSpoilage: agents => this.phaseSpoilage(agents),
       phaseConsumption: agents => this.phaseConsumption(agents),
       phaseFamilySupport: agents => this.phaseFamilySupport(agents),
       phaseGovernment: agents => this.phaseGovernment(agents),
+      phaseHouseholdFinance: agents => this.phaseHouseholdFinance(agents),
       phaseAgentDecisions: agents => this.phaseAgentDecisions(agents),
       phaseAging: agents => this.phaseAging(agents),
       phaseLifeDeath: agents => this.phaseLifeDeath(agents),
@@ -388,6 +400,7 @@ export class GameEngine {
       startAvgHealth: pipeline.startAvgHealth,
       endAvgHealth: pipeline.endAvgHealth,
       consumptionSummary: pipeline.consumptionSummary,
+      financialSatisfactionDelta: pipeline.financialSatisfactionDelta,
       agingHealthDelta: pipeline.agingHealthDelta,
       governmentSummary: pipeline.governmentSummary,
       demographics: pipeline.demographics,
@@ -566,16 +579,57 @@ export class GameEngine {
       this.addEvent('warning', `公共建設因國庫不足（$${prevTreasuryPW.toFixed(0)} < $${CONFIG.PUBLIC_WORKS_COST_PER_TURN}）自動停用。`);
     }
 
+    const prevTreasuryLiquidity = this.government.treasury;
+    let liquidityInjected = 0;
+    let liquidityRecipients = 0;
+    if (this.government.liquiditySupportActive) {
+      const eligible = agents
+        .filter(a => a.alive)
+        .sort((a, b) => (a.money + a.savings) - (b.money + b.savings));
+      const targetCount = Math.max(1, Math.floor(eligible.length * CONFIG.MONETARY_LIQUIDITY_TARGET_PERCENTILE));
+      for (const agent of eligible.slice(0, targetCount)) {
+        const transfer = Math.min(CONFIG.MONETARY_LIQUIDITY_TRANSFER_PER_AGENT, this.government.treasury);
+        if (transfer <= 0) break;
+        agent.receiveMoney(transfer);
+        agent.satisfaction = Math.min(100, agent.satisfaction + CONFIG.MONETARY_LIQUIDITY_SAT_BOOST);
+        this.government.treasury -= transfer;
+        liquidityInjected += transfer;
+        liquidityRecipients++;
+      }
+
+      if (liquidityInjected > 0) {
+        this.addEvent(
+          'info',
+          `📋 流動性支持 → ${liquidityRecipients} 人獲得注入（國庫 $${prevTreasuryLiquidity.toFixed(0)} → $${this.government.treasury.toFixed(0)}）`,
+        );
+      } else if (prevTreasuryLiquidity <= 0.1) {
+        this.addEvent('warning', '流動性支持啟用中，但國庫不足，無法注入現金。');
+      }
+    }
+
     const treasuryDelta = this.government.treasury - treasuryStart;
-    const perCapitaCashDelta = aliveCount > 0 ? (welfareSpent - taxCollected) / aliveCount : 0;
+    const perCapitaCashDelta = aliveCount > 0
+      ? (welfareSpent + liquidityInjected - taxCollected) / aliveCount
+      : 0;
     return {
       taxCollected,
       welfareSpent,
       welfareRecipients,
       publicWorksSpent,
+      liquidityInjected,
+      liquidityRecipients,
+      policyRate: this.government.policyRate,
       treasuryDelta,
       perCapitaCashDelta,
     };
+  }
+
+  private phaseHouseholdFinance(agents: Agent[]): number {
+    let totalSatDelta = 0;
+    for (const agent of agents) {
+      totalSatDelta += agent.runHouseholdBanking(this.government.policyRate);
+    }
+    return totalSatDelta;
   }
 
   private phaseAgentDecisions(agents: Agent[]): void {
@@ -914,6 +968,33 @@ export class GameEngine {
       value: active,
       summary: `公共建設 ${active ? '啟用' : '停用'}`,
       sideEffects: getPolicySideEffectsModule('publicWorks', active),
+    });
+  }
+
+  setPolicyRate(rate: number): void {
+    const clamped = Math.max(CONFIG.MONETARY_POLICY_RATE_MIN, Math.min(CONFIG.MONETARY_POLICY_RATE_MAX, rate));
+    const existing = this.pendingPolicies.find(p => p.type === 'policyRate');
+    if (existing && Math.abs((existing.value as number) - clamped) < 1e-6) return;
+    if (!existing && Math.abs(this.government.policyRate - clamped) < 1e-6) return;
+
+    this.queuePolicy({
+      type: 'policyRate',
+      value: clamped,
+      summary: `政策利率調整至 ${(clamped * 100).toFixed(2)}%`,
+      sideEffects: getPolicySideEffectsModule('policyRate', clamped),
+    });
+  }
+
+  setLiquiditySupport(active: boolean): void {
+    const existing = this.pendingPolicies.find(p => p.type === 'liquiditySupport');
+    if (existing && existing.value === active) return;
+    if (!existing && this.government.liquiditySupportActive === active) return;
+
+    this.queuePolicy({
+      type: 'liquiditySupport',
+      value: active,
+      summary: `流動性支持 ${active ? '啟用' : '停用'}`,
+      sideEffects: getPolicySideEffectsModule('liquiditySupport', active),
     });
   }
 

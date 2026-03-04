@@ -212,6 +212,7 @@ export function Dashboard({ state }: Props) {
   const avgHp = latest?.avgHealth ?? 100;
   const gini = latest?.giniCoefficient ?? 0;
   const treasury = state.government.treasury;
+  const totalSavings = alive.reduce((sum, agent) => sum + agent.savings, 0);
   const births = latest?.births ?? 0;
   const deaths = latest?.deaths ?? 0;
   const avgAge = latest?.avgAge ?? 0;
@@ -443,6 +444,10 @@ export function Dashboard({ state }: Props) {
           <span className={styles.label}>國庫 Treasury</span>
         </Tooltip>
         <div className={styles.value}>${treasury.toFixed(0)}</div>
+      </div>
+      <div className={styles.stat}>
+        <span className={styles.label}>銀行存款 Bank</span>
+        <div className={styles.value}>${totalSavings.toFixed(0)}</div>
       </div>
       <div className={styles.stat}>
         <Tooltip content={DASHBOARD_TOOLTIPS.avgAge.content} detail={DASHBOARD_TOOLTIPS.avgAge.detail}>

@@ -200,3 +200,99 @@
 .forecastTotal { border-top: 1px solid #233554; margin-top: 4px; padding-top: 6px; font-weight: 600; }
 .forecastPositive { color: #4caf50; font-variant-numeric: tabular-nums; }
 .forecastNegative { color: #f44336; font-variant-numeric: tabular-nums; }
+
+.experimentList {
+  display: grid;
+  gap: 8px;
+}
+
+.experimentCard {
+  border: 1px solid #23406a;
+  border-radius: 8px;
+  background: #0f1b32;
+  padding: 8px 10px;
+}
+
+.experimentHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.experimentTitle {
+  font-size: 12px;
+  color: #d8e7ff;
+  font-weight: 600;
+}
+
+.experimentStatus {
+  font-size: 10px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+}
+
+.experimentStatuspending {
+  color: #8fc6ff;
+  background: #13304e;
+  border-color: #2e5f8e;
+}
+
+.experimentStatuscollecting {
+  color: #ffd58d;
+  background: #34230f;
+  border-color: #8f5e24;
+}
+
+.experimentStatuscomplete {
+  color: #9df5bf;
+  background: #112b1d;
+  border-color: #2d7049;
+}
+
+.experimentMeta {
+  margin-top: 4px;
+  font-size: 10px;
+  color: #88a4cc;
+}
+
+.experimentBlock {
+  margin-top: 6px;
+  border-top: 1px solid #1d2f4b;
+  padding-top: 6px;
+}
+
+.experimentBlockTitle {
+  font-size: 10px;
+  color: #7fbef8;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.experimentPrediction {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #b6c8e8;
+  line-height: 1.35;
+}
+
+.experimentPending {
+  margin-top: 3px;
+  font-size: 11px;
+  color: #8fa2c1;
+}
+
+.experimentMetrics {
+  margin-top: 3px;
+  display: grid;
+  gap: 2px;
+}
+
+.experimentMetric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #b6c8e8;
+}

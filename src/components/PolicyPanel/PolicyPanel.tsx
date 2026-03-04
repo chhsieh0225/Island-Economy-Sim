@@ -9,6 +9,7 @@ import type {
 } from '../../types';
 import { Tooltip } from '../Tooltip/Tooltip';
 import { POLICY_TOOLTIPS } from '../../data/tooltipContent';
+import { buildPolicyExperimentCards } from '../../engine/modules/policyExperimentModule';
 import styles from './PolicyPanel.module.css';
 
 interface Props {
@@ -52,6 +53,17 @@ function pendingSummary(policy: PendingPolicyChange): string {
 function signed(value: number, digits: number = 1): string {
   const fixed = value.toFixed(digits);
   return value >= 0 ? `+${fixed}` : fixed;
+}
+
+function statusLabel(status: 'pending' | 'collecting' | 'complete'): string {
+  switch (status) {
+    case 'pending':
+      return '待生效';
+    case 'collecting':
+      return '觀察中';
+    case 'complete':
+      return '已結算';
+  }
 }
 
 function topDrivers(drivers: { id: string; label: string; value: number }[]) {
@@ -123,6 +135,10 @@ export function PolicyPanel({
   const forecast = useMemo(
     () => computeForecast(government, statistics, pendingPolicies),
     [government, statistics, pendingPolicies],
+  );
+  const experimentCards = useMemo(
+    () => buildPolicyExperimentCards(policyTimeline, statistics, { maxCards: 4, observationTurns: 3 }),
+    [policyTimeline, statistics],
   );
 
   return (
@@ -274,6 +290,68 @@ export function PolicyPanel({
         </div>
       ) : (
         <div className={styles.empty}>需要至少 1 回合資料才能拆解效果。</div>
+      )}
+
+      <div className={styles.sectionTitle}>政策實驗卡 Prediction → Action → Outcome</div>
+      {experimentCards.length === 0 ? (
+        <div className={styles.empty}>先下達至少 1 次政策，這裡會自動追蹤預測與實際結果。</div>
+      ) : (
+        <div className={styles.experimentList}>
+          {experimentCards.map(card => (
+            <div key={card.id} className={styles.experimentCard}>
+              <div className={styles.experimentHead}>
+                <span className={styles.experimentTitle}>{card.summary}</span>
+                <span className={`${styles.experimentStatus} ${styles[`experimentStatus${card.status}`]}`}>
+                  {statusLabel(card.status)}
+                </span>
+              </div>
+              <div className={styles.experimentMeta}>
+                行動 T{card.requestedTurn}，生效 T{card.applyTurn}，觀察窗 T{card.applyTurn}~T{card.windowEndTurn}
+              </div>
+              <div className={styles.experimentBlock}>
+                <div className={styles.experimentBlockTitle}>Prediction</div>
+                <div className={styles.experimentPrediction}>{card.predictions.join(' / ')}</div>
+              </div>
+              <div className={styles.experimentBlock}>
+                <div className={styles.experimentBlockTitle}>Outcome</div>
+                {!card.metrics ? (
+                  <div className={styles.experimentPending}>
+                    {card.status === 'pending'
+                      ? '尚未進入觀察窗口。'
+                      : `資料收集中（目前觀察到 T${card.observedTurn ?? '-'}）。`}
+                  </div>
+                ) : (
+                  <div className={styles.experimentMetrics}>
+                    <div className={styles.experimentMetric}>
+                      <span>滿意度 Δ</span>
+                      <span className={card.metrics.satisfactionDelta >= 0 ? styles.impactUp : styles.impactDown}>
+                        {signed(card.metrics.satisfactionDelta, 2)}
+                      </span>
+                    </div>
+                    <div className={styles.experimentMetric}>
+                      <span>國庫 Δ</span>
+                      <span className={card.metrics.treasuryDelta >= 0 ? styles.impactUp : styles.impactDown}>
+                        {signed(card.metrics.treasuryDelta, 0)}
+                      </span>
+                    </div>
+                    <div className={styles.experimentMetric}>
+                      <span>GDP Δ%</span>
+                      <span className={card.metrics.gdpDeltaPercent >= 0 ? styles.impactUp : styles.impactDown}>
+                        {signed(card.metrics.gdpDeltaPercent, 2)}%
+                      </span>
+                    </div>
+                    <div className={styles.experimentMetric}>
+                      <span>人口淨變化</span>
+                      <span className={card.metrics.populationDelta >= 0 ? styles.impactUp : styles.impactDown}>
+                        {signed(card.metrics.populationDelta, 0)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       <div className={styles.sectionTitle}>待生效政策 Pending</div>

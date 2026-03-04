@@ -16,6 +16,8 @@ import { SCENARIOS } from './data/scenarios';
 import type { AgentState, ScenarioId, ScenarioNarrative } from './types';
 import styles from './App.module.css';
 
+const FEATURE_HIGHLIGHT_MS = 1700;
+
 const MarketPanel = lazy(async () => {
   const module = await import('./components/MarketPanel/MarketPanel');
   return { default: module.MarketPanel };
@@ -79,6 +81,7 @@ function App() {
 
   const [selectedAgent, setSelectedAgent] = useState<AgentState | null>(null);
   const [selectedMapFeature, setSelectedMapFeature] = useState<MapFeatureType | null>(null);
+  const [featureHighlight, setFeatureHighlight] = useState<{ feature: MapFeatureType; untilMs: number } | null>(null);
   const [rightTab, setRightTab] = useState<'market' | 'terrain' | 'events' | 'milestones'>('terrain');
   const [narrativeToShow, setNarrativeToShow] = useState<ScenarioNarrative | null>(null);
 
@@ -90,6 +93,8 @@ function App() {
   const handleFeatureClick = useCallback((feature: MapFeatureType) => {
     setSelectedAgent(null);
     setSelectedMapFeature(feature);
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    setFeatureHighlight({ feature, untilMs: now + FEATURE_HIGHLIGHT_MS });
   }, []);
 
   const scrollToAnchor = useCallback((id: string) => {
@@ -117,6 +122,7 @@ function App() {
     startNewRun(seed, scenarioId);
     setSelectedMapFeature(null);
     setSelectedAgent(null);
+    setFeatureHighlight(null);
     const scenario = SCENARIOS.find(s => s.id === scenarioId);
     if (scenario?.openingNarrative) {
       setNarrativeToShow(scenario.openingNarrative);
@@ -155,6 +161,8 @@ function App() {
           autoPlaySpeed={autoPlaySpeed}
           onAgentClick={handleAgentClick}
           onFeatureClick={handleFeatureClick}
+          highlightFeature={featureHighlight?.feature ?? null}
+          highlightUntilMs={featureHighlight?.untilMs ?? null}
         />
 
         <MapFeaturePanel

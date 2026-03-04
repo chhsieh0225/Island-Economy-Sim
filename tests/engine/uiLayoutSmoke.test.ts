@@ -69,3 +69,14 @@ test('ui smoke: island renderer shows clickable markers for all sectors', () => 
   assert.match(islandRenderer, /'🏢'/);
   assert.match(islandRenderer, /'點擊'/);
 });
+
+test('ui smoke: feature clicks trigger transient highlight pulse', () => {
+  const appTsx = readProjectFile('src/App.tsx');
+  const islandMap = readProjectFile('src/components/IslandMap/IslandMap.tsx');
+
+  assert.match(appTsx, /FEATURE_HIGHLIGHT_MS = 1700/);
+  assert.match(appTsx, /highlightFeature=\{featureHighlight\?\.feature \?\? null\}/);
+  assert.match(appTsx, /highlightUntilMs=\{featureHighlight\?\.untilMs \?\? null\}/);
+  assert.match(islandMap, /FEATURE_HIGHLIGHT_MS = 1700/);
+  assert.match(islandMap, /drawFeatureHighlight\(/);
+});

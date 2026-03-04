@@ -27,6 +27,7 @@ import {
   drawWorkParticle,
   drawEventOverlays,
   drawTooltip,
+  computeZoneReveal,
 } from './islandRenderer';
 import styles from './IslandMap.module.css';
 
@@ -165,7 +166,15 @@ function terrainSignature(terrain: IslandTerrainState): string {
   ].join('|');
 }
 
-function zoneDistributionSignature(agents: AgentState[], turn: number): string {
+function revealBucket(value: number): number {
+  return Math.round(value * 24);
+}
+
+function zoneRenderSignature(
+  agents: AgentState[],
+  turn: number,
+  stage: EconomyStage,
+): string {
   let alive = 0;
   let food = 0;
   let goods = 0;
@@ -179,7 +188,18 @@ function zoneDistributionSignature(agents: AgentState[], turn: number): string {
     else services++;
   }
 
-  return `t${turn}|a${alive}|f${food}|g${goods}|s${services}`;
+  const goodsReveal = stage === 'agriculture' ? 0 : computeZoneReveal('goods', agents, turn);
+  const servicesReveal = stage === 'service' ? computeZoneReveal('services', agents, turn) : 0;
+
+  return [
+    `stage:${stage}`,
+    `a${alive}`,
+    `f${food}`,
+    `g${goods}`,
+    `s${services}`,
+    `gr${revealBucket(goodsReveal)}`,
+    `sr${revealBucket(servicesReveal)}`,
+  ].join('|');
 }
 
 export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEvents, autoPlaySpeed, onAgentClick }: Props) {
@@ -204,7 +224,7 @@ export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEve
   const activeEventsRef = useRef(activeRandomEvents);
   const autoPlaySpeedRef = useRef(autoPlaySpeed);
   const terrainSigRef = useRef(terrainSignature(terrain));
-  const zoneSigRef = useRef(`${economyStage}|${zoneDistributionSignature(agents, turn)}`);
+  const zoneSigRef = useRef(zoneRenderSignature(agents, turn, economyStage));
   const [showPerfDebug] = useState(readPerfDebugFlag);
   const perfCountersRef = useRef<PerfCounters>({
     frameCount: 0,
@@ -226,7 +246,7 @@ export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEve
     activeEventsRef.current = activeRandomEvents;
     autoPlaySpeedRef.current = autoPlaySpeed;
     terrainSigRef.current = terrainSignature(terrain);
-    zoneSigRef.current = `${economyStage}|${zoneDistributionSignature(agents, turn)}`;
+    zoneSigRef.current = zoneRenderSignature(agents, turn, economyStage);
     lastDrawTsRef.current = 0;
   }, [agents, turn, terrain, economyStage, activeRandomEvents, autoPlaySpeed]);
 

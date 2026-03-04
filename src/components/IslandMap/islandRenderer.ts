@@ -430,7 +430,7 @@ function drawIslandPath(
   ctx.closePath();
 }
 
-function getZoneReveal(sector: SectorType, agents: AgentState[], turn: number): number {
+export function computeZoneReveal(sector: SectorType, agents: AgentState[], turn: number): number {
   const alive = agents.filter(a => a.alive);
   const pop = Math.max(1, alive.length);
   const workers = alive.filter(a => a.sector === sector).length;
@@ -633,9 +633,9 @@ export function drawZones(
   drawResidentialZones(ctx, layout, terrain, w, h);
 
   const reveals: Record<SectorType, number> = {
-    food: getZoneReveal('food', agents, turn),
-    goods: getZoneReveal('goods', agents, turn),
-    services: getZoneReveal('services', agents, turn),
+    food: computeZoneReveal('food', agents, turn),
+    goods: computeZoneReveal('goods', agents, turn),
+    services: computeZoneReveal('services', agents, turn),
   };
   const zones: Record<SectorType, ZoneEllipse> = {
     food: layout.farm,
@@ -704,7 +704,7 @@ export function drawZoneLabels(
   );
 
   // Goods
-  const goodsReveal = getZoneReveal('goods', agents, turn);
+  const goodsReveal = computeZoneReveal('goods', agents, turn);
   if (stageAllowsSector(stage, 'goods') && goodsReveal > 0.18) {
     ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = `rgba(33, 150, 243, ${0.45 + goodsReveal * 0.35})`;
@@ -718,7 +718,7 @@ export function drawZoneLabels(
   }
 
   // Services
-  const servicesReveal = getZoneReveal('services', agents, turn);
+  const servicesReveal = computeZoneReveal('services', agents, turn);
   if (stageAllowsSector(stage, 'services') && servicesReveal > 0.2) {
     ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = `rgba(255, 152, 0, ${0.42 + servicesReveal * 0.36})`;

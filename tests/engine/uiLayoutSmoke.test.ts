@@ -55,3 +55,17 @@ test('ui smoke: policy recommendation filters no-op actions', () => {
   assert.match(policyPanel, /function isRecommendationRedundant\(/);
   assert.match(policyPanel, /isRecommendationRedundant\(recommendation\.action,\s*effectivePolicyState\)/);
 });
+
+test('ui smoke: island map feature union includes full industry set', () => {
+  const islandMap = readProjectFile('src/components/IslandMap/IslandMap.tsx');
+  assert.match(islandMap, /MapFeatureType = 'bank' \| 'residential' \| 'farm' \| 'goods' \| 'services'/);
+});
+
+test('ui smoke: island renderer shows clickable markers for all sectors', () => {
+  const islandRenderer = readProjectFile('src/components/IslandMap/islandRenderer.ts');
+  assert.match(islandRenderer, /drawClickableNode\(/);
+  assert.match(islandRenderer, /'🌾'/);
+  assert.match(islandRenderer, /'🏭'/);
+  assert.match(islandRenderer, /'🏢'/);
+  assert.match(islandRenderer, /'點擊'/);
+});

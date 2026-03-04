@@ -672,6 +672,41 @@ export function drawZoneLabels(
   turn: number,
   stage: EconomyStage,
 ): void {
+  const drawClickableNode = (
+    x: number,
+    y: number,
+    icon: string,
+    fill: string,
+    stroke: string,
+    iconColor: string,
+    alpha: number,
+  ) => {
+    const nodeRadius = 8.6;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.shadowColor = 'rgba(10, 20, 36, 0.58)';
+    ctx.shadowBlur = 3;
+    ctx.beginPath();
+    ctx.arc(x, y, nodeRadius, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 1.1;
+    ctx.stroke();
+
+    ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = iconColor;
+    ctx.fillText(icon, x, y - 0.2);
+
+    ctx.font = '9px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = 'rgba(226, 236, 252, 0.92)';
+    ctx.fillText('點擊', x, y + nodeRadius + 9);
+    ctx.restore();
+  };
+
   ctx.save();
   ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
   ctx.textAlign = 'center';
@@ -702,6 +737,15 @@ export function drawZoneLabels(
     layout.farm.cx,
     layout.farm.cy - layout.farm.ry + 2,
   );
+  drawClickableNode(
+    layout.farm.cx + layout.farm.rx * 0.44,
+    layout.farm.cy + layout.farm.ry * 0.08,
+    '🌾',
+    'rgba(90, 176, 97, 0.74)',
+    'rgba(198, 242, 205, 0.86)',
+    'rgba(233, 251, 236, 0.95)',
+    0.95,
+  );
 
   // Goods
   const goodsReveal = computeZoneReveal('goods', agents, turn);
@@ -714,6 +758,15 @@ export function drawZoneLabels(
       `${terrain.sectorFeatures.goods} ${featurePct('goods')}`,
       layout.goods.cx,
       layout.goods.cy + layout.goods.ry + 24,
+    );
+    drawClickableNode(
+      layout.goods.cx - layout.goods.rx * 0.28,
+      layout.goods.cy - layout.goods.ry * 0.06,
+      '🏭',
+      'rgba(57, 142, 224, 0.72)',
+      'rgba(192, 226, 255, 0.9)',
+      'rgba(238, 248, 255, 0.96)',
+      Math.min(1, 0.78 + goodsReveal * 0.32),
     );
   }
 
@@ -728,6 +781,15 @@ export function drawZoneLabels(
       `${terrain.sectorFeatures.services} ${featurePct('services')}`,
       layout.services.cx,
       layout.services.cy + layout.services.ry + 24,
+    );
+    drawClickableNode(
+      layout.services.cx + layout.services.rx * 0.25,
+      layout.services.cy - layout.services.ry * 0.08,
+      '🏢',
+      'rgba(227, 141, 59, 0.72)',
+      'rgba(255, 226, 189, 0.92)',
+      'rgba(255, 247, 235, 0.98)',
+      Math.min(1, 0.75 + servicesReveal * 0.34),
     );
   }
 

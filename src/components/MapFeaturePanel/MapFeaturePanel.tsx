@@ -20,6 +20,36 @@ interface FeatureDetail {
   onAction: () => void;
 }
 
+function stageAllowsSector(
+  stage: GameState['economyStage'],
+  sector: 'food' | 'goods' | 'services',
+): boolean {
+  if (sector === 'food') return true;
+  if (sector === 'goods') return stage !== 'agriculture';
+  return stage === 'service';
+}
+
+function sectorTitle(sector: 'food' | 'goods' | 'services'): string {
+  if (sector === 'food') return '🌾 農地生產面板';
+  if (sector === 'goods') return '🏭 工坊生產面板';
+  return '🏢 服務業面板';
+}
+
+function sectorSubtitle(sector: 'food' | 'goods' | 'services', unlocked: boolean): string {
+  if (!unlocked) {
+    return '該產業在目前發展階段尚未完全解鎖，先專注基礎供需。';
+  }
+  if (sector === 'food') return '基礎民生由農地穩定供應，缺口會快速打擊民心。';
+  if (sector === 'goods') return '商品業支撐中間財與就業，供應不足會抑制成長。';
+  return '服務業直接連動生活品質與滿意度，成熟後影響更大。';
+}
+
+function sectorLabel(sector: 'food' | 'goods' | 'services'): string {
+  if (sector === 'food') return '食物';
+  if (sector === 'goods') return '商品';
+  return '服務';
+}
+
 export function MapFeaturePanel({
   feature,
   state,
@@ -40,12 +70,6 @@ export function MapFeaturePanel({
   const adultCount = alive.filter(a => a.ageGroup === 'adult').length;
   const seniorCount = alive.filter(a => a.ageGroup === 'senior').length;
   const lowSatCount = alive.filter(a => a.satisfaction < 45).length;
-  const foodWorkers = alive.filter(a => a.sector === 'food').length;
-  const foodSupply = state.market.supply.food;
-  const foodDemand = state.market.demand.food;
-  const foodCoverage = foodDemand > 0.01 ? foodSupply / foodDemand : 1;
-  const foodCoveragePct = (foodCoverage * 100).toFixed(0);
-  const foodSuitabilityPct = ((state.terrain.sectorSuitability.food - 1) * 100).toFixed(0);
 
   const detail: FeatureDetail = (() => {
     if (feature === 'bank') {
@@ -82,16 +106,32 @@ export function MapFeaturePanel({
       };
     }
 
+    const sector: 'food' | 'goods' | 'services' = feature === 'farm'
+      ? 'food'
+      : feature;
+    const unlocked = stageAllowsSector(state.economyStage, sector);
+    const workers = alive.filter(a => a.sector === sector).length;
+    const supply = state.market.supply[sector];
+    const demand = state.market.demand[sector];
+    const coverage = demand > 0.01 ? supply / demand : 1;
+    const suitabilityPct = ((state.terrain.sectorSuitability[sector] - 1) * 100).toFixed(0);
+    const sectorName = sectorLabel(sector);
+
     return {
-      title: '🌾 農地生產面板',
-      subtitle: '基礎民生由農地穩定供應，缺口會快速打擊民心。',
+      title: sectorTitle(sector),
+      subtitle: sectorSubtitle(sector, unlocked),
       metrics: [
-        { label: '食物供給', value: foodSupply.toFixed(1) },
-        { label: '食物需求', value: foodDemand.toFixed(1) },
-        { label: '供需覆蓋率', value: `${foodCoveragePct}%`, tone: foodCoverage >= 1 ? 'good' : 'warn' },
-        { label: '農業從業人口', value: `${foodWorkers} 人` },
-        { label: '食物價格', value: `$${state.market.prices.food.toFixed(2)}` },
-        { label: '地貌適性', value: `${foodSuitabilityPct.startsWith('-') ? '' : '+'}${foodSuitabilityPct}%` },
+        { label: '產業狀態', value: unlocked ? '已開放' : '未開放', tone: unlocked ? 'good' : 'warn' },
+        { label: `${sectorName}供給`, value: supply.toFixed(1) },
+        { label: `${sectorName}需求`, value: demand.toFixed(1) },
+        {
+          label: '供需覆蓋率',
+          value: `${(coverage * 100).toFixed(0)}%`,
+          tone: !unlocked ? 'neutral' : coverage >= 1 ? 'good' : 'warn',
+        },
+        { label: `${sectorName}從業人口`, value: `${workers} 人` },
+        { label: `${sectorName}價格`, value: `$${state.market.prices[sector].toFixed(2)}` },
+        { label: '地貌適性', value: `${suitabilityPct.startsWith('-') ? '' : '+'}${suitabilityPct}%` },
       ],
       actionLabel: '前往市場面板',
       onAction: onJumpToMarket,

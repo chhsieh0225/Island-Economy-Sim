@@ -33,7 +33,7 @@ import {
 import styles from './IslandMap.module.css';
 
 type AutoPlaySpeed = 'slow' | 'medium' | 'fast' | null;
-export type MapFeatureType = 'bank' | 'residential' | 'farm';
+export type MapFeatureType = 'bank' | 'residential' | 'farm' | 'goods' | 'services';
 
 interface Props {
   agents: AgentState[];
@@ -166,6 +166,19 @@ function detectMapFeature(
 
   if (isInsideEllipse(x, y, layout.farm.cx, layout.farm.cy, layout.farm.rx * 1.04, layout.farm.ry * 1.06)) {
     return 'farm';
+  }
+  if (isInsideEllipse(x, y, layout.goods.cx, layout.goods.cy, layout.goods.rx * 1.04, layout.goods.ry * 1.06)) {
+    return 'goods';
+  }
+  if (isInsideEllipse(
+    x,
+    y,
+    layout.services.cx,
+    layout.services.cy,
+    layout.services.rx * 1.04,
+    layout.services.ry * 1.06,
+  )) {
+    return 'services';
   }
 
   return null;

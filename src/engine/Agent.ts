@@ -203,6 +203,26 @@ export class Agent {
     }
   }
 
+  private getMarshallianBudgetShares(
+    demandModifiers?: Partial<Record<SectorType, number>>,
+  ): Record<SectorType, number> {
+    const raw: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
+    for (const sector of SECTORS) {
+      const priority = this.getSectorPriority(sector);
+      const demandWeight = Math.max(0.2, demandModifiers?.[sector] ?? 1);
+      raw[sector] = Math.max(0.05, priority * demandWeight);
+    }
+
+    const sum = raw.food + raw.goods + raw.services;
+    if (sum <= 0) return { food: 1 / 3, goods: 1 / 3, services: 1 / 3 };
+
+    return {
+      food: raw.food / sum,
+      goods: raw.goods / sum,
+      services: raw.services / sum,
+    };
+  }
+
   private getSectorHappinessValue(sector: SectorType): number {
     switch (sector) {
       case 'food': return 0.58;
@@ -224,9 +244,14 @@ export class Agent {
     this._currentLuck = this.baseLuck + (rng.next() * 2 - 1) * CONFIG.LUCK_TURN_RANGE;
   }
 
-  produce(subsidyMultiplier: number, publicWorksBoost: number): void {
+  produce(subsidyMultiplier: number, publicWorksBoost: number, laborScale: number = 1): void {
     const baseOutput = CONFIG.BASE_PRODUCTIVITY[this.sector];
-    const output = baseOutput * this.effectiveProductivity * subsidyMultiplier * (1 + publicWorksBoost) * this.luckFactor;
+    const output = baseOutput
+      * this.effectiveProductivity
+      * subsidyMultiplier
+      * (1 + publicWorksBoost)
+      * this.luckFactor
+      * laborScale;
     this._outputThisTurn += Math.max(0, output);
     this.inventory[this.sector] += Math.max(0, output);
   }
@@ -255,36 +280,48 @@ export class Agent {
       weights.survival * CONFIG.GOAL_RESERVE_SURVIVAL_WEIGHT +
       weights.wealth * CONFIG.GOAL_RESERVE_WEALTH_WEIGHT;
     let budgetPool = Math.max(0, this.money - reserve);
+    if (budgetPool <= 0.01) return;
 
-    const candidateSectors = SECTORS
-      .filter(sector => sector !== this.sector)
-      .sort((a, b) => this.getSectorPriority(b) - this.getSectorPriority(a));
+    const budgetShares = this.getMarshallianBudgetShares(demandModifiers);
+    const requiredNow: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
+    const targetGap: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
+    const marketPrices: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
 
-    for (const sector of candidateSectors) {
+    for (const sector of SECTORS) {
       const demandMult = demandModifiers?.[sector] ?? 1;
-      const targetStock = this.getNeedForSector(sector, demandMult) * this.getTargetBufferTurns(sector);
-      const needed = targetStock - this.inventory[sector];
-      if (needed <= 0) continue;
+      const need = this.getNeedForSector(sector, demandMult);
+      const targetStock = need * this.getTargetBufferTurns(sector);
+      requiredNow[sector] = Math.max(0, need - this.inventory[sector]);
+      targetGap[sector] = Math.max(0, targetStock - this.inventory[sector]);
+      marketPrices[sector] = market.getPrice(sector);
+    }
 
-      const price = market.getPrice(sector);
+    const subsistenceCost = SECTORS.reduce(
+      (sum, sector) => sum + requiredNow[sector] * Math.max(0.01, marketPrices[sector]),
+      0,
+    );
+    const supernumeraryBudget = Math.max(0, budgetPool - subsistenceCost);
+
+    const candidateSectors = [...SECTORS].sort((a, b) => this.getSectorPriority(b) - this.getSectorPriority(a));
+    for (const sector of candidateSectors) {
+      const maxDesired = targetGap[sector];
+      if (maxDesired <= 0.01) continue;
+
+      const price = Math.max(0.01, marketPrices[sector]);
+      // Stone-Geary / LES demand: q_i = b_i + alpha_i * (m - p*b) / p_i
+      const desiredQty = requiredNow[sector] + budgetShares[sector] * (supernumeraryBudget / price);
+      let quantity = Math.min(maxDesired, desiredQty);
+
+      if (quantity <= 0.01) continue;
+
       const priority = this.getSectorPriority(sector);
       const premiumMultiplier =
         CONFIG.BUY_PRICE_PREMIUM +
         this.desperation * (CONFIG.MAX_DESPERATION_PREMIUM - CONFIG.BUY_PRICE_PREMIUM) +
         (priority - 1) * 0.22;
       const maxPrice = price * Math.max(1.02, premiumMultiplier);
-
-      // Goal-driven budgeting: happiness/survival spend more aggressively, wealth hoards cash.
-      const spendingPropensity =
-        CONFIG.GOAL_SPENDING_PROPENSITY_BASE +
-        weights.happiness * 0.18 +
-        weights.survival * 0.14 -
-        weights.wealth * 0.14 +
-        this.desperation * 0.22 +
-        this.intelligenceDecisionFactor * 0.05;
-      const sectorBudget = budgetPool * Math.max(0.25, Math.min(1, spendingPropensity)) * Math.min(1.2, priority);
-      const canAfford = sectorBudget / Math.max(0.01, maxPrice);
-      const quantity = Math.min(needed, canAfford);
+      const affordableQty = budgetPool / Math.max(0.01, maxPrice);
+      quantity = Math.min(quantity, affordableQty);
 
       if (quantity > 0.01) {
         const order: BuyOrder = { agentId: this.id, sector, quantity, maxPrice };

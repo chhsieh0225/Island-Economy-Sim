@@ -125,11 +125,11 @@ export class Market {
     for (const sector of SECTORS) {
       const supplyTotal = this.supply[sector];
       const demandTotal = this.demand[sector];
-      const excessDemand = demandTotal - supplyTotal;
-      const ratio = excessDemand / Math.max(supplyTotal, 1);
-
-      const priceChange = this.prices[sector] * CONFIG.PRICE_ELASTICITY * ratio;
-      const rawNewPrice = this.prices[sector] + priceChange;
+      // Walrasian tatonnement on log prices:
+      // ln p_{t+1} = ln p_t + k * (D - S) / (D + S + eps)
+      const excessDemandRatio = (demandTotal - supplyTotal) / Math.max(1, demandTotal + supplyTotal);
+      const logPrice = Math.log(Math.max(CONFIG.MIN_PRICE, this.prices[sector]));
+      const rawNewPrice = Math.exp(logPrice + CONFIG.PRICE_ELASTICITY * excessDemandRatio);
 
       // Smooth with previous price
       const smoothed = CONFIG.PRICE_SMOOTHING * rawNewPrice + (1 - CONFIG.PRICE_SMOOTHING) * this.prices[sector];

@@ -68,6 +68,8 @@ export class GameEngine {
   private eventChainSignals: Record<string, number> = {};
   private milestoneFlags: Set<string> = new Set();
   private _newMilestonesThisTurn: MilestoneRecord[] = [];
+  private stageTransitionFrom: EconomyStage | null = null;
+  private stageTransitionStartTurn: number | null = null;
 
   constructor(seed?: number, scenarioId: ScenarioId = DEFAULT_SCENARIO) {
     this.seed = seed ?? Date.now();
@@ -83,6 +85,8 @@ export class GameEngine {
   private initializeAgents(): void {
     this.agents = [];
     this.economyStage = CONFIG.PROGRESSIVE_ECONOMY_ENABLED ? 'agriculture' : 'service';
+    this.stageTransitionFrom = null;
+    this.stageTransitionStartTurn = null;
 
     let i = 0;
     let familyId = 1;
@@ -574,7 +578,46 @@ export class GameEngine {
   }
 
   private getCurrentNeedMultipliers(): Record<SectorType, number> {
-    return { ...CONFIG.STAGE_NEED_MULTIPLIERS[this.economyStage] };
+    const target = CONFIG.STAGE_NEED_MULTIPLIERS[this.economyStage];
+    const transitionFrom = this.stageTransitionFrom;
+    const transitionStartTurn = this.stageTransitionStartTurn;
+
+    if (!transitionFrom || transitionStartTurn === null || transitionFrom === this.economyStage) {
+      return { ...target };
+    }
+
+    if (this.economyStage === 'agriculture') {
+      return { ...target };
+    }
+
+    const rampTurns = CONFIG.STAGE_TRANSITION_RAMP_TURNS[this.economyStage];
+    if (rampTurns <= 0) {
+      return { ...target };
+    }
+
+    const elapsedTurns = Math.max(0, this.turn - transitionStartTurn);
+    const progress = Math.min(1, elapsedTurns / rampTurns);
+
+    if (progress >= 1) {
+      this.stageTransitionFrom = null;
+      this.stageTransitionStartTurn = null;
+      return { ...target };
+    }
+
+    const source = CONFIG.STAGE_NEED_MULTIPLIERS[transitionFrom];
+    const blended: Record<SectorType, number> = {
+      food: source.food + (target.food - source.food) * progress,
+      goods: source.goods + (target.goods - source.goods) * progress,
+      services: source.services + (target.services - source.services) * progress,
+    };
+
+    return blended;
+  }
+
+  private startStageNeedRamp(from: EconomyStage, to: EconomyStage): void {
+    if (from === to || to === 'agriculture') return;
+    this.stageTransitionFrom = from;
+    this.stageTransitionStartTurn = this.turn + 1;
   }
 
   private averageAgentMetric(agents: Agent[], accessor: (agent: Agent) => number): number {
@@ -766,6 +809,7 @@ export class GameEngine {
       const stockFoodCoverage = avgFoodStock / Math.max(0.01, CONFIG.CONSUMPTION.food);
       const foodCoverage = Math.max(marketFoodCoverage, stockFoodCoverage);
       if (this.turn >= CONFIG.STAGE_INDUSTRIAL_MIN_TURN && foodCoverage >= CONFIG.STAGE_INDUSTRIAL_MIN_FOOD_COVERAGE) {
+        this.startStageNeedRamp(this.economyStage, 'industrial');
         this.economyStage = 'industrial';
         this.addEvent(
           'positive',
@@ -785,6 +829,7 @@ export class GameEngine {
         goodsShare >= CONFIG.STAGE_SERVICE_MIN_GOODS_WORKER_SHARE &&
         avgSat >= CONFIG.STAGE_SERVICE_MIN_AVG_SATISFACTION
       ) {
+        this.startStageNeedRamp(this.economyStage, 'service');
         this.economyStage = 'service';
         this.addEvent('positive', '產業升級：島嶼進入服務化階段，服務業全面展開。');
       }
@@ -1524,6 +1569,8 @@ export class GameEngine {
     this.lastDecisionTurn = -999;
     this.eventChainSignals = {};
     this.milestoneFlags.clear();
+    this.stageTransitionFrom = null;
+    this.stageTransitionStartTurn = null;
 
     this.seed = seed ?? Date.now();
     this.scenarioId = scenarioId;

@@ -5,7 +5,12 @@ import { GameEngine } from '../../src/engine/GameEngine';
 import { computeScore } from '../../src/engine/Scoring';
 import { DECISION_EVENTS, RANDOM_EVENTS } from '../../src/data/events';
 import { CONFIG } from '../../src/config';
-import type { TurnSnapshot } from '../../src/types';
+import type { IslandTerrainState, SectorType, TurnSnapshot } from '../../src/types';
+import { Agent } from '../../src/engine/Agent';
+import { Government } from '../../src/engine/Government';
+import { Market } from '../../src/engine/Market';
+import { RNG } from '../../src/engine/RNG';
+import { runProductionPhase } from '../../src/engine/phases/productionPhase';
 
 function makeSnapshot(overrides: Partial<TurnSnapshot>): TurnSnapshot {
   const base: TurnSnapshot = {
@@ -223,4 +228,110 @@ test('turn snapshot includes causal replay breakdown', () => {
   assert.equal(snapshot.causalReplay.satisfaction.drivers.length > 0, true);
   assert.equal(snapshot.causalReplay.health.drivers.length > 0, true);
   assert.equal(snapshot.causalReplay.departures.drivers.length > 0, true);
+});
+
+test('LES demand allocation lowers quantity demanded when relative price rises', () => {
+  const rng = new RNG(20260307);
+  const buyer = new Agent(1, 'Demand Tester', 'food', rng, {
+    age: 300,
+    maxAge: 900,
+    intelligence: 100,
+    baseLuck: 0,
+    gender: 'F',
+    familyId: 1,
+    goalType: 'balanced',
+  });
+  buyer.money = 130;
+  buyer.inventory.food = 0;
+  buyer.inventory.goods = 0;
+  buyer.inventory.services = 0;
+
+  const getFoodDemand = (foodPrice: number): number => {
+    const market = new Market();
+    market.setAgents([buyer]);
+    market.prices.food = foodPrice;
+    market.prices.goods = 20;
+    market.prices.services = 20;
+    market.clearOrders();
+    buyer.postBuyOrders(market, { food: 1, goods: 1, services: 1 });
+
+    const internal = market as unknown as {
+      buyOrders: Map<SectorType, Array<{ quantity: number }>>;
+    };
+    const orders = internal.buyOrders.get('food') ?? [];
+    return orders.reduce((sum, order) => sum + order.quantity, 0);
+  };
+
+  const lowPriceDemand = getFoodDemand(10);
+  const highPriceDemand = getFoodDemand(20);
+  assert.equal(lowPriceDemand > highPriceDemand, true);
+});
+
+test('sector output follows diminishing labor returns under Cobb-Douglas scaling', () => {
+  const terrain: IslandTerrainState = {
+    seed: 1,
+    coastlineOffsets: [],
+    islandScaleX: 1,
+    islandScaleY: 1,
+    islandRotation: 0,
+    zoneOffsets: {
+      food: { x: 0, y: 0 },
+      goods: { x: 0, y: 0 },
+      services: { x: 0, y: 0 },
+    },
+    sectorSuitability: { food: 1, goods: 1, services: 1 },
+    sectorFeatures: { food: 'plain', goods: 'plain', services: 'plain' },
+  };
+  const government = new Government();
+  const rng = new RNG(20260308);
+
+  const makeWorkers = (count: number, idOffset: number): Agent[] => {
+    const workers: Agent[] = [];
+    for (let i = 0; i < count; i++) {
+      const worker = new Agent(idOffset + i, `Worker-${idOffset + i}`, 'food', rng, {
+        age: 300,
+        maxAge: 900,
+        intelligence: 100,
+        baseLuck: 0,
+        gender: 'M',
+        familyId: idOffset + i,
+        goalType: 'balanced',
+      });
+      worker.productivity = 1;
+      worker.turnsInSector = 8;
+      worker.inventory.food = 0;
+      workers.push(worker);
+    }
+    return workers;
+  };
+
+  const workers10 = makeWorkers(10, 1000);
+  const workers20 = makeWorkers(20, 2000);
+
+  runProductionPhase({
+    agents: workers10,
+    activeRandomEvents: [],
+    terrain,
+    government,
+    workingAge: CONFIG.WORKING_AGE,
+    allowedSectors: ['food', 'goods', 'services'],
+    caregiverPenaltyPerChild: CONFIG.CAREGIVER_PRODUCTIVITY_PENALTY_PER_CHILD,
+    caregiverPenaltyMax: CONFIG.CAREGIVER_PRODUCTIVITY_PENALTY_MAX,
+  });
+  runProductionPhase({
+    agents: workers20,
+    activeRandomEvents: [],
+    terrain,
+    government,
+    workingAge: CONFIG.WORKING_AGE,
+    allowedSectors: ['food', 'goods', 'services'],
+    caregiverPenaltyPerChild: CONFIG.CAREGIVER_PRODUCTIVITY_PENALTY_PER_CHILD,
+    caregiverPenaltyMax: CONFIG.CAREGIVER_PRODUCTIVITY_PENALTY_MAX,
+  });
+
+  const output10 = workers10.reduce((sum, worker) => sum + worker.outputThisTurn, 0);
+  const output20 = workers20.reduce((sum, worker) => sum + worker.outputThisTurn, 0);
+
+  assert.equal(output20 > output10, true);
+  assert.equal(output20 < output10 * 2, true);
 });

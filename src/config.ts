@@ -19,6 +19,13 @@ export const CONFIG = {
     services: 1.2,
   } as Record<SectorType, number>,
 
+  // Cobb-Douglas labor elasticity by sector (Y_s ~ L_s^alpha_s, alpha_s < 1 => diminishing returns)
+  PRODUCTION_LABOR_ELASTICITY: {
+    food: 0.95,
+    goods: 0.9,
+    services: 0.9,
+  } as Record<SectorType, number>,
+
   // Fraction of unsold inventory that spoils each turn
   INVENTORY_SPOILAGE_RATE: 0.5,
 
@@ -117,6 +124,10 @@ export const CONFIG = {
     industrial: { food: 1.0, goods: 0.72, services: 0.38 },
     service: { food: 1.0, goods: 1.0, services: 1.0 },
   } as Record<EconomyStage, Record<SectorType, number>>,
+  STAGE_TRANSITION_RAMP_TURNS: {
+    industrial: 8,
+    service: 10,
+  } as Record<Exclude<EconomyStage, 'agriculture'>, number>,
 
   // Intelligence
   INTELLIGENCE_MEAN: 100,

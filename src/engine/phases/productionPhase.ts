@@ -61,6 +61,24 @@ export function runProductionPhase({
   }
 
   const allowed = new Set<SectorType>(allowedSectors);
+  const sectorLaborCount: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
+  for (const agent of agents) {
+    if (agent.age < workingAge) continue;
+    if (!allowed.has(agent.sector)) continue;
+    sectorLaborCount[agent.sector]++;
+  }
+
+  const laborScaleBySector: Record<SectorType, number> = { food: 1, goods: 1, services: 1 };
+  for (const sector of SECTORS) {
+    const labor = sectorLaborCount[sector];
+    if (labor <= 0) {
+      laborScaleBySector[sector] = 0;
+      continue;
+    }
+    const alpha = CONFIG.PRODUCTION_LABOR_ELASTICITY[sector];
+    laborScaleBySector[sector] = Math.pow(labor, alpha - 1);
+  }
+
   const childCountByFamily = new Map<number, number>();
   for (const agent of agents) {
     if (agent.age >= workingAge) continue;
@@ -77,7 +95,11 @@ export function runProductionPhase({
     const caregiverMultiplier = Math.max(0.55, 1 - caregiverPenalty);
     const subsidyMult = government.getSubsidyMultiplier(agent.sector) * productivityMods[agent.sector] * terrainMult;
     const publicWorksBoost = government.getPublicWorksBoost();
-    agent.produce(subsidyMult * caregiverMultiplier, publicWorksBoost);
+    agent.produce(
+      subsidyMult * caregiverMultiplier,
+      publicWorksBoost,
+      laborScaleBySector[agent.sector],
+    );
   }
 }
 

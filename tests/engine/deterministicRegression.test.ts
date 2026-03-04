@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { CONFIG } from '../../src/config';
 import { GameEngine } from '../../src/engine/GameEngine';
+import type { EconomyStage, SectorType } from '../../src/types';
 
 function advanceToTurn(engine: GameEngine, targetTurn: number): void {
   let guard = 0;
@@ -46,7 +48,7 @@ test('baseline seed regression snapshot remains deterministic at turn 18', () =>
     totals.deaths,
   ].join('|');
 
-  assert.equal(signature, '18|industrial|101|45.6|67.5|0.179|179.63|1|0');
+  assert.equal(signature, '18|industrial|101|44.2|65.9|0.074|49.26|1|0');
 });
 
 test('progressive economy unlocks industrial stage under baseline seed', () => {
@@ -69,3 +71,32 @@ test('policy replay cashflow is internally consistent', () => {
   }
 });
 
+test('stage need multipliers ramp gradually after unlock', () => {
+  const engine = new GameEngine(20260311, 'baseline');
+  const internals = engine as unknown as {
+    turn: number;
+    economyStage: EconomyStage;
+    stageTransitionFrom: EconomyStage | null;
+    stageTransitionStartTurn: number | null;
+    getCurrentNeedMultipliers: () => Record<SectorType, number>;
+  };
+
+  internals.turn = 30;
+  internals.economyStage = 'industrial';
+  internals.stageTransitionFrom = 'agriculture';
+  internals.stageTransitionStartTurn = 31;
+
+  const start = internals.getCurrentNeedMultipliers();
+  assert.equal(Math.abs(start.goods - CONFIG.STAGE_NEED_MULTIPLIERS.agriculture.goods) < 1e-9, true);
+  assert.equal(Math.abs(start.services - CONFIG.STAGE_NEED_MULTIPLIERS.agriculture.services) < 1e-9, true);
+
+  internals.turn = 31 + Math.floor(CONFIG.STAGE_TRANSITION_RAMP_TURNS.industrial / 2);
+  const mid = internals.getCurrentNeedMultipliers();
+  assert.equal(mid.goods > start.goods && mid.goods < CONFIG.STAGE_NEED_MULTIPLIERS.industrial.goods, true);
+  assert.equal(mid.services > start.services && mid.services < CONFIG.STAGE_NEED_MULTIPLIERS.industrial.services, true);
+
+  internals.turn = 31 + CONFIG.STAGE_TRANSITION_RAMP_TURNS.industrial;
+  const end = internals.getCurrentNeedMultipliers();
+  assert.equal(Math.abs(end.goods - CONFIG.STAGE_NEED_MULTIPLIERS.industrial.goods) < 1e-9, true);
+  assert.equal(Math.abs(end.services - CONFIG.STAGE_NEED_MULTIPLIERS.industrial.services) < 1e-9, true);
+});

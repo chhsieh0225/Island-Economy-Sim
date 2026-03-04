@@ -1,7 +1,7 @@
 import { CONFIG } from '../../config';
 import type { ActiveRandomEvent, IslandTerrainState, SectorType } from '../../types';
 import { SECTORS } from '../../types';
-import { getActiveEconomicCalibration } from '../economicCalibration';
+import type { EconomicCalibrationProfile } from '../economicCalibration';
 import type { Agent } from '../Agent';
 import type { Government } from '../Government';
 import type { Market } from '../Market';
@@ -15,6 +15,7 @@ interface ProductionPhaseInput {
   allowedSectors: SectorType[];
   caregiverPenaltyPerChild: number;
   caregiverPenaltyMax: number;
+  calibration: EconomicCalibrationProfile;
 }
 
 interface MarketPostingPhaseInput {
@@ -46,6 +47,7 @@ export function runProductionPhase({
   allowedSectors,
   caregiverPenaltyPerChild,
   caregiverPenaltyMax,
+  calibration,
 }: ProductionPhaseInput): void {
   const productivityMods: Record<SectorType, number> = { food: 1, goods: 1, services: 1 };
   for (const event of activeRandomEvents) {
@@ -62,7 +64,6 @@ export function runProductionPhase({
   }
 
   const allowed = new Set<SectorType>(allowedSectors);
-  const calibration = getActiveEconomicCalibration();
   const sectorLaborCount: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
   for (const agent of agents) {
     if (agent.age < workingAge) continue;

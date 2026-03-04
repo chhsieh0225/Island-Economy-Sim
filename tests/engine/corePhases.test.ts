@@ -12,8 +12,8 @@ import { Market } from '../../src/engine/Market';
 import { RNG } from '../../src/engine/RNG';
 import { runProductionPhase } from '../../src/engine/phases/productionPhase';
 import {
-  getActiveEconomicCalibrationProfileId,
-  setEconomicCalibrationProfile,
+  DEFAULT_ECONOMIC_CALIBRATION_PROFILE_ID,
+  getEconomicCalibrationProfile,
 } from '../../src/engine/economicCalibration';
 
 function makeSnapshot(overrides: Partial<TurnSnapshot>): TurnSnapshot {
@@ -321,6 +321,7 @@ test('sector output follows diminishing labor returns under Cobb-Douglas scaling
     allowedSectors: ['food', 'goods', 'services'],
     caregiverPenaltyPerChild: CONFIG.CAREGIVER_PRODUCTIVITY_PENALTY_PER_CHILD,
     caregiverPenaltyMax: CONFIG.CAREGIVER_PRODUCTIVITY_PENALTY_MAX,
+    calibration: getEconomicCalibrationProfile(DEFAULT_ECONOMIC_CALIBRATION_PROFILE_ID),
   });
   runProductionPhase({
     agents: workers20,
@@ -331,6 +332,7 @@ test('sector output follows diminishing labor returns under Cobb-Douglas scaling
     allowedSectors: ['food', 'goods', 'services'],
     caregiverPenaltyPerChild: CONFIG.CAREGIVER_PRODUCTIVITY_PENALTY_PER_CHILD,
     caregiverPenaltyMax: CONFIG.CAREGIVER_PRODUCTIVITY_PENALTY_MAX,
+    calibration: getEconomicCalibrationProfile(DEFAULT_ECONOMIC_CALIBRATION_PROFILE_ID),
   });
 
   const output10 = workers10.reduce((sum, worker) => sum + worker.outputThisTurn, 0);
@@ -341,11 +343,10 @@ test('sector output follows diminishing labor returns under Cobb-Douglas scaling
 });
 
 test('academic calibration mode uses gentler price adjustment than baseline mode', () => {
-  const previousMode = getActiveEconomicCalibrationProfileId();
-
   const simulateOnePriceUpdate = (mode: 'baseline' | 'academic'): number => {
-    setEconomicCalibrationProfile(mode);
-    const market = new Market();
+    const market = new Market({
+      getEconomicCalibration: () => getEconomicCalibrationProfile(mode),
+    });
     const internals = market as unknown as {
       supply: Record<SectorType, number>;
       demand: Record<SectorType, number>;
@@ -358,13 +359,9 @@ test('academic calibration mode uses gentler price adjustment than baseline mode
     return market.prices.food;
   };
 
-  try {
-    const baselinePrice = simulateOnePriceUpdate('baseline');
-    const academicPrice = simulateOnePriceUpdate('academic');
-    const baselineDelta = Math.abs(baselinePrice - CONFIG.INITIAL_PRICES.food);
-    const academicDelta = Math.abs(academicPrice - CONFIG.INITIAL_PRICES.food);
-    assert.equal(baselineDelta > academicDelta, true);
-  } finally {
-    setEconomicCalibrationProfile(previousMode);
-  }
+  const baselinePrice = simulateOnePriceUpdate('baseline');
+  const academicPrice = simulateOnePriceUpdate('academic');
+  const baselineDelta = Math.abs(baselinePrice - CONFIG.INITIAL_PRICES.food);
+  const academicDelta = Math.abs(academicPrice - CONFIG.INITIAL_PRICES.food);
+  assert.equal(baselineDelta > academicDelta, true);
 });

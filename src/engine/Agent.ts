@@ -10,7 +10,11 @@ import type {
   BuyOrder,
 } from '../types';
 import { SECTORS } from '../types';
-import { getActiveEconomicCalibration } from './economicCalibration';
+import {
+  DEFAULT_ECONOMIC_CALIBRATION_PROFILE_ID,
+  getEconomicCalibrationProfile,
+  type EconomicCalibrationProfile,
+} from './economicCalibration';
 import type { Market } from './Market';
 import type { RNG } from './RNG';
 
@@ -22,6 +26,7 @@ export interface AgentOptions {
   gender?: Gender;
   familyId?: number;
   goalType?: AgentGoalType;
+  getEconomicCalibration?: () => EconomicCalibrationProfile;
 }
 
 interface GoalWeights {
@@ -88,6 +93,7 @@ export class Agent {
   private _spentThisTurn: number = 0;
   private _currentLuck: number = 0;
   private _outputThisTurn: number = 0;
+  private readonly getEconomicCalibration: () => EconomicCalibrationProfile;
 
   constructor(id: number, name: string, sector: SectorType, rng: RNG, options?: AgentOptions) {
     this.id = id;
@@ -106,6 +112,9 @@ export class Agent {
     this.switchHistory = [sector];
     this.familyId = options?.familyId ?? id;
     this.lifeEvents = [];
+    this.getEconomicCalibration = options?.getEconomicCalibration ?? (
+      () => getEconomicCalibrationProfile(DEFAULT_ECONOMIC_CALIBRATION_PROFILE_ID)
+    );
 
     this.gender = options?.gender ?? (rng.next() < 0.5 ? 'M' : 'F');
     this.age = options?.age ?? rng.nextInt(CONFIG.MIN_STARTING_AGE, CONFIG.MAX_STARTING_AGE);
@@ -207,7 +216,7 @@ export class Agent {
   private getMarshallianBudgetShares(
     demandModifiers?: Partial<Record<SectorType, number>>,
   ): Record<SectorType, number> {
-    const calibration = getActiveEconomicCalibration();
+    const calibration = this.getEconomicCalibration();
     const raw: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
     for (const sector of SECTORS) {
       const priority = this.getSectorPriority(sector);
@@ -284,7 +293,7 @@ export class Agent {
     let budgetPool = Math.max(0, this.money - reserve);
     if (budgetPool <= 0.01) return;
 
-    const calibration = getActiveEconomicCalibration();
+    const calibration = this.getEconomicCalibration();
     const budgetShares = this.getMarshallianBudgetShares(demandModifiers);
     const requiredNow: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
     const targetGap: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };

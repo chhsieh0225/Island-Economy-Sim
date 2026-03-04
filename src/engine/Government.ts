@@ -76,9 +76,23 @@ export class Government {
     this.publicWorksActive = active;
   }
 
-  toState(): GovernmentState {
+  toState(previous?: GovernmentState): GovernmentState {
+    const treasury = Math.round(this.treasury * 100) / 100;
+    if (
+      previous &&
+      previous.treasury === treasury &&
+      previous.taxRate === this.taxRate &&
+      previous.subsidies.food === this.subsidies.food &&
+      previous.subsidies.goods === this.subsidies.goods &&
+      previous.subsidies.services === this.subsidies.services &&
+      previous.welfareEnabled === this.welfareEnabled &&
+      previous.publicWorksActive === this.publicWorksActive
+    ) {
+      return previous;
+    }
+
     return {
-      treasury: Math.round(this.treasury * 100) / 100,
+      treasury,
       taxRate: this.taxRate,
       subsidies: { ...this.subsidies },
       welfareEnabled: this.welfareEnabled,

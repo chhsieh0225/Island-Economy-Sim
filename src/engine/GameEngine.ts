@@ -16,12 +16,6 @@ import type {
   EconomyStage,
   MilestoneRecord,
   IslandTerrainState,
-  SectorDevelopmentLevel,
-  ReflectiveQuestion,
-  AgentBiography,
-  BestOfRanking,
-  TurnCausalReplay,
-  CausalDriver,
 } from '../types';
 import { SECTORS } from '../types';
 import { Agent } from './Agent';
@@ -29,7 +23,6 @@ import { Market } from './Market';
 import { Government } from './Government';
 import { Statistics } from './Statistics';
 import { RNG } from './RNG';
-import { computeScore } from './Scoring';
 import { generateName } from '../data/names';
 import { DEFAULT_SCENARIO, getScenarioById } from '../data/scenarios';
 import { runSpoilagePhase, runProductionPhase, runMarketPostingPhase } from './phases/productionPhase';
@@ -39,6 +32,26 @@ import { runAgingPhase, runLifeDeathPhase } from './phases/demographyPhase';
 import type { DemographyPhaseSummary } from './phases/demographyPhase';
 import { applyDecisionChoiceEffects, runRandomEventsPhase } from './phases/eventsPhase';
 import { applyPendingPoliciesPhase } from './phases/policiesPhase';
+import {
+  buildTurnCausalReplay as buildTurnCausalReplayModule,
+  buildZeroCausalReplay,
+} from './modules/economyModule';
+import {
+  evaluateEconomyStageProgression,
+  getStageNeedMultipliers,
+  getUnlockedSectorsForStage,
+} from './modules/progressionModule';
+import { evaluateMilestones } from './modules/milestonesModule';
+import {
+  buildGameOverState as buildGameOverStateModule,
+  deriveGameOverReason,
+} from './modules/gameOverModule';
+import {
+  DEFAULT_ECONOMIC_CALIBRATION_PROFILE_ID,
+  getEconomicCalibrationProfile,
+  type EconomicCalibrationProfile,
+  type EconomicCalibrationProfileId,
+} from './economicCalibration';
 
 export class GameEngine {
   turn: number = 0;
@@ -59,6 +72,7 @@ export class GameEngine {
   seed: number;
   scenarioId: ScenarioId;
   gameOver: GameOverState | null = null;
+  private economicCalibrationProfileId: EconomicCalibrationProfileId;
 
   private nextAgentId: number = CONFIG.INITIAL_POPULATION;
   private nextFamilyId: number = 1;
@@ -70,16 +84,84 @@ export class GameEngine {
   private _newMilestonesThisTurn: MilestoneRecord[] = [];
   private stageTransitionFrom: EconomyStage | null = null;
   private stageTransitionStartTurn: number | null = null;
+  private cachedState: GameState | null = null;
+  private stateDirty: {
+    agents: boolean;
+    terrain: boolean;
+    market: boolean;
+    government: boolean;
+    statistics: boolean;
+    events: boolean;
+    milestones: boolean;
+    activeRandomEvents: boolean;
+    pendingDecision: boolean;
+    pendingPolicies: boolean;
+    policyTimeline: boolean;
+    gameOver: boolean;
+  } = {
+      agents: true,
+      terrain: true,
+      market: true,
+      government: true,
+      statistics: true,
+      events: true,
+      milestones: true,
+      activeRandomEvents: true,
+      pendingDecision: true,
+      pendingPolicies: true,
+      policyTimeline: true,
+      gameOver: true,
+    };
 
-  constructor(seed?: number, scenarioId: ScenarioId = DEFAULT_SCENARIO) {
+  constructor(
+    seed?: number,
+    scenarioId: ScenarioId = DEFAULT_SCENARIO,
+    calibrationProfileId: EconomicCalibrationProfileId = DEFAULT_ECONOMIC_CALIBRATION_PROFILE_ID,
+  ) {
     this.seed = seed ?? Date.now();
     this.scenarioId = scenarioId;
+    this.economicCalibrationProfileId = calibrationProfileId;
     this.rng = new RNG(this.seed);
-    this.market = new Market();
+    this.market = new Market({
+      getEconomicCalibration: () => this.getEconomicCalibration(),
+    });
     this.government = new Government();
     this.statistics = new Statistics();
     this.terrain = this.generateTerrainProfile(this.seed);
     this.initializeAgents();
+  }
+
+  getEconomicCalibrationProfileId(): EconomicCalibrationProfileId {
+    return this.economicCalibrationProfileId;
+  }
+
+  setEconomicCalibrationProfile(id: EconomicCalibrationProfileId): void {
+    this.economicCalibrationProfileId = id;
+  }
+
+  private getEconomicCalibration(): EconomicCalibrationProfile {
+    return getEconomicCalibrationProfile(this.economicCalibrationProfileId);
+  }
+
+  private markStateDirty(...keys: Array<keyof GameEngine['stateDirty']>): void {
+    for (const key of keys) {
+      this.stateDirty[key] = true;
+    }
+  }
+
+  private clearStateDirty(): void {
+    this.stateDirty.agents = false;
+    this.stateDirty.terrain = false;
+    this.stateDirty.market = false;
+    this.stateDirty.government = false;
+    this.stateDirty.statistics = false;
+    this.stateDirty.events = false;
+    this.stateDirty.milestones = false;
+    this.stateDirty.activeRandomEvents = false;
+    this.stateDirty.pendingDecision = false;
+    this.stateDirty.pendingPolicies = false;
+    this.stateDirty.policyTimeline = false;
+    this.stateDirty.gameOver = false;
   }
 
   private initializeAgents(): void {
@@ -97,7 +179,11 @@ export class GameEngine {
         const sector = unlocked[this.rng.nextInt(0, unlocked.length - 1)];
         const gender = this.rng.next() < 0.5 ? 'M' as const : 'F' as const;
         const name = generateName(gender, this.rng);
-        const agent = new Agent(i, name, sector, this.rng, { gender, familyId });
+        const agent = new Agent(i, name, sector, this.rng, {
+          gender,
+          familyId,
+          getEconomicCalibration: () => this.getEconomicCalibration(),
+        });
         agent.addLifeEvent(0, 'join', `加入小島，就業於${this.sectorLabel(sector)}。`, 'positive');
         this.agents.push(agent);
       }
@@ -258,7 +344,7 @@ export class GameEngine {
 
   advanceTurn(): TurnSnapshot {
     const latestSnapshot = this.statistics.history[this.statistics.history.length - 1];
-    const emptyCausalReplay = this.buildZeroCausalReplay();
+    const emptyCausalReplay = buildZeroCausalReplay();
 
     if (this.gameOver) {
       return latestSnapshot ?? this.statistics.recordTurn(
@@ -339,7 +425,7 @@ export class GameEngine {
     const endAliveAgents = this.agents.filter(a => a.alive);
     const turnEndAvgSatisfaction = this.averageAgentMetric(endAliveAgents, agent => agent.satisfaction);
     const turnEndAvgHealth = this.averageAgentMetric(endAliveAgents, agent => agent.health);
-    const causalReplay = this.buildTurnCausalReplay({
+    const causalReplay = buildTurnCausalReplayModule({
       startPopulation: turnStartPopulation,
       startAvgSatisfaction: turnStartAvgSatisfaction,
       endAvgSatisfaction: turnEndAvgSatisfaction,
@@ -370,6 +456,20 @@ export class GameEngine {
     if (this.gameOver) {
       this.addEvent('critical', this.getGameOverMessage(this.gameOver.reason));
     }
+
+    this.markStateDirty(
+      'agents',
+      'market',
+      'government',
+      'statistics',
+      'events',
+      'milestones',
+      'activeRandomEvents',
+      'pendingDecision',
+      'pendingPolicies',
+      'policyTimeline',
+      'gameOver',
+    );
 
     return snapshot;
   }
@@ -403,6 +503,7 @@ export class GameEngine {
       allowedSectors,
       caregiverPenaltyPerChild: CONFIG.CAREGIVER_PRODUCTIVITY_PENALTY_PER_CHILD,
       caregiverPenaltyMax: CONFIG.CAREGIVER_PRODUCTIVITY_PENALTY_MAX,
+      calibration: this.getEconomicCalibration(),
     });
   }
 
@@ -557,6 +658,7 @@ export class GameEngine {
       age: ageTurns,
       gender,
       familyId: assignedFamilyId,
+      getEconomicCalibration: () => this.getEconomicCalibration(),
     });
     if (bornOnIsland) {
       agent.addLifeEvent(this.turn, 'join', `在小島出生，目前由家戶照顧中（${Math.floor(ageTurns / 12)} 歲）。`, 'positive');
@@ -567,57 +669,19 @@ export class GameEngine {
   }
 
   private getUnlockedSectors(): SectorType[] {
-    switch (this.economyStage) {
-      case 'agriculture':
-        return ['food'];
-      case 'industrial':
-        return ['food', 'goods'];
-      case 'service':
-        return ['food', 'goods', 'services'];
-    }
+    return getUnlockedSectorsForStage(this.economyStage);
   }
 
   private getCurrentNeedMultipliers(): Record<SectorType, number> {
-    const target = CONFIG.STAGE_NEED_MULTIPLIERS[this.economyStage];
-    const transitionFrom = this.stageTransitionFrom;
-    const transitionStartTurn = this.stageTransitionStartTurn;
-
-    if (!transitionFrom || transitionStartTurn === null || transitionFrom === this.economyStage) {
-      return { ...target };
-    }
-
-    if (this.economyStage === 'agriculture') {
-      return { ...target };
-    }
-
-    const rampTurns = CONFIG.STAGE_TRANSITION_RAMP_TURNS[this.economyStage];
-    if (rampTurns <= 0) {
-      return { ...target };
-    }
-
-    const elapsedTurns = Math.max(0, this.turn - transitionStartTurn);
-    const progress = Math.min(1, elapsedTurns / rampTurns);
-
-    if (progress >= 1) {
-      this.stageTransitionFrom = null;
-      this.stageTransitionStartTurn = null;
-      return { ...target };
-    }
-
-    const source = CONFIG.STAGE_NEED_MULTIPLIERS[transitionFrom];
-    const blended: Record<SectorType, number> = {
-      food: source.food + (target.food - source.food) * progress,
-      goods: source.goods + (target.goods - source.goods) * progress,
-      services: source.services + (target.services - source.services) * progress,
-    };
-
-    return blended;
-  }
-
-  private startStageNeedRamp(from: EconomyStage, to: EconomyStage): void {
-    if (from === to || to === 'agriculture') return;
-    this.stageTransitionFrom = from;
-    this.stageTransitionStartTurn = this.turn + 1;
+    const result = getStageNeedMultipliers({
+      turn: this.turn,
+      economyStage: this.economyStage,
+      stageTransitionFrom: this.stageTransitionFrom,
+      stageTransitionStartTurn: this.stageTransitionStartTurn,
+    });
+    this.stageTransitionFrom = result.stageTransitionFrom;
+    this.stageTransitionStartTurn = result.stageTransitionStartTurn;
+    return result.multipliers;
   }
 
   private averageAgentMetric(agents: Agent[], accessor: (agent: Agent) => number): number {
@@ -626,213 +690,21 @@ export class GameEngine {
     return sum / agents.length;
   }
 
-  private roundMetric(value: number): number {
-    return Math.round(value * 100) / 100;
-  }
-
-  private perCapitaDelta(totalDelta: number, startPopulation: number): number {
-    if (startPopulation <= 0) return 0;
-    return totalDelta / startPopulation;
-  }
-
-  private nonZeroDrivers(drivers: CausalDriver[]): CausalDriver[] {
-    const visible = drivers.filter(driver => Math.abs(driver.value) >= 0.01);
-    if (visible.length > 0) return visible;
-    return [{ id: 'flat', label: '本回合變化很小', value: 0 }];
-  }
-
-  private buildZeroCausalReplay(): TurnCausalReplay {
-    return {
-      satisfaction: {
-        net: 0,
-        unit: 'point',
-        drivers: [{ id: 'flat', label: '本回合無顯著變化', value: 0 }],
-      },
-      health: {
-        net: 0,
-        unit: 'point',
-        drivers: [{ id: 'flat', label: '本回合無顯著變化', value: 0 }],
-      },
-      departures: {
-        net: 0,
-        unit: 'count',
-        drivers: [{ id: 'flat', label: '本回合無人口流出', value: 0 }],
-      },
-      policy: {
-        taxCollected: 0,
-        welfarePaid: 0,
-        welfareRecipients: 0,
-        publicWorksCost: 0,
-        perCapitaCashDelta: 0,
-        treasuryDelta: 0,
-      },
-    };
-  }
-
-  private buildTurnCausalReplay({
-    startPopulation,
-    startAvgSatisfaction,
-    endAvgSatisfaction,
-    startAvgHealth,
-    endAvgHealth,
-    consumptionSummary,
-    agingHealthDelta,
-    governmentSummary,
-    demographics,
-  }: {
-    startPopulation: number;
-    startAvgSatisfaction: number;
-    endAvgSatisfaction: number;
-    startAvgHealth: number;
-    endAvgHealth: number;
-    consumptionSummary: ConsumptionPhaseSummary;
-    agingHealthDelta: number;
-    governmentSummary: {
-      taxCollected: number;
-      welfareSpent: number;
-      welfareRecipients: number;
-      publicWorksSpent: number;
-      treasuryDelta: number;
-      perCapitaCashDelta: number;
-    };
-    demographics: DemographyPhaseSummary;
-  }): TurnCausalReplay {
-    if (startPopulation <= 0) return this.buildZeroCausalReplay();
-
-    const satNeeds = this.perCapitaDelta(consumptionSummary.needsSatisfactionDelta, startPopulation);
-    const satEvents = this.perCapitaDelta(consumptionSummary.eventSatisfactionDelta, startPopulation);
-    const satNet = endAvgSatisfaction - startAvgSatisfaction;
-    const satResidual = satNet - satNeeds - satEvents;
-
-    const healthNeeds = this.perCapitaDelta(consumptionSummary.needsHealthDelta, startPopulation);
-    const healthEvents = this.perCapitaDelta(consumptionSummary.eventHealthDelta, startPopulation);
-    const healthAging = agingHealthDelta;
-    const healthNet = endAvgHealth - startAvgHealth;
-    const healthResidual = healthNet - healthNeeds - healthEvents - healthAging;
-
-    const departuresNet = demographics.deaths - demographics.births;
-
-    return {
-      satisfaction: {
-        net: this.roundMetric(satNet),
-        unit: 'point',
-        drivers: this.nonZeroDrivers([
-          {
-            id: 'needs',
-            label: `需求狀態（缺口 ${consumptionSummary.unmetNeedCount}）`,
-            value: this.roundMetric(satNeeds),
-          },
-          {
-            id: 'events',
-            label: '事件衝擊',
-            value: this.roundMetric(satEvents),
-          },
-          {
-            id: 'residual',
-            label: '其他與人口組成',
-            value: this.roundMetric(satResidual),
-          },
-        ]),
-      },
-      health: {
-        net: this.roundMetric(healthNet),
-        unit: 'point',
-        drivers: this.nonZeroDrivers([
-          {
-            id: 'needs',
-            label: `需求與照護（缺口 ${consumptionSummary.unmetNeedCount}）`,
-            value: this.roundMetric(healthNeeds),
-          },
-          {
-            id: 'events',
-            label: '事件衝擊',
-            value: this.roundMetric(healthEvents),
-          },
-          {
-            id: 'aging',
-            label: '老化效應',
-            value: this.roundMetric(healthAging),
-          },
-          {
-            id: 'residual',
-            label: '其他與人口組成',
-            value: this.roundMetric(healthResidual),
-          },
-        ]),
-      },
-      departures: {
-        net: departuresNet,
-        unit: 'count',
-        drivers: this.nonZeroDrivers([
-          {
-            id: 'left',
-            label: '不滿離島',
-            value: demographics.deathByCause.left,
-          },
-          {
-            id: 'health',
-            label: '健康死亡',
-            value: demographics.deathByCause.health,
-          },
-          {
-            id: 'age',
-            label: '老化死亡',
-            value: demographics.deathByCause.age,
-          },
-          {
-            id: 'births',
-            label: '新生加入',
-            value: -demographics.births,
-          },
-        ]),
-      },
-      policy: {
-        taxCollected: this.roundMetric(governmentSummary.taxCollected),
-        welfarePaid: this.roundMetric(governmentSummary.welfareSpent),
-        welfareRecipients: governmentSummary.welfareRecipients,
-        publicWorksCost: this.roundMetric(governmentSummary.publicWorksSpent),
-        perCapitaCashDelta: this.roundMetric(governmentSummary.perCapitaCashDelta),
-        treasuryDelta: this.roundMetric(governmentSummary.treasuryDelta),
-      },
-    };
-  }
-
   private phaseEconomyProgression(agents: Agent[]): void {
-    if (!CONFIG.PROGRESSIVE_ECONOMY_ENABLED) return;
-
-    if (this.economyStage === 'agriculture') {
-      const foodDemand = this.market.demand.food;
-      const foodSupply = this.market.supply.food;
-      const marketFoodCoverage = foodDemand > 0.01 ? foodSupply / foodDemand : 1;
-      // In early game, low trade volume can hide true self-sufficiency.
-      const avgFoodStock = agents.reduce((sum, agent) => sum + agent.inventory.food, 0) / Math.max(1, agents.length);
-      const stockFoodCoverage = avgFoodStock / Math.max(0.01, CONFIG.CONSUMPTION.food);
-      const foodCoverage = Math.max(marketFoodCoverage, stockFoodCoverage);
-      if (this.turn >= CONFIG.STAGE_INDUSTRIAL_MIN_TURN && foodCoverage >= CONFIG.STAGE_INDUSTRIAL_MIN_FOOD_COVERAGE) {
-        this.startStageNeedRamp(this.economyStage, 'industrial');
-        this.economyStage = 'industrial';
-        this.addEvent(
-          'positive',
-          `產業升級：島嶼進入工業化階段（糧食覆蓋 ${foodCoverage.toFixed(2)}），商品業開始成形。`,
-        );
-      }
-      return;
-    }
-
-    if (this.economyStage === 'industrial') {
-      const adultWorkers = agents.filter(a => a.age >= CONFIG.WORKING_AGE);
-      const goodsWorkers = adultWorkers.filter(a => a.sector === 'goods').length;
-      const goodsShare = goodsWorkers / Math.max(1, adultWorkers.length);
-      const avgSat = agents.reduce((sum, a) => sum + a.satisfaction, 0) / Math.max(1, agents.length);
-      if (
-        this.turn >= CONFIG.STAGE_SERVICE_MIN_TURN &&
-        goodsShare >= CONFIG.STAGE_SERVICE_MIN_GOODS_WORKER_SHARE &&
-        avgSat >= CONFIG.STAGE_SERVICE_MIN_AVG_SATISFACTION
-      ) {
-        this.startStageNeedRamp(this.economyStage, 'service');
-        this.economyStage = 'service';
-        this.addEvent('positive', '產業升級：島嶼進入服務化階段，服務業全面展開。');
-      }
+    const result = evaluateEconomyStageProgression({
+      turn: this.turn,
+      economyStage: this.economyStage,
+      stageTransitionFrom: this.stageTransitionFrom,
+      stageTransitionStartTurn: this.stageTransitionStartTurn,
+      agents,
+      foodDemand: this.market.demand.food,
+      foodSupply: this.market.supply.food,
+    });
+    this.economyStage = result.economyStage;
+    this.stageTransitionFrom = result.stageTransitionFrom;
+    this.stageTransitionStartTurn = result.stageTransitionStartTurn;
+    if (result.message) {
+      this.addEvent('positive', result.message);
     }
   }
 
@@ -864,6 +736,14 @@ export class GameEngine {
     this.applyDecisionChoice(choice);
     this.addEvent('info', `市政抉擇：你選擇了「${choice.label}」。`);
     this.pendingDecision = null;
+    this.markStateDirty(
+      'agents',
+      'government',
+      'events',
+      'activeRandomEvents',
+      'pendingDecision',
+      'gameOver',
+    );
     return true;
   }
 
@@ -891,153 +771,13 @@ export class GameEngine {
 
   private phaseMilestones(): void {
     const aliveAgents = this.agents.filter(a => a.alive);
-    if (aliveAgents.length === 0) return;
-
-    // Wealth milestones: trigger once per global threshold.
-    const richest = aliveAgents.reduce((best, a) => (a.money > best.money ? a : best), aliveAgents[0]);
-    const wealthMilestones = [
-      { threshold: 1_000, label: '千元富翁' },
-      { threshold: 10_000, label: '萬元富翁' },
-      { threshold: 1_000_000, label: '百萬富翁' },
-    ];
-    for (const m of wealthMilestones) {
-      const key = `wealth_${m.threshold}`;
-      if (!this.milestoneFlags.has(key) && richest.money >= m.threshold) {
-        this.milestoneFlags.add(key);
-        this.addMilestone({
-          id: key,
-          turn: this.turn,
-          kind: 'wealth',
-          title: m.label,
-          description: `${richest.name} 資產突破 $${m.threshold.toLocaleString()}（目前 $${richest.money.toFixed(0)}）。`,
-          agentId: richest.id,
-        });
-      }
-    }
-
-    // Super genius: announce once when the first extraordinary IQ appears.
-    const smartest = aliveAgents.reduce(
-      (best, a) => (a.intelligence > best.intelligence ? a : best),
-      aliveAgents[0],
-    );
-    if (!this.milestoneFlags.has('super_genius') && smartest.intelligence >= 135) {
-      this.milestoneFlags.add('super_genius');
-      this.addMilestone({
-        id: 'super_genius',
-        turn: this.turn,
-        kind: 'talent',
-        title: '超級天才',
-        description: `${smartest.name} 的 IQ 高達 ${smartest.intelligence}。`,
-        agentId: smartest.id,
-      });
-    }
-
-    // Longevity milestones.
-    const oldest = aliveAgents.reduce((best, a) => (a.age > best.age ? a : best), aliveAgents[0]);
-    const ageMilestones = [
-      { turns: 720, label: '長壽里程碑', ageLabel: '60 歲' },
-      { turns: 900, label: '超高齡里程碑', ageLabel: '75 歲' },
-    ];
-    for (const m of ageMilestones) {
-      const key = `age_${m.turns}`;
-      if (!this.milestoneFlags.has(key) && oldest.age >= m.turns) {
-        this.milestoneFlags.add(key);
-        this.addMilestone({
-          id: key,
-          turn: this.turn,
-          kind: 'longevity',
-          title: m.label,
-          description: `${oldest.name} 達到 ${m.ageLabel}。`,
-          agentId: oldest.id,
-        });
-      }
-    }
-
-    // Career switching milestones.
-    const switchKing = aliveAgents.reduce(
-      (best, a) => (a.totalSwitches > best.totalSwitches ? a : best),
-      aliveAgents[0],
-    );
-    const switchMilestones = [3, 6];
-    for (const threshold of switchMilestones) {
-      const key = `switch_${threshold}`;
-      if (!this.milestoneFlags.has(key) && switchKing.totalSwitches >= threshold) {
-        this.milestoneFlags.add(key);
-        this.addMilestone({
-          id: key,
-          turn: this.turn,
-          kind: 'career',
-          title: '轉職王',
-          description: `${switchKing.name} 已轉職 ${switchKing.totalSwitches} 次。`,
-          agentId: switchKing.id,
-        });
-      }
-    }
-
-    // Family wealth milestones.
-    const familyTotals = new Map<number, { wealth: number; members: Agent[] }>();
-    for (const agent of aliveAgents) {
-      const current = familyTotals.get(agent.familyId);
-      if (current) {
-        current.wealth += agent.money;
-        current.members.push(agent);
-      } else {
-        familyTotals.set(agent.familyId, { wealth: agent.money, members: [agent] });
-      }
-    }
-    const richestFamily = [...familyTotals.entries()].reduce((best, entry) => (
-      !best || entry[1].wealth > best[1].wealth ? entry : best
-    ), null as [number, { wealth: number; members: Agent[] }] | null);
-
-    if (richestFamily) {
-      const familyMilestones = [5000, 20000];
-      for (const threshold of familyMilestones) {
-        const key = `family_wealth_${threshold}`;
-        if (!this.milestoneFlags.has(key) && richestFamily[1].wealth >= threshold) {
-          this.milestoneFlags.add(key);
-          const representative = richestFamily[1].members.reduce(
-            (best, a) => (a.money > best.money ? a : best),
-            richestFamily[1].members[0],
-          );
-          this.addMilestone({
-            id: key,
-            turn: this.turn,
-            kind: 'family',
-            title: '家族崛起',
-            description: `${representative.name} 所在的 #${richestFamily[0]} 家族總資產突破 $${threshold.toLocaleString()}。`,
-            agentId: representative.id,
-            familyId: richestFamily[0],
-          });
-        }
-      }
-    }
-
-    // Legendary elder with excellent health.
-    const immortalCandidate = aliveAgents.find(a => a.age >= 720 && a.health >= 92);
-    if (immortalCandidate && !this.milestoneFlags.has('immortal_legend')) {
-      this.milestoneFlags.add('immortal_legend');
-      this.addMilestone({
-        id: 'immortal_legend',
-        turn: this.turn,
-        kind: 'longevity',
-        title: '不死傳說',
-        description: `${immortalCandidate.name} 已 ${Math.floor(immortalCandidate.age / 12)} 歲仍維持 ${immortalCandidate.health.toFixed(0)}% 健康。`,
-        agentId: immortalCandidate.id,
-      });
-    }
-
-    // Worker model: sustained high income streak.
-    const workerModel = aliveAgents.find(agent => this.hasRecentIncomeStreak(agent, 5, 90));
-    if (workerModel && !this.milestoneFlags.has('worker_model')) {
-      this.milestoneFlags.add('worker_model');
-      this.addMilestone({
-        id: 'worker_model',
-        turn: this.turn,
-        kind: 'work',
-        title: '勞工楷模',
-        description: `${workerModel.name} 連續 5 回合高收入，展現驚人穩定性。`,
-        agentId: workerModel.id,
-      });
+    const records = evaluateMilestones({
+      turn: this.turn,
+      aliveAgents,
+      milestoneFlags: this.milestoneFlags,
+    });
+    for (const record of records) {
+      this.addMilestone(record);
     }
   }
 
@@ -1059,12 +799,7 @@ export class GameEngine {
     }
     // Keep a brief log entry for timeline context, but detailed browsing goes to milestone panel.
     this.addEvent('positive', `🏅 ${record.title}：${record.description}`);
-  }
-
-  private hasRecentIncomeStreak(agent: Agent, turns: number, threshold: number): boolean {
-    if (agent.incomeHistory.length < turns) return false;
-    const recent = agent.incomeHistory.slice(-turns);
-    return recent.every(v => v >= threshold);
+    this.markStateDirty('milestones', 'agents');
   }
 
   private upsertPolicyTimeline(policy: PendingPolicyChange): void {
@@ -1151,6 +886,7 @@ export class GameEngine {
       this.addEvent('info', `政策排程：${change.summary}（將於 ${nextPolicy.applyTurn} 回合生效）`);
     }
     this.upsertPolicyTimeline(nextPolicy);
+    this.markStateDirty('pendingPolicies', 'policyTimeline', 'events');
   }
 
   private getPolicySideEffects(type: PendingPolicyType, value: number | boolean): string[] {
@@ -1177,18 +913,12 @@ export class GameEngine {
 
   private checkEndConditions(): GameOverState | null {
     const aliveCount = this.agents.filter(a => a.alive).length;
-    let reason: GameOverReason | null = null;
-
-    if (aliveCount === 0) {
-      reason = 'all_dead';
-    } else if (this.computeCumulativeGDP() >= CONFIG.VICTORY_GDP_THRESHOLD) {
-      reason = 'gdp_victory';
-    } else if (this.government.treasury >= CONFIG.VICTORY_TREASURY_THRESHOLD) {
-      reason = 'treasury_victory';
-    } else if (this.turn >= CONFIG.MAX_TURNS) {
-      reason = 'max_turns';
-    }
-
+    const reason = deriveGameOverReason({
+      aliveCount,
+      cumulativeGdp: this.computeCumulativeGDP(),
+      treasury: this.government.treasury,
+      turn: this.turn,
+    });
     if (!reason) return null;
     return this.buildGameOverState(reason);
   }
@@ -1197,239 +927,20 @@ export class GameEngine {
     return this.statistics.history.reduce((sum, s) => sum + s.gdp, 0);
   }
 
-  private classifySectorDevelopment(share: number): SectorDevelopmentLevel {
-    if (share >= 45) return '主導';
-    if (share >= 33) return '成熟';
-    if (share >= 20) return '成長';
-    if (share >= 10) return '起步';
-    return '薄弱';
-  }
-
-  private getSectorDevelopmentComment(sector: SectorType, level: SectorDevelopmentLevel): string {
-    const comments: Record<SectorType, Record<SectorDevelopmentLevel, string>> = {
-      food: {
-        薄弱: '糧食基礎不足，遇到衝擊時風險偏高。',
-        起步: '糧食供給剛起步，仍需擴大生產能力。',
-        成長: '糧食體系逐步穩定，已具備基本支撐力。',
-        成熟: '糧食供應成熟，對人口承載較有保障。',
-        主導: '糧食產業高度主導，安全盤穩但結構較單一。',
-      },
-      goods: {
-        薄弱: '製造產能偏弱，實體經濟擴張受限。',
-        起步: '工坊與生產鏈剛建立，仍在打底階段。',
-        成長: '製造部門穩定成長，帶動交易活力。',
-        成熟: '商品產業成熟，是經濟增長的重要引擎。',
-        主導: '商品業高度集中，效率高但波動風險上升。',
-      },
-      services: {
-        薄弱: '服務供給不足，生活品質與消費偏弱。',
-        起步: '服務業剛形成，內需體驗還在建立。',
-        成長: '服務業穩步發展，內需韌性逐漸提升。',
-        成熟: '服務網絡成熟，居民福祉與交易體驗良好。',
-        主導: '服務業主導結構，內需強勁但實體供應需平衡。',
-      },
-    };
-
-    return comments[sector][level];
-  }
-
-  private buildSectorDevelopment(history: TurnSnapshot[]): GameOverState['finalStats']['sectorDevelopment'] {
-    const latest = history[history.length - 1];
-    const distribution: Record<SectorType, number> = latest?.jobDistribution ?? {
-      food: 0,
-      goods: 0,
-      services: 0,
-    };
-    const total = Math.max(1, distribution.food + distribution.goods + distribution.services);
-
-    const result = {} as GameOverState['finalStats']['sectorDevelopment'];
-    for (const sector of SECTORS) {
-      const share = (distribution[sector] / total) * 100;
-      const level = this.classifySectorDevelopment(share);
-      result[sector] = {
-        share,
-        level,
-        comment: this.getSectorDevelopmentComment(sector, level),
-      };
-    }
-    return result;
-  }
-
-  private buildCounterfactualNotes(history: TurnSnapshot[]): string[] {
-    const latest = history[history.length - 1];
-    if (!latest) {
-      return ['資料不足，建議先運行數回合再比較政策反事實。'];
-    }
-
-    const notes: string[] = [];
-    const taxPct = latest.government.taxRate * 100;
-    const totalPopulationSeen = Math.max(1, this.agents.length);
-    const leftCount = this.agents.filter(a => a.causeOfDeath === 'left').length;
-    const leaveRate = (leftCount / totalPopulationSeen) * 100;
-
-    if (taxPct >= 12) {
-      const taxCut = 5;
-      const taxRelief = Math.max(1, (taxPct - 10) * 0.18 + latest.giniCoefficient * 3.2);
-      notes.push(
-        `若稅率下調 ${taxCut}%（${taxPct.toFixed(0)}% → ${Math.max(0, taxPct - taxCut).toFixed(0)}%），估計離島率可減少約 ${taxRelief.toFixed(1)}%（現況約 ${leaveRate.toFixed(1)}%）。`,
-      );
-    }
-
-    const foodDemand = latest.market.demand.food;
-    const foodSupply = latest.market.supply.food;
-    const foodGapRatio = foodDemand > 0 ? Math.max(0, (foodDemand - foodSupply) / foodDemand) : 0;
-    if (foodGapRatio > 0.1) {
-      const satLift = Math.min(7.5, 2 + foodGapRatio * 10);
-      notes.push(
-        `若把食物缺口補回一半，估計平均滿意度可回升約 ${satLift.toFixed(1)}%。`,
-      );
-    }
-
-    if (!latest.government.welfareEnabled && latest.giniCoefficient > 0.44) {
-      const giniDrop = Math.min(0.08, 0.02 + (latest.giniCoefficient - 0.44) * 0.35);
-      notes.push(`若啟用福利並持續 12 回合，估計基尼可下降約 ${giniDrop.toFixed(3)}。`);
-    }
-
-    if (notes.length === 0) {
-      notes.push('現況結構相對平衡：可用稅率或補貼 ±5% 做對照實驗，觀察中期差異。');
-    }
-
-    return notes.slice(0, 3);
-  }
-
-  private buildReflectiveQuestions(): ReflectiveQuestion[] {
-    const history = this.statistics.history;
-    const latest = history[history.length - 1];
-    const questions: ReflectiveQuestion[] = [];
-
-    // Gini comparison
-    const gini = latest?.giniCoefficient ?? 0;
-    const country = gini < 0.3 ? '北歐國家' : gini < 0.35 ? '台灣' : gini < 0.4 ? '美國' : gini < 0.45 ? '巴西' : '南非';
-    questions.push({
-      question: `你的島嶼 Gini=${gini.toFixed(2)}，接近${country}的水平。你覺得不平等是經濟成長的必然代價嗎？`,
-      context: '基尼係數反映財富分配不均的程度。現實中各國選擇了不同的平衡點。',
-      realWorldComparison: '台灣≈0.34, 美國≈0.39, 北歐≈0.27, 巴西≈0.48',
-    });
-
-    // Tax rate reflection
-    const avgTax = history.reduce((s, h) => s + h.government.taxRate, 0) / Math.max(1, history.length);
-    questions.push({
-      question: `你的平均稅率是 ${(avgTax * 100).toFixed(0)}%。高稅率能支撐更多公共服務，但是否壓抑了經濟活力？`,
-      context: '這是經濟學中「效率 vs 公平」的經典取捨。',
-      realWorldComparison: '北歐稅率約 45-55%, 美國約 25-35%, 香港約 15%',
-    });
-
-    return questions.slice(0, 2);
-  }
-
-  private generateNarrative(agent: Agent): string {
-    let text = `${agent.name}（IQ ${agent.intelligence}）`;
-    const jobs = agent.lifeEvents.filter(e => e.category === 'job');
-    const achievements = agent.lifeEvents.filter(e => e.category === 'achievement');
-    if (jobs.length > 0) text += `，歷經 ${jobs.length} 次轉職`;
-    if (achievements.length > 0) text += `，獲得 ${achievements.length} 項成就`;
-    text += `，最終累積財富 $${agent.money.toFixed(0)}`;
-    if (!agent.alive) {
-      const cause = agent.causeOfDeath === 'age' ? '壽終正寢' : agent.causeOfDeath === 'health' ? '因病離世' : '離開了小島';
-      text += `。${Math.floor(agent.age / 12)} 歲時${cause}。`;
-    } else {
-      text += `。至今仍健在（${Math.floor(agent.age / 12)} 歲）。`;
-    }
-    return text;
-  }
-
-  private buildAgentBiographies(): AgentBiography[] {
-    const all = this.agents;
-    const biographies: AgentBiography[] = [];
-
-    // Richest agent
-    const richest = all.reduce((b, a) => a.money > b.money ? a : b);
-    biographies.push({
-      agentId: richest.id,
-      name: richest.name,
-      title: '💰 最富有的島民',
-      narrative: this.generateNarrative(richest),
-      highlights: richest.lifeEvents
-        .filter(e => e.category === 'achievement' || e.category === 'job')
-        .slice(-3)
-        .map(e => e.message),
-    });
-
-    // Oldest agent
-    const oldest = all.reduce((b, a) => a.age > b.age ? a : b);
-    if (oldest.id !== richest.id) {
-      biographies.push({
-        agentId: oldest.id,
-        name: oldest.name,
-        title: '🎂 最年長的島民',
-        narrative: this.generateNarrative(oldest),
-        highlights: oldest.lifeEvents
-          .filter(e => e.category === 'achievement' || e.category === 'job')
-          .slice(-3)
-          .map(e => e.message),
-      });
-    }
-
-    // Most switches (if >= 2)
-    const switcher = all.reduce((b, a) => a.totalSwitches > b.totalSwitches ? a : b);
-    if (switcher.totalSwitches >= 2 && switcher.id !== richest.id && switcher.id !== oldest.id) {
-      biographies.push({
-        agentId: switcher.id,
-        name: switcher.name,
-        title: '🔄 最多轉職的島民',
-        narrative: this.generateNarrative(switcher),
-        highlights: switcher.lifeEvents
-          .filter(e => e.category === 'achievement' || e.category === 'job')
-          .slice(-3)
-          .map(e => e.message),
-      });
-    }
-
-    return biographies;
-  }
-
-  private buildBestOfRankings(): BestOfRanking[] {
-    const all = this.agents;
-    const rankings: BestOfRanking[] = [];
-    const richest = all.reduce((b, a) => a.money > b.money ? a : b);
-    rankings.push({ category: 'wealth', label: '💰 最富有', agentName: richest.name, value: `$${richest.money.toFixed(0)}` });
-    const oldest = all.reduce((b, a) => a.age > b.age ? a : b);
-    rankings.push({ category: 'age', label: '🎂 最長壽', agentName: oldest.name, value: `${Math.floor(oldest.age / 12)} 歲` });
-    const switcher = all.reduce((b, a) => a.totalSwitches > b.totalSwitches ? a : b);
-    if (switcher.totalSwitches > 0) rankings.push({ category: 'career', label: '🔄 最多轉職', agentName: switcher.name, value: `${switcher.totalSwitches} 次` });
-    const smartest = all.reduce((b, a) => a.intelligence > b.intelligence ? a : b);
-    rankings.push({ category: 'iq', label: '🧠 最聰明', agentName: smartest.name, value: `IQ ${smartest.intelligence}` });
-    return rankings;
-  }
-
   private buildGameOverState(reason: GameOverReason): GameOverState {
-    const history = this.statistics.history;
-    return {
+    return buildGameOverStateModule({
       reason,
       turn: this.turn,
-      score: computeScore(history),
-      finalStats: {
-        peakPopulation: history.length > 0 ? Math.max(...history.map(h => h.population)) : 0,
-        totalBirths: history.reduce((s, h) => s + h.births, 0),
-        totalDeaths: history.reduce((s, h) => s + h.deaths, 0),
-        peakGdp: history.length > 0 ? Math.max(...history.map(h => h.gdp)) : 0,
-        avgSatisfaction: history.length > 0
-          ? history.reduce((s, h) => s + h.avgSatisfaction, 0) / history.length : 0,
-        avgHealth: history.length > 0
-          ? history.reduce((s, h) => s + h.avgHealth, 0) / history.length : 0,
-        sectorDevelopment: this.buildSectorDevelopment(history),
-        counterfactualNotes: this.buildCounterfactualNotes(history),
-        reflectiveQuestions: this.buildReflectiveQuestions(),
-        agentBiographies: this.buildAgentBiographies(),
-        bestOfRankings: this.buildBestOfRankings(),
-      },
-    };
+      history: this.statistics.history,
+      agents: this.agents,
+    });
   }
 
   endGame(): GameOverState {
     if (!this.gameOver) {
       this.gameOver = this.buildGameOverState('player_exit');
       this.addEvent('critical', this.getGameOverMessage('player_exit'));
+      this.markStateDirty('gameOver');
     }
     return this.gameOver;
   }
@@ -1449,6 +960,7 @@ export class GameEngine {
     if (this.events.length > 100) {
       this.events.shift();
     }
+    this.markStateDirty('events');
   }
 
   private sectorLabel(sector: SectorType): string {
@@ -1515,44 +1027,112 @@ export class GameEngine {
     });
   }
 
-  getState(): GameState {
+  private cloneTerrainState(): IslandTerrainState {
     return {
-      turn: this.turn,
-      agents: this.agents.map(a => a.toState()),
-      terrain: {
-        ...this.terrain,
-        coastlineOffsets: [...this.terrain.coastlineOffsets],
-        zoneOffsets: {
-          food: { ...this.terrain.zoneOffsets.food },
-          goods: { ...this.terrain.zoneOffsets.goods },
-          services: { ...this.terrain.zoneOffsets.services },
-        },
-        sectorSuitability: { ...this.terrain.sectorSuitability },
-        sectorFeatures: { ...this.terrain.sectorFeatures },
+      ...this.terrain,
+      coastlineOffsets: [...this.terrain.coastlineOffsets],
+      zoneOffsets: {
+        food: { ...this.terrain.zoneOffsets.food },
+        goods: { ...this.terrain.zoneOffsets.goods },
+        services: { ...this.terrain.zoneOffsets.services },
       },
-      economyStage: this.economyStage,
-      market: this.market.toState(),
-      government: this.government.toState(),
-      statistics: [...this.statistics.history],
-      events: [...this.events],
-      milestones: [...this.milestones],
-      activeRandomEvents: this.activeRandomEvents.map(e => ({
+      sectorSuitability: { ...this.terrain.sectorSuitability },
+      sectorFeatures: { ...this.terrain.sectorFeatures },
+    };
+  }
+
+  private appendOrCloneArray<T>(source: T[], previous?: T[]): T[] {
+    if (!previous) {
+      return [...source];
+    }
+    if (source.length === previous.length + 1) {
+      return [...previous, source[source.length - 1]];
+    }
+    if (
+      source.length === previous.length &&
+      source.length > 0 &&
+      source[0] === previous[0] &&
+      source[source.length - 1] === previous[source.length - 1]
+    ) {
+      return previous;
+    }
+    if (source.length === 0 && previous.length === 0) {
+      return previous;
+    }
+    return [...source];
+  }
+
+  getState(previous?: GameState): GameState {
+    const prev = previous ?? this.cachedState ?? undefined;
+
+    const agents = this.stateDirty.agents || !prev
+      ? this.agents.map(a => a.toState())
+      : prev.agents;
+    const terrain = this.stateDirty.terrain || !prev
+      ? this.cloneTerrainState()
+      : prev.terrain;
+    const market = this.stateDirty.market || !prev
+      ? this.market.toState(prev?.market)
+      : prev.market;
+    const government = this.stateDirty.government || !prev
+      ? this.government.toState(prev?.government)
+      : prev.government;
+    const statistics = this.stateDirty.statistics || !prev
+      ? this.appendOrCloneArray(this.statistics.history, prev?.statistics)
+      : prev.statistics;
+    const events = this.stateDirty.events || !prev
+      ? this.appendOrCloneArray(this.events, prev?.events)
+      : prev.events;
+    const milestones = this.stateDirty.milestones || !prev
+      ? this.appendOrCloneArray(this.milestones, prev?.milestones)
+      : prev.milestones;
+    const activeRandomEvents = this.stateDirty.activeRandomEvents || !prev
+      ? this.activeRandomEvents.map(e => ({
         def: e.def,
         turnsRemaining: e.turnsRemaining,
-      })),
-      pendingDecision: this.pendingDecision
+      }))
+      : prev.activeRandomEvents;
+    const pendingDecision = this.stateDirty.pendingDecision || !prev
+      ? (this.pendingDecision
         ? {
           ...this.pendingDecision,
           choices: [...this.pendingDecision.choices] as PendingDecision['choices'],
         }
-        : null,
-      pendingPolicies: [...this.pendingPolicies],
-      policyTimeline: this.policyTimeline.map(entry => ({ ...entry, sideEffects: [...entry.sideEffects] })),
+        : null)
+      : prev.pendingDecision;
+    const pendingPolicies = this.stateDirty.pendingPolicies || !prev
+      ? [...this.pendingPolicies]
+      : prev.pendingPolicies;
+    const policyTimeline = this.stateDirty.policyTimeline || !prev
+      ? this.policyTimeline.map(entry => ({ ...entry, sideEffects: [...entry.sideEffects] }))
+      : prev.policyTimeline;
+    const gameOver = this.stateDirty.gameOver || !prev
+      ? this.gameOver
+      : prev.gameOver;
+
+    const nextState: GameState = {
+      turn: this.turn,
+      agents,
+      terrain,
+      economyStage: this.economyStage,
+      market,
+      government,
+      statistics,
+      events,
+      milestones,
+      activeRandomEvents,
+      pendingDecision,
+      pendingPolicies,
+      policyTimeline,
       rngState: this.rng.getState(),
       seed: this.seed,
       scenarioId: this.scenarioId,
-      gameOver: this.gameOver,
+      gameOver,
     };
+
+    this.cachedState = nextState;
+    this.clearStateDirty();
+    return nextState;
   }
 
   reset(seed?: number, scenarioId: ScenarioId = this.scenarioId): void {
@@ -1581,5 +1161,20 @@ export class GameEngine {
     this.government.reset();
     this.statistics.reset();
     this.initializeAgents();
+    this.cachedState = null;
+    this.markStateDirty(
+      'agents',
+      'terrain',
+      'market',
+      'government',
+      'statistics',
+      'events',
+      'milestones',
+      'activeRandomEvents',
+      'pendingDecision',
+      'pendingPolicies',
+      'policyTimeline',
+      'gameOver',
+    );
   }
 }

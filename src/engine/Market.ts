@@ -1,8 +1,16 @@
 import { CONFIG } from '../config';
 import type { SectorType, SellOrder, BuyOrder, MarketState } from '../types';
 import { SECTORS } from '../types';
-import { getActiveEconomicCalibration } from './economicCalibration';
+import {
+  DEFAULT_ECONOMIC_CALIBRATION_PROFILE_ID,
+  getEconomicCalibrationProfile,
+  type EconomicCalibrationProfile,
+} from './economicCalibration';
 import type { Agent } from './Agent';
+
+interface MarketOptions {
+  getEconomicCalibration?: () => EconomicCalibrationProfile;
+}
 
 export class Market {
   prices: Record<SectorType, number>;
@@ -14,8 +22,9 @@ export class Market {
   private sellOrders: Map<SectorType, SellOrder[]>;
   private buyOrders: Map<SectorType, BuyOrder[]>;
   private agents: Map<number, Agent>;
+  private readonly getEconomicCalibration: () => EconomicCalibrationProfile;
 
-  constructor() {
+  constructor(options?: MarketOptions) {
     this.prices = { ...CONFIG.INITIAL_PRICES };
     this.priceHistory = {
       food: [CONFIG.INITIAL_PRICES.food],
@@ -28,6 +37,9 @@ export class Market {
     this.sellOrders = new Map();
     this.buyOrders = new Map();
     this.agents = new Map();
+    this.getEconomicCalibration = options?.getEconomicCalibration ?? (
+      () => getEconomicCalibrationProfile(DEFAULT_ECONOMIC_CALIBRATION_PROFILE_ID)
+    );
 
     for (const sector of SECTORS) {
       this.sellOrders.set(sector, []);
@@ -123,7 +135,7 @@ export class Market {
   }
 
   private adjustPrices(): void {
-    const calibration = getActiveEconomicCalibration();
+    const calibration = this.getEconomicCalibration();
     for (const sector of SECTORS) {
       const supplyTotal = this.supply[sector];
       const demandTotal = this.demand[sector];
@@ -147,17 +159,60 @@ export class Market {
     }
   }
 
-  toState(): MarketState {
+  private reuseOrCloneHistory(previous: number[] | undefined, source: number[]): number[] {
+    if (!previous) return [...source];
+    if (source.length === previous.length + 1) {
+      return [...previous, source[source.length - 1]];
+    }
+    if (
+      source.length === previous.length &&
+      source.length > 0 &&
+      previous[0] === source[0] &&
+      previous[source.length - 1] === source[source.length - 1]
+    ) {
+      return previous;
+    }
+    return [...source];
+  }
+
+  toState(previous?: MarketState): MarketState {
+    const nextPrices = { ...this.prices };
+    const nextSupply = { ...this.supply };
+    const nextDemand = { ...this.demand };
+    const nextVolume = { ...this.volume };
+    const nextPriceHistory = {
+      food: this.reuseOrCloneHistory(previous?.priceHistory.food, this.priceHistory.food),
+      goods: this.reuseOrCloneHistory(previous?.priceHistory.goods, this.priceHistory.goods),
+      services: this.reuseOrCloneHistory(previous?.priceHistory.services, this.priceHistory.services),
+    };
+
+    if (
+      previous &&
+      previous.prices.food === nextPrices.food &&
+      previous.prices.goods === nextPrices.goods &&
+      previous.prices.services === nextPrices.services &&
+      previous.supply.food === nextSupply.food &&
+      previous.supply.goods === nextSupply.goods &&
+      previous.supply.services === nextSupply.services &&
+      previous.demand.food === nextDemand.food &&
+      previous.demand.goods === nextDemand.goods &&
+      previous.demand.services === nextDemand.services &&
+      previous.volume.food === nextVolume.food &&
+      previous.volume.goods === nextVolume.goods &&
+      previous.volume.services === nextVolume.services &&
+      previous.priceHistory.food === nextPriceHistory.food &&
+      previous.priceHistory.goods === nextPriceHistory.goods &&
+      previous.priceHistory.services === nextPriceHistory.services
+    ) {
+      return previous;
+    }
+
     return {
-      prices: { ...this.prices },
-      priceHistory: {
-        food: [...this.priceHistory.food],
-        goods: [...this.priceHistory.goods],
-        services: [...this.priceHistory.services],
-      },
-      supply: { ...this.supply },
-      demand: { ...this.demand },
-      volume: { ...this.volume },
+      prices: nextPrices,
+      priceHistory: nextPriceHistory,
+      supply: nextSupply,
+      demand: nextDemand,
+      volume: nextVolume,
     };
   }
 

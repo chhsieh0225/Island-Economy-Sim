@@ -14,10 +14,6 @@ import type {
 import { CONFIG } from '../config';
 import { DEFAULT_SCENARIO, getScenarioById } from '../data/scenarios';
 import type { EconomicCalibrationProfileId } from '../engine/economicCalibration';
-import {
-  getActiveEconomicCalibrationProfileId,
-  setEconomicCalibrationProfile,
-} from '../engine/economicCalibration';
 import { buildLearningJourney } from '../learning/journey';
 
 export type AutoPlaySpeed = 'slow' | 'medium' | 'fast' | null;
@@ -71,7 +67,7 @@ export function useGameEngine() {
     return true;
   });
   const [economicCalibrationMode, setEconomicCalibrationModeState] = useState<EconomicCalibrationProfileId>(
-    () => getActiveEconomicCalibrationProfileId(),
+    () => engine.getEconomicCalibrationProfileId(),
   );
   const initialLearning = buildLearningJourney(engine.getState());
   const intervalRef = useRef<number | null>(null);
@@ -123,9 +119,11 @@ export function useGameEngine() {
   }, [completedQuestIdsRef, unlockedNodeIdsRef, toastIdRef, tutorialToastsEnabled]);
 
   const syncState = useCallback(() => {
-    const state = engine.getState();
-    pushLearningToasts(state);
-    setGameState(state);
+    setGameState(prev => {
+      const state = engine.getState(prev);
+      pushLearningToasts(state);
+      return state;
+    });
   }, [engine, pushLearningToasts]);
 
   const stopAutoPlayInternal = useCallback(() => {
@@ -241,9 +239,9 @@ export function useGameEngine() {
   }, [engine, syncState, stopAutoPlayInternal]);
 
   const setEconomicMode = useCallback((mode: EconomicCalibrationProfileId) => {
-    setEconomicCalibrationProfile(mode);
+    engine.setEconomicCalibrationProfile(mode);
     setEconomicCalibrationModeState(mode);
-  }, []);
+  }, [engine]);
 
   const setTutorialToasts = useCallback((enabled: boolean) => {
     setTutorialToastsEnabled(enabled);

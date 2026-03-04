@@ -22,6 +22,8 @@ export interface EconomicCalibrationReference {
   source: string;
 }
 
+export const DEFAULT_ECONOMIC_CALIBRATION_PROFILE_ID: EconomicCalibrationProfileId = 'baseline';
+
 const PROFILES: Record<EconomicCalibrationProfileId, EconomicCalibrationProfile> = {
   baseline: {
     id: 'baseline',
@@ -86,8 +88,6 @@ export const ECONOMIC_CALIBRATION_REFERENCES: EconomicCalibrationReference[] = [
   },
 ];
 
-let activeProfileId: EconomicCalibrationProfileId = 'baseline';
-
 export function getEconomicCalibrationProfiles(): EconomicCalibrationProfile[] {
   return [PROFILES.baseline, PROFILES.academic];
 }
@@ -96,16 +96,4 @@ export function getEconomicCalibrationProfile(
   id: EconomicCalibrationProfileId,
 ): EconomicCalibrationProfile {
   return PROFILES[id];
-}
-
-export function getActiveEconomicCalibrationProfileId(): EconomicCalibrationProfileId {
-  return activeProfileId;
-}
-
-export function getActiveEconomicCalibration(): EconomicCalibrationProfile {
-  return PROFILES[activeProfileId];
-}
-
-export function setEconomicCalibrationProfile(id: EconomicCalibrationProfileId): void {
-  activeProfileId = id;
 }

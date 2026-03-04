@@ -20,6 +20,8 @@ import type {
   ReflectiveQuestion,
   AgentBiography,
   BestOfRanking,
+  TurnCausalReplay,
+  CausalDriver,
 } from '../types';
 import { SECTORS } from '../types';
 import { Agent } from './Agent';
@@ -32,7 +34,9 @@ import { generateName } from '../data/names';
 import { DEFAULT_SCENARIO, getScenarioById } from '../data/scenarios';
 import { runSpoilagePhase, runProductionPhase, runMarketPostingPhase } from './phases/productionPhase';
 import { runConsumptionPhase } from './phases/consumptionPhase';
+import type { ConsumptionPhaseSummary } from './phases/consumptionPhase';
 import { runAgingPhase, runLifeDeathPhase } from './phases/demographyPhase';
+import type { DemographyPhaseSummary } from './phases/demographyPhase';
 import { applyDecisionChoiceEffects, runRandomEventsPhase } from './phases/eventsPhase';
 import { applyPendingPoliciesPhase } from './phases/policiesPhase';
 
@@ -250,6 +254,7 @@ export class GameEngine {
 
   advanceTurn(): TurnSnapshot {
     const latestSnapshot = this.statistics.history[this.statistics.history.length - 1];
+    const emptyCausalReplay = this.buildZeroCausalReplay();
 
     if (this.gameOver) {
       return latestSnapshot ?? this.statistics.recordTurn(
@@ -258,6 +263,7 @@ export class GameEngine {
         this.market,
         this.government,
         { births: 0, deaths: 0 },
+        emptyCausalReplay,
       );
     }
 
@@ -269,6 +275,7 @@ export class GameEngine {
         this.market,
         this.government,
         { births: 0, deaths: 0 },
+        emptyCausalReplay,
       );
     }
 
@@ -278,6 +285,9 @@ export class GameEngine {
     this.market.clearOrders();
 
     const aliveAgents = this.agents.filter(a => a.alive);
+    const turnStartPopulation = aliveAgents.length;
+    const turnStartAvgSatisfaction = this.averageAgentMetric(aliveAgents, agent => agent.satisfaction);
+    const turnStartAvgHealth = this.averageAgentMetric(aliveAgents, agent => agent.health);
     this.market.setAgents(aliveAgents);
 
     // Phase 0: Roll luck
@@ -292,14 +302,11 @@ export class GameEngine {
     // Phase 3: Market Clearing
     this.market.clearMarket();
 
-    // Phase 3.2: Economy progression unlock
-    this.phaseEconomyProgression(aliveAgents);
-
     // Phase 3.5: Inventory spoilage
     this.phaseSpoilage(aliveAgents);
 
     // Phase 4: Consumption
-    this.phaseConsumption(aliveAgents);
+    const consumptionSummary = this.phaseConsumption(aliveAgents);
 
     // Phase 4.5: Family support transfers
     this.phaseFamilySupport(aliveAgents);
@@ -311,13 +318,35 @@ export class GameEngine {
     this.phaseAgentDecisions(aliveAgents);
 
     // Phase 7: Aging
+    const healthBeforeAging = this.averageAgentMetric(aliveAgents, agent => agent.health);
     this.phaseAging(aliveAgents);
+    const healthAfterAging = this.averageAgentMetric(aliveAgents, agent => agent.health);
+    const agingHealthDelta = healthAfterAging - healthBeforeAging;
 
     // Phase 8: Life/Death + Births
     const demographics = this.phaseLifeDeath(aliveAgents);
 
     // Phase 9: Random events and decision events
     this.phaseRandomEvents();
+
+    // Phase 9.5: Economy progression unlock (applies to next-turn behavior)
+    this.phaseEconomyProgression(this.agents.filter(a => a.alive));
+
+    const endAliveAgents = this.agents.filter(a => a.alive);
+    const turnEndAvgSatisfaction = this.averageAgentMetric(endAliveAgents, agent => agent.satisfaction);
+    const turnEndAvgHealth = this.averageAgentMetric(endAliveAgents, agent => agent.health);
+    const policySatisfactionEstimate = this.estimatePolicySatisfactionDelta();
+    const causalReplay = this.buildTurnCausalReplay({
+      startPopulation: turnStartPopulation,
+      startAvgSatisfaction: turnStartAvgSatisfaction,
+      endAvgSatisfaction: turnEndAvgSatisfaction,
+      startAvgHealth: turnStartAvgHealth,
+      endAvgHealth: turnEndAvgHealth,
+      consumptionSummary,
+      agingHealthDelta,
+      policySatisfactionEstimate,
+      demographics,
+    });
 
     // Phase 10: Record income & statistics
     for (const agent of this.agents.filter(a => a.alive)) {
@@ -328,7 +357,8 @@ export class GameEngine {
       this.agents,
       this.market,
       this.government,
-      demographics
+      demographics,
+      causalReplay,
     );
     this.phaseMilestones();
 
@@ -374,15 +404,18 @@ export class GameEngine {
   }
 
   private phaseMarketPosting(aliveAgents: Agent[]): void {
+    const demandMultipliers = this.getCurrentNeedMultipliers();
     runMarketPostingPhase({
       agents: aliveAgents,
       activeRandomEvents: this.activeRandomEvents,
       market: this.market,
+      demandMultipliers,
     });
   }
 
-  private phaseConsumption(agents: Agent[]): void {
-    runConsumptionPhase(agents, this.activeRandomEvents);
+  private phaseConsumption(agents: Agent[]): ConsumptionPhaseSummary {
+    const demandMultipliers = this.getCurrentNeedMultipliers();
+    return runConsumptionPhase(agents, this.activeRandomEvents, demandMultipliers);
   }
 
   private phaseFamilySupport(agents: Agent[]): void {
@@ -466,7 +499,7 @@ export class GameEngine {
     }
   }
 
-  private phaseLifeDeath(agents: Agent[]): { births: number; deaths: number } {
+  private phaseLifeDeath(agents: Agent[]): DemographyPhaseSummary {
     return runLifeDeathPhase({
       turn: this.turn,
       agents,
@@ -517,6 +550,188 @@ export class GameEngine {
       case 'service':
         return ['food', 'goods', 'services'];
     }
+  }
+
+  private getCurrentNeedMultipliers(): Record<SectorType, number> {
+    return { ...CONFIG.STAGE_NEED_MULTIPLIERS[this.economyStage] };
+  }
+
+  private averageAgentMetric(agents: Agent[], accessor: (agent: Agent) => number): number {
+    if (agents.length === 0) return 0;
+    const sum = agents.reduce((acc, agent) => acc + accessor(agent), 0);
+    return sum / agents.length;
+  }
+
+  private roundMetric(value: number): number {
+    return Math.round(value * 100) / 100;
+  }
+
+  private perCapitaDelta(totalDelta: number, startPopulation: number): number {
+    if (startPopulation <= 0) return 0;
+    return totalDelta / startPopulation;
+  }
+
+  private nonZeroDrivers(drivers: CausalDriver[]): CausalDriver[] {
+    const visible = drivers.filter(driver => Math.abs(driver.value) >= 0.01);
+    if (visible.length > 0) return visible;
+    return [{ id: 'flat', label: '本回合變化很小', value: 0 }];
+  }
+
+  private buildZeroCausalReplay(): TurnCausalReplay {
+    return {
+      satisfaction: {
+        net: 0,
+        unit: 'point',
+        drivers: [{ id: 'flat', label: '本回合無顯著變化', value: 0 }],
+      },
+      health: {
+        net: 0,
+        unit: 'point',
+        drivers: [{ id: 'flat', label: '本回合無顯著變化', value: 0 }],
+      },
+      departures: {
+        net: 0,
+        unit: 'count',
+        drivers: [{ id: 'flat', label: '本回合無人口流出', value: 0 }],
+      },
+    };
+  }
+
+  private estimatePolicySatisfactionDelta(): number {
+    const shortageRatios = SECTORS.map(sector => {
+      const demand = this.market.demand[sector];
+      if (demand <= 0.001) return 0;
+      return Math.max(0, (demand - this.market.supply[sector]) / demand);
+    });
+    const shortagePressure = shortageRatios.reduce((sum, ratio) => sum + ratio, 0) / shortageRatios.length;
+    const shortagePenalty = -Math.min(7, shortagePressure * 8.5);
+    const taxPenalty = -Math.max(0, (this.government.taxRate - 0.1) * 24);
+    const welfareBoost = this.government.welfareEnabled ? 1.4 : 0;
+    const publicWorksBoost = this.government.publicWorksActive ? 0.9 : 0;
+    const eventBoost = this.activeRandomEvents.reduce(
+      (sum, event) => sum + (event.def.effects.satisfactionBoost ?? 0) - (event.def.effects.healthDamage ?? 0) * 0.28,
+      0,
+    );
+    return shortagePenalty + taxPenalty + welfareBoost + publicWorksBoost + eventBoost;
+  }
+
+  private buildTurnCausalReplay({
+    startPopulation,
+    startAvgSatisfaction,
+    endAvgSatisfaction,
+    startAvgHealth,
+    endAvgHealth,
+    consumptionSummary,
+    agingHealthDelta,
+    policySatisfactionEstimate,
+    demographics,
+  }: {
+    startPopulation: number;
+    startAvgSatisfaction: number;
+    endAvgSatisfaction: number;
+    startAvgHealth: number;
+    endAvgHealth: number;
+    consumptionSummary: ConsumptionPhaseSummary;
+    agingHealthDelta: number;
+    policySatisfactionEstimate: number;
+    demographics: DemographyPhaseSummary;
+  }): TurnCausalReplay {
+    if (startPopulation <= 0) return this.buildZeroCausalReplay();
+
+    const satNeeds = this.perCapitaDelta(consumptionSummary.needsSatisfactionDelta, startPopulation);
+    const satEvents = this.perCapitaDelta(consumptionSummary.eventSatisfactionDelta, startPopulation);
+    const satPolicyEstimate = policySatisfactionEstimate;
+    const satNet = endAvgSatisfaction - startAvgSatisfaction;
+    const satResidual = satNet - satNeeds - satEvents - satPolicyEstimate;
+
+    const healthNeeds = this.perCapitaDelta(consumptionSummary.needsHealthDelta, startPopulation);
+    const healthEvents = this.perCapitaDelta(consumptionSummary.eventHealthDelta, startPopulation);
+    const healthAging = agingHealthDelta;
+    const healthNet = endAvgHealth - startAvgHealth;
+    const healthResidual = healthNet - healthNeeds - healthEvents - healthAging;
+
+    const departuresNet = demographics.deaths - demographics.births;
+
+    return {
+      satisfaction: {
+        net: this.roundMetric(satNet),
+        unit: 'point',
+        drivers: this.nonZeroDrivers([
+          {
+            id: 'needs',
+            label: `需求狀態（缺口 ${consumptionSummary.unmetNeedCount}）`,
+            value: this.roundMetric(satNeeds),
+          },
+          {
+            id: 'events',
+            label: '事件衝擊',
+            value: this.roundMetric(satEvents),
+          },
+          {
+            id: 'policy_est',
+            label: '政策壓力（估算）',
+            value: this.roundMetric(satPolicyEstimate),
+          },
+          {
+            id: 'residual',
+            label: '其他與人口組成',
+            value: this.roundMetric(satResidual),
+          },
+        ]),
+      },
+      health: {
+        net: this.roundMetric(healthNet),
+        unit: 'point',
+        drivers: this.nonZeroDrivers([
+          {
+            id: 'needs',
+            label: `需求與照護（缺口 ${consumptionSummary.unmetNeedCount}）`,
+            value: this.roundMetric(healthNeeds),
+          },
+          {
+            id: 'events',
+            label: '事件衝擊',
+            value: this.roundMetric(healthEvents),
+          },
+          {
+            id: 'aging',
+            label: '老化效應',
+            value: this.roundMetric(healthAging),
+          },
+          {
+            id: 'residual',
+            label: '其他與人口組成',
+            value: this.roundMetric(healthResidual),
+          },
+        ]),
+      },
+      departures: {
+        net: departuresNet,
+        unit: 'count',
+        drivers: this.nonZeroDrivers([
+          {
+            id: 'left',
+            label: '不滿離島',
+            value: demographics.deathByCause.left,
+          },
+          {
+            id: 'health',
+            label: '健康死亡',
+            value: demographics.deathByCause.health,
+          },
+          {
+            id: 'age',
+            label: '老化死亡',
+            value: demographics.deathByCause.age,
+          },
+          {
+            id: 'births',
+            label: '新生加入',
+            value: -demographics.births,
+          },
+        ]),
+      },
+    };
   }
 
   private phaseEconomyProgression(agents: Agent[]): void {

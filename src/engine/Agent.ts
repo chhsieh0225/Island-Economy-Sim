@@ -86,6 +86,7 @@ export class Agent {
   private _incomeThisTurn: number = 0;
   private _spentThisTurn: number = 0;
   private _currentLuck: number = 0;
+  private _outputThisTurn: number = 0;
 
   constructor(id: number, name: string, sector: SectorType, rng: RNG, options?: AgentOptions) {
     this.id = id;
@@ -219,12 +220,14 @@ export class Agent {
   }
 
   rollTurnLuck(rng: RNG): void {
+    this._outputThisTurn = 0;
     this._currentLuck = this.baseLuck + (rng.next() * 2 - 1) * CONFIG.LUCK_TURN_RANGE;
   }
 
   produce(subsidyMultiplier: number, publicWorksBoost: number): void {
     const baseOutput = CONFIG.BASE_PRODUCTIVITY[this.sector];
     const output = baseOutput * this.effectiveProductivity * subsidyMultiplier * (1 + publicWorksBoost) * this.luckFactor;
+    this._outputThisTurn += Math.max(0, output);
     this.inventory[this.sector] += Math.max(0, output);
   }
 
@@ -309,11 +312,15 @@ export class Agent {
     this.inventory[sector] = Math.max(0, this.inventory[sector] - quantity);
   }
 
-  consumeNeeds(): { unmetNeeds: SectorType[] } {
+  consumeNeeds(
+    demandMultipliers?: Partial<Record<SectorType, number>>,
+  ): { unmetNeeds: SectorType[]; healthDelta: number; satisfactionDelta: number } {
     const unmetNeeds: SectorType[] = [];
+    const prevHealth = this.health;
+    const prevSatisfaction = this.satisfaction;
 
     for (const sector of SECTORS) {
-      const required = this.getNeedForSector(sector);
+      const required = this.getNeedForSector(sector, demandMultipliers?.[sector] ?? 1);
       if (this.inventory[sector] >= required) {
         this.inventory[sector] -= required;
       } else {
@@ -335,7 +342,11 @@ export class Agent {
 
     this.health = Math.max(0, Math.min(100, this.health));
     this.satisfaction = Math.max(0, Math.min(100, this.satisfaction));
-    return { unmetNeeds };
+    return {
+      unmetNeeds,
+      healthDelta: this.health - prevHealth,
+      satisfactionDelta: this.satisfaction - prevSatisfaction,
+    };
   }
 
   recordIncome(): void {
@@ -512,6 +523,26 @@ export class Agent {
 
   get shouldLeave(): boolean {
     return this.satisfaction <= CONFIG.LEAVE_SATISFACTION_THRESHOLD && this.turnsInSector > 5;
+  }
+
+  get leaveProbability(): number {
+    const satGap = Math.max(0, CONFIG.LEAVE_SATISFACTION_THRESHOLD - this.satisfaction);
+    const satStress = Math.min(1, satGap / Math.max(1, CONFIG.LEAVE_SATISFACTION_THRESHOLD));
+    const tenureStress = Math.min(1, Math.max(0, (this.turnsInSector - 5) / 8));
+    const incomeStress = Math.min(1, this.lowIncomeTurns / 8);
+    const healthStress = this.health < 35 ? (35 - this.health) / 35 : 0;
+
+    const p = CONFIG.LEAVE_BASE_PROBABILITY
+      + satStress * 0.26
+      + tenureStress * 0.08
+      + incomeStress * 0.05
+      + healthStress * 0.04;
+
+    return Math.max(0, Math.min(CONFIG.LEAVE_MAX_PROBABILITY, p));
+  }
+
+  get outputThisTurn(): number {
+    return this._outputThisTurn;
   }
 
   toState(): AgentState {

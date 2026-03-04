@@ -18,6 +18,16 @@ interface AgingPhaseInput {
   addEvent: (type: GameEvent['type'], message: string) => void;
 }
 
+export interface DemographyPhaseSummary {
+  births: number;
+  deaths: number;
+  deathByCause: {
+    age: number;
+    health: number;
+    left: number;
+  };
+}
+
 export function runAgingPhase({ turn, agents, addEvent }: AgingPhaseInput): void {
   for (const agent of agents) {
     const wasMinor = agent.age < CONFIG.WORKING_AGE;
@@ -36,8 +46,10 @@ export function runLifeDeathPhase({
   rng,
   createNewAgent,
   addEvent,
-}: LifeDeathPhaseInput): { births: number; deaths: number } {
+}: LifeDeathPhaseInput): DemographyPhaseSummary {
   let deaths = 0;
+  const deathByCause = { age: 0, health: 0, left: 0 };
+  const leaveCandidates: Agent[] = [];
 
   for (const agent of agents) {
     if (!agent.alive) continue;
@@ -47,19 +59,48 @@ export function runLifeDeathPhase({
       agent.causeOfDeath = 'age';
       agent.addLifeEvent(turn, 'death', `於 ${Math.floor(agent.age / 12)} 歲因年老去世。`, 'warning');
       deaths++;
+      deathByCause.age++;
       addEvent('warning', `${agent.name} 因年老去世 (${Math.floor(agent.age / 12)} 歲)。`);
     } else if (agent.isDead) {
       agent.alive = false;
       agent.causeOfDeath = 'health';
       agent.addLifeEvent(turn, 'death', '因健康不佳去世。', 'critical');
       deaths++;
+      deathByCause.health++;
       addEvent('critical', `${agent.name} 因健康不佳而死亡。`);
     } else if (agent.age >= CONFIG.WORKING_AGE && agent.shouldLeave) {
+      leaveCandidates.push(agent);
+    }
+  }
+
+  if (leaveCandidates.length > 0) {
+    for (let i = leaveCandidates.length - 1; i > 0; i--) {
+      const j = rng.nextInt(0, i);
+      const tmp = leaveCandidates[i];
+      leaveCandidates[i] = leaveCandidates[j];
+      leaveCandidates[j] = tmp;
+    }
+
+    const aliveAfterNonLeaveDeaths = allAgents.filter(a => a.alive).length;
+    const leaveCap = Math.max(1, Math.ceil(aliveAfterNonLeaveDeaths * CONFIG.LEAVE_MAX_SHARE_PER_TURN));
+    let leftThisTurn = 0;
+
+    for (const agent of leaveCandidates) {
+      if (!agent.alive) continue;
+      if (leftThisTurn >= leaveCap) break;
+      if (rng.next() >= agent.leaveProbability) continue;
+
       agent.alive = false;
       agent.causeOfDeath = 'left';
       agent.addLifeEvent(turn, 'leave', '對小島失去信心，選擇離開。', 'warning');
       deaths++;
+      deathByCause.left++;
+      leftThisTurn++;
       addEvent('warning', `${agent.name} 因不滿離開了小島。`);
+    }
+
+    if (leaveCandidates.length > leaveCap && leftThisTurn >= leaveCap) {
+      addEvent('warning', '本回合出現離島潮，但已由交通與行政容量限制住瞬間外流規模。');
     }
   }
 
@@ -88,5 +129,5 @@ export function runLifeDeathPhase({
     }
   }
 
-  return { births, deaths };
+  return { births, deaths, deathByCause };
 }

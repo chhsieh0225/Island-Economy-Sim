@@ -84,6 +84,36 @@ export interface TurnSnapshot {
   births: number;
   deaths: number;
   avgAge: number;  // in years
+  workingAgePopulation: number;
+  laborForce: number;
+  employed: number;
+  unemployed: number;
+  employmentRate: number;
+  unemploymentRate: number;
+  laborParticipationRate: number;
+  crudeBirthRate: number; // annual births per 1,000 people
+  fertilityRate: number; // annual births per reproductive-age woman
+  laborProductivity: number; // GDP per employed worker
+  dependencyRatio: number; // (children + seniors) / working-age population
+  causalReplay: TurnCausalReplay;
+}
+
+export interface CausalDriver {
+  id: string;
+  label: string;
+  value: number;
+}
+
+export interface CausalMetricReplay {
+  net: number;
+  unit: 'point' | 'count';
+  drivers: CausalDriver[];
+}
+
+export interface TurnCausalReplay {
+  satisfaction: CausalMetricReplay;
+  health: CausalMetricReplay;
+  departures: CausalMetricReplay;
 }
 
 export interface GameEvent {

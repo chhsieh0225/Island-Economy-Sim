@@ -1,4 +1,4 @@
-import type { GameState, SectorType } from '../../types';
+import type { GameState, SectorType, TurnCausalReplay } from '../../types';
 import { CONFIG } from '../../config';
 import { Tooltip } from '../Tooltip/Tooltip';
 import { DASHBOARD_TOOLTIPS } from '../../data/tooltipContent';
@@ -111,6 +111,17 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
+function signed(value: number, digits: number = 2): string {
+  const text = value.toFixed(digits);
+  return value >= 0 ? `+${text}` : text;
+}
+
+function topDrivers(metric: TurnCausalReplay['satisfaction']) {
+  return [...metric.drivers]
+    .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+    .slice(0, 3);
+}
+
 function buildObjectives(state: GameState): GovernorObjective[] {
   const latest = state.statistics[state.statistics.length - 1];
   const alive = state.agents.filter(a => a.alive);
@@ -188,6 +199,14 @@ export function Dashboard({ state }: Props) {
   const births = latest?.births ?? 0;
   const deaths = latest?.deaths ?? 0;
   const avgAge = latest?.avgAge ?? 0;
+  const employmentRate = latest?.employmentRate ?? 0;
+  const unemploymentRate = latest?.unemploymentRate ?? 0;
+  const laborParticipationRate = latest?.laborParticipationRate ?? 0;
+  const crudeBirthRate = latest?.crudeBirthRate ?? 0;
+  const fertilityRate = latest?.fertilityRate ?? 0;
+  const laborProductivity = latest?.laborProductivity ?? 0;
+  const dependencyRatio = latest?.dependencyRatio ?? 0;
+  const causal = latest?.causalReplay ?? null;
   const alert = buildSentimentAlert(state);
   const objectives = buildObjectives(state);
   const ageLayers = alive.reduce(
@@ -237,6 +256,76 @@ export function Dashboard({ state }: Props) {
           ))}
         </div>
       </div>
+
+      {causal && (
+        <div className={styles.causal}>
+          <div className={styles.causalTitle}>因果回放 Causal Replay</div>
+          <div className={styles.causalGrid}>
+            <div className={styles.causalMetric}>
+              <div className={styles.causalHead}>
+                <span>滿意度 Δ</span>
+                <span className={causal.satisfaction.net >= 0 ? styles.causalUp : styles.causalDown}>
+                  {signed(causal.satisfaction.net)} pt
+                </span>
+              </div>
+              {topDrivers(causal.satisfaction).map(driver => (
+                <div key={driver.id} className={styles.causalDriver}>
+                  <span>{driver.label}</span>
+                  <span className={driver.value >= 0 ? styles.causalUp : styles.causalDown}>
+                    {signed(driver.value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className={styles.causalMetric}>
+              <div className={styles.causalHead}>
+                <span>健康 Δ</span>
+                <span className={causal.health.net >= 0 ? styles.causalUp : styles.causalDown}>
+                  {signed(causal.health.net)} pt
+                </span>
+              </div>
+              {topDrivers(causal.health).map(driver => (
+                <div key={driver.id} className={styles.causalDriver}>
+                  <span>{driver.label}</span>
+                  <span className={driver.value >= 0 ? styles.causalUp : styles.causalDown}>
+                    {signed(driver.value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className={styles.causalMetric}>
+              <div className={styles.causalHead}>
+                <span>人口淨流出</span>
+                <span className={causal.departures.net > 0 ? styles.causalDown : styles.causalUp}>
+                  {causal.departures.net > 0 ? '+' : ''}{causal.departures.net}
+                </span>
+              </div>
+              {topDrivers(causal.departures).map(driver => (
+                <div key={driver.id} className={styles.causalDriver}>
+                  <span>{driver.label}</span>
+                  <span className={driver.value > 0 ? styles.causalDown : styles.causalUp}>
+                    {driver.value > 0 ? '+' : ''}{driver.value.toFixed(0)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.causalTimeline}>
+            <div className={styles.causalTimelineTitle}>最近 6 回合</div>
+            {stats.slice(-6).reverse().map(s => (
+              <div key={s.turn} className={styles.causalTimelineRow}>
+                <span>T{s.turn}</span>
+                <span>Sat {signed(s.causalReplay.satisfaction.net, 1)}</span>
+                <span>HP {signed(s.causalReplay.health.net, 1)}</span>
+                <span>流出 {s.causalReplay.departures.net > 0 ? '+' : ''}{s.causalReplay.departures.net}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className={styles.stat}>
         <Tooltip content={DASHBOARD_TOOLTIPS.turn.content} detail={DASHBOARD_TOOLTIPS.turn.detail}>
@@ -319,6 +408,55 @@ export function Dashboard({ state }: Props) {
         <div className={styles.label}>年齡層 Y/A/S</div>
         <div className={styles.value}>
           {ageLayers.youth}/{ageLayers.adult}/{ageLayers.senior}
+        </div>
+      </div>
+      <div className={styles.stat}>
+        <div className={styles.label}>就業率 Employment</div>
+        <div className={styles.value}>
+          {employmentRate.toFixed(1)}%
+          {trend(employmentRate, prev?.employmentRate)}
+        </div>
+      </div>
+      <div className={styles.stat}>
+        <div className={styles.label}>失業率 Unemployment</div>
+        <div className={styles.value}>
+          {unemploymentRate.toFixed(1)}%
+          {trend(-unemploymentRate, prev ? -prev.unemploymentRate : undefined)}
+        </div>
+      </div>
+      <div className={styles.stat}>
+        <div className={styles.label}>勞參率 Labor Force</div>
+        <div className={styles.value}>
+          {laborParticipationRate.toFixed(1)}%
+          {trend(laborParticipationRate, prev?.laborParticipationRate)}
+        </div>
+      </div>
+      <div className={styles.stat}>
+        <div className={styles.label}>生育率 Fertility</div>
+        <div className={styles.value}>
+          {fertilityRate.toFixed(2)}
+          {trend(fertilityRate, prev?.fertilityRate)}
+        </div>
+      </div>
+      <div className={styles.stat}>
+        <div className={styles.label}>出生率 Birth/1k</div>
+        <div className={styles.value}>
+          {crudeBirthRate.toFixed(1)}
+          {trend(crudeBirthRate, prev?.crudeBirthRate)}
+        </div>
+      </div>
+      <div className={styles.stat}>
+        <div className={styles.label}>勞動生產率 GDP/worker</div>
+        <div className={styles.value}>
+          ${laborProductivity.toFixed(1)}
+          {trend(laborProductivity, prev?.laborProductivity)}
+        </div>
+      </div>
+      <div className={styles.stat}>
+        <div className={styles.label}>扶養比 Dependency</div>
+        <div className={styles.value}>
+          {dependencyRatio.toFixed(2)}
+          {trend(-dependencyRatio, prev ? -prev.dependencyRatio : undefined)}
         </div>
       </div>
     </div>

@@ -4,6 +4,7 @@ import test from 'node:test';
 import { GameEngine } from '../../src/engine/GameEngine';
 import { computeScore } from '../../src/engine/Scoring';
 import { DECISION_EVENTS, RANDOM_EVENTS } from '../../src/data/events';
+import { CONFIG } from '../../src/config';
 import type { TurnSnapshot } from '../../src/types';
 
 function makeSnapshot(overrides: Partial<TurnSnapshot>): TurnSnapshot {
@@ -32,6 +33,34 @@ function makeSnapshot(overrides: Partial<TurnSnapshot>): TurnSnapshot {
     births: 0,
     deaths: 0,
     avgAge: 33,
+    workingAgePopulation: 78,
+    laborForce: 70,
+    employed: 66,
+    unemployed: 4,
+    employmentRate: 94.3,
+    unemploymentRate: 5.7,
+    laborParticipationRate: 89.7,
+    crudeBirthRate: 12.0,
+    fertilityRate: 1.45,
+    laborProductivity: 75.76,
+    dependencyRatio: 0.38,
+    causalReplay: {
+      satisfaction: {
+        net: 0,
+        unit: 'point',
+        drivers: [{ id: 'flat', label: '本回合無顯著變化', value: 0 }],
+      },
+      health: {
+        net: 0,
+        unit: 'point',
+        drivers: [{ id: 'flat', label: '本回合無顯著變化', value: 0 }],
+      },
+      departures: {
+        net: 0,
+        unit: 'count',
+        drivers: [{ id: 'flat', label: '本回合無人口流出', value: 0 }],
+      },
+    },
   };
   return { ...base, ...overrides };
 }
@@ -72,6 +101,30 @@ test('demography phase marks old-age death deterministically', () => {
 
   assert.equal(target.alive, false);
   assert.equal(target.causeOfDeath, 'age');
+});
+
+test('mass emigration is capped per turn to avoid instant collapse', () => {
+  const engine = new GameEngine(20260305, 'baseline');
+  const alive = engine.agents.filter(agent => agent.alive);
+  for (const agent of alive) {
+    agent.age = Math.max(agent.age, CONFIG.WORKING_AGE + 12);
+    agent.health = 100;
+    agent.satisfaction = 0;
+    agent.turnsInSector = 12;
+    agent.lowIncomeTurns = 12;
+    agent.inventory.food = 10;
+    agent.inventory.goods = 10;
+    agent.inventory.services = 10;
+  }
+
+  engine.advanceTurn();
+
+  const leftThisTurn = engine.events.filter(
+    event => event.turn === engine.turn && event.message.includes('因不滿離開了小島'),
+  ).length;
+  const cap = Math.ceil(alive.length * CONFIG.LEAVE_MAX_SHARE_PER_TURN);
+
+  assert.equal(leftThisTurn <= cap, true);
 });
 
 test('random event trigger is deterministic when probabilities are controlled', () => {
@@ -147,4 +200,16 @@ test('scoring favors stronger economic and social outcomes', () => {
   assert.equal(strong.totalScore > weak.totalScore, true);
   assert.equal(strong.wellbeingScore > weak.wellbeingScore, true);
   assert.equal(strong.equalityScore > weak.equalityScore, true);
+});
+
+test('turn snapshot includes causal replay breakdown', () => {
+  const engine = new GameEngine(20260306, 'baseline');
+  const snapshot = engine.advanceTurn();
+
+  assert.equal(typeof snapshot.causalReplay.satisfaction.net, 'number');
+  assert.equal(typeof snapshot.causalReplay.health.net, 'number');
+  assert.equal(typeof snapshot.causalReplay.departures.net, 'number');
+  assert.equal(snapshot.causalReplay.satisfaction.drivers.length > 0, true);
+  assert.equal(snapshot.causalReplay.health.drivers.length > 0, true);
+  assert.equal(snapshot.causalReplay.departures.drivers.length > 0, true);
 });

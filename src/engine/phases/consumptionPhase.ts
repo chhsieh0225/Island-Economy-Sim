@@ -1,7 +1,19 @@
-import type { ActiveRandomEvent } from '../../types';
+import type { ActiveRandomEvent, SectorType } from '../../types';
 import type { Agent } from '../Agent';
 
-export function runConsumptionPhase(agents: Agent[], activeRandomEvents: ActiveRandomEvent[]): void {
+export interface ConsumptionPhaseSummary {
+  needsSatisfactionDelta: number;
+  needsHealthDelta: number;
+  eventSatisfactionDelta: number;
+  eventHealthDelta: number;
+  unmetNeedCount: number;
+}
+
+export function runConsumptionPhase(
+  agents: Agent[],
+  activeRandomEvents: ActiveRandomEvent[],
+  demandMultipliers?: Partial<Record<SectorType, number>>,
+): ConsumptionPhaseSummary {
   let eventHealthDamage = 0;
   for (const event of activeRandomEvents) {
     if (event.def.effects.healthDamage) {
@@ -16,13 +28,28 @@ export function runConsumptionPhase(agents: Agent[], activeRandomEvents: ActiveR
     }
   }
 
+  const summary: ConsumptionPhaseSummary = {
+    needsSatisfactionDelta: 0,
+    needsHealthDelta: 0,
+    eventSatisfactionDelta: 0,
+    eventHealthDelta: 0,
+    unmetNeedCount: 0,
+  };
+
   for (const agent of agents) {
-    agent.consumeNeeds();
+    const outcome = agent.consumeNeeds(demandMultipliers);
+    summary.needsSatisfactionDelta += outcome.satisfactionDelta;
+    summary.needsHealthDelta += outcome.healthDelta;
+    summary.unmetNeedCount += outcome.unmetNeeds.length;
     if (eventHealthDamage > 0) {
       agent.health = Math.max(0, agent.health - eventHealthDamage);
+      summary.eventHealthDelta -= eventHealthDamage;
     }
     if (eventSatBoost > 0) {
       agent.satisfaction = Math.min(100, agent.satisfaction + eventSatBoost);
+      summary.eventSatisfactionDelta += eventSatBoost;
     }
   }
+
+  return summary;
 }

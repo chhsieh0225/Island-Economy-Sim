@@ -1,4 +1,4 @@
-import type { SectorType, AgeGroup } from './types';
+import type { SectorType, AgeGroup, EconomyStage } from './types';
 
 export const CONFIG = {
   INITIAL_POPULATION: 100,
@@ -55,6 +55,9 @@ export const CONFIG = {
   HEALTH_RECOVERY_PARTIAL: 2,
   DEATH_HEALTH_THRESHOLD: 0,
   LEAVE_SATISFACTION_THRESHOLD: 10,
+  LEAVE_BASE_PROBABILITY: 0.04,
+  LEAVE_MAX_PROBABILITY: 0.45,
+  LEAVE_MAX_SHARE_PER_TURN: 0.12,
 
   // Government
   DEFAULT_TAX_RATE: 0.10,
@@ -99,6 +102,8 @@ export const CONFIG = {
   AGE_HEALTH_DECAY_RATE: 0.2,
   CAREGIVER_PRODUCTIVITY_PENALTY_PER_CHILD: 0.06,
   CAREGIVER_PRODUCTIVITY_PENALTY_MAX: 0.3,
+  SENIOR_DEPENDENCY_AGE: 720, // 60 years
+  LABOR_FORCE_HEALTH_THRESHOLD: 25,
 
   // Progressive economy stages
   PROGRESSIVE_ECONOMY_ENABLED: true,
@@ -107,6 +112,11 @@ export const CONFIG = {
   STAGE_SERVICE_MIN_TURN: 24,
   STAGE_SERVICE_MIN_GOODS_WORKER_SHARE: 0.12,
   STAGE_SERVICE_MIN_AVG_SATISFACTION: 55,
+  STAGE_NEED_MULTIPLIERS: {
+    agriculture: { food: 1.0, goods: 0.18, services: 0.12 },
+    industrial: { food: 1.0, goods: 0.72, services: 0.38 },
+    service: { food: 1.0, goods: 1.0, services: 1.0 },
+  } as Record<EconomyStage, Record<SectorType, number>>,
 
   // Intelligence
   INTELLIGENCE_MEAN: 100,

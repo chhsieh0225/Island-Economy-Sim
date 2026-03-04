@@ -13,8 +13,8 @@ export const DASHBOARD_TOOLTIPS = {
     realWorldRef: 'GDP 不代表人民幸福，只衡量經濟活動量。',
   },
   satisfaction: {
-    content: '居民平均滿意度。低於 30 會導致居民離島。',
-    detail: 'Average satisfaction. Below 30 triggers emigration.',
+    content: '居民平均滿意度。接近 10 時離島風險會快速上升，但有每回合外流上限。',
+    detail: 'Average satisfaction. Emigration risk spikes near 10 with a per-turn outflow cap.',
   },
   health: {
     content: '居民平均健康值。降至 0 會死亡。',

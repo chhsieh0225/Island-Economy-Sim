@@ -20,6 +20,7 @@ interface MarketPostingPhaseInput {
   agents: Agent[];
   activeRandomEvents: ActiveRandomEvent[];
   market: Market;
+  demandMultipliers?: Partial<Record<SectorType, number>>;
 }
 
 export function runSpoilagePhase(agents: Agent[]): void {
@@ -84,8 +85,9 @@ export function runMarketPostingPhase({
   agents,
   activeRandomEvents,
   market,
+  demandMultipliers,
 }: MarketPostingPhaseInput): void {
-  const demandModifiers: Partial<Record<SectorType, number>> = {};
+  const demandModifiers: Partial<Record<SectorType, number>> = { ...(demandMultipliers ?? {}) };
   for (const event of activeRandomEvents) {
     if (event.def.effects.servicesDemandBoost) {
       demandModifiers.services = (demandModifiers.services ?? 1) * event.def.effects.servicesDemandBoost;

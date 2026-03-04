@@ -760,10 +760,17 @@ export class GameEngine {
     if (this.economyStage === 'agriculture') {
       const foodDemand = this.market.demand.food;
       const foodSupply = this.market.supply.food;
-      const foodCoverage = foodDemand > 0.01 ? foodSupply / foodDemand : 1;
+      const marketFoodCoverage = foodDemand > 0.01 ? foodSupply / foodDemand : 1;
+      // In early game, low trade volume can hide true self-sufficiency.
+      const avgFoodStock = agents.reduce((sum, agent) => sum + agent.inventory.food, 0) / Math.max(1, agents.length);
+      const stockFoodCoverage = avgFoodStock / Math.max(0.01, CONFIG.CONSUMPTION.food);
+      const foodCoverage = Math.max(marketFoodCoverage, stockFoodCoverage);
       if (this.turn >= CONFIG.STAGE_INDUSTRIAL_MIN_TURN && foodCoverage >= CONFIG.STAGE_INDUSTRIAL_MIN_FOOD_COVERAGE) {
         this.economyStage = 'industrial';
-        this.addEvent('positive', '產業升級：島嶼進入工業化階段，商品業開始成形。');
+        this.addEvent(
+          'positive',
+          `產業升級：島嶼進入工業化階段（糧食覆蓋 ${foodCoverage.toFixed(2)}），商品業開始成形。`,
+        );
       }
       return;
     }

@@ -4,13 +4,14 @@ import { Dashboard } from './components/Dashboard/Dashboard';
 import { JobsPanel } from './components/JobsPanel/JobsPanel';
 import { PolicyPanel } from './components/PolicyPanel/PolicyPanel';
 import { ControlBar } from './components/ControlBar/ControlBar';
-import { IslandMap } from './components/IslandMap/IslandMap';
+import { IslandMap, type MapFeatureType } from './components/IslandMap/IslandMap';
 import { AgentRoster } from './components/AgentRoster/AgentRoster';
 import { SimulationLab } from './components/SimulationLab/SimulationLab';
 import { NarrativeModal } from './components/NarrativeModal/NarrativeModal';
 import { Toast } from './components/Toast/Toast';
 import { EconomyCalibrationPanel } from './components/EconomyCalibrationPanel/EconomyCalibrationPanel';
 import { LearningJourneyPanel } from './components/LearningJourneyPanel/LearningJourneyPanel';
+import { MapFeaturePanel } from './components/MapFeaturePanel/MapFeaturePanel';
 import { SCENARIOS } from './data/scenarios';
 import type { AgentState, ScenarioId, ScenarioNarrative } from './types';
 import styles from './App.module.css';
@@ -77,15 +78,45 @@ function App() {
   } = useGameEngine();
 
   const [selectedAgent, setSelectedAgent] = useState<AgentState | null>(null);
+  const [selectedMapFeature, setSelectedMapFeature] = useState<MapFeatureType | null>(null);
   const [rightTab, setRightTab] = useState<'market' | 'terrain' | 'events' | 'milestones'>('terrain');
   const [narrativeToShow, setNarrativeToShow] = useState<ScenarioNarrative | null>(null);
 
   const handleAgentClick = (agent: AgentState) => {
     setSelectedAgent(agent);
+    setSelectedMapFeature(null);
   };
+
+  const handleFeatureClick = useCallback((feature: MapFeatureType) => {
+    setSelectedAgent(null);
+    setSelectedMapFeature(feature);
+  }, []);
+
+  const scrollToAnchor = useCallback((id: string) => {
+    const target = document.getElementById(id);
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const handleJumpToPolicy = useCallback(() => {
+    scrollToAnchor('policy-panel-anchor');
+  }, [scrollToAnchor]);
+
+  const handleJumpToRoster = useCallback(() => {
+    scrollToAnchor('agent-roster-anchor');
+  }, [scrollToAnchor]);
+
+  const handleJumpToMarket = useCallback(() => {
+    setRightTab('market');
+    window.setTimeout(() => {
+      scrollToAnchor('market-panel-anchor');
+    }, 90);
+  }, [scrollToAnchor]);
 
   const handleStartNewRun = useCallback((seed: number, scenarioId: ScenarioId) => {
     startNewRun(seed, scenarioId);
+    setSelectedMapFeature(null);
+    setSelectedAgent(null);
     const scenario = SCENARIOS.find(s => s.id === scenarioId);
     if (scenario?.openingNarrative) {
       setNarrativeToShow(scenario.openingNarrative);
@@ -123,6 +154,16 @@ function App() {
           activeRandomEvents={gameState.activeRandomEvents}
           autoPlaySpeed={autoPlaySpeed}
           onAgentClick={handleAgentClick}
+          onFeatureClick={handleFeatureClick}
+        />
+
+        <MapFeaturePanel
+          feature={selectedMapFeature}
+          state={gameState}
+          onClose={() => setSelectedMapFeature(null)}
+          onJumpToPolicy={handleJumpToPolicy}
+          onJumpToMarket={handleJumpToMarket}
+          onJumpToRoster={handleJumpToRoster}
         />
 
         <div className={styles.columns}>
@@ -145,25 +186,29 @@ function App() {
               onSetTutorialToasts={setTutorialToasts}
             />
 
-            <PolicyPanel
-              turn={gameState.turn}
-              government={gameState.government}
-              statistics={gameState.statistics}
-              activeRandomEvents={gameState.activeRandomEvents}
-              pendingPolicies={gameState.pendingPolicies}
-              policyTimeline={gameState.policyTimeline}
-              onSetTaxRate={setTaxRate}
-              onSetSubsidy={setSubsidy}
-              onSetWelfare={setWelfare}
-              onSetPublicWorks={setPublicWorks}
-              onSetPolicyRate={setPolicyRate}
-              onSetLiquiditySupport={setLiquiditySupport}
-            />
+            <div id="policy-panel-anchor">
+              <PolicyPanel
+                turn={gameState.turn}
+                government={gameState.government}
+                statistics={gameState.statistics}
+                activeRandomEvents={gameState.activeRandomEvents}
+                pendingPolicies={gameState.pendingPolicies}
+                policyTimeline={gameState.policyTimeline}
+                onSetTaxRate={setTaxRate}
+                onSetSubsidy={setSubsidy}
+                onSetWelfare={setWelfare}
+                onSetPublicWorks={setPublicWorks}
+                onSetPolicyRate={setPolicyRate}
+                onSetLiquiditySupport={setLiquiditySupport}
+              />
+            </div>
 
-            <AgentRoster
-              agents={gameState.agents}
-              onAgentClick={handleAgentClick}
-            />
+            <div id="agent-roster-anchor">
+              <AgentRoster
+                agents={gameState.agents}
+                onAgentClick={handleAgentClick}
+              />
+            </div>
 
             <JobsPanel state={gameState} />
           </div>
@@ -198,7 +243,9 @@ function App() {
 
             <Suspense fallback={<div className={styles.panelFallback}>載入中...</div>}>
               {rightTab === 'market' && (
-                <MarketPanel market={gameState.market} terrain={gameState.terrain} />
+                <div id="market-panel-anchor">
+                  <MarketPanel market={gameState.market} terrain={gameState.terrain} />
+                </div>
               )}
               {rightTab === 'terrain' && (
                 <TerrainPanel terrain={gameState.terrain} />

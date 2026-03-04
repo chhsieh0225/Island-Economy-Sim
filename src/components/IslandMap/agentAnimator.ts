@@ -21,7 +21,46 @@ export interface ZoneLayout {
 // Animation phases within a turn cycle (phase-synced: produce → trade → return)
 export type AnimPhase = 'working' | 'toMarket' | 'atMarket' | 'returning';
 
-export function getZoneLayout(w: number, h: number, terrain: IslandTerrainState): ZoneLayout {
+const BASE_RESIDENTIAL_BLOCKS = 3;
+const MAX_RESIDENTIAL_BLOCKS = 9;
+const RESIDENTIAL_GROWTH_THRESHOLD = 110;
+const RESIDENTIAL_GROWTH_STEP = 28;
+
+type ResidentialAnchor = {
+  xFactor: number;
+  yFactor: number;
+  driftSector: SectorType;
+};
+
+const RESIDENTIAL_ANCHORS: ResidentialAnchor[] = [
+  { xFactor: 0.68, yFactor: 0.58, driftSector: 'food' },
+  { xFactor: 0.48, yFactor: 1.32, driftSector: 'goods' },
+  { xFactor: 1.52, yFactor: 1.30, driftSector: 'services' },
+  { xFactor: 0.95, yFactor: 0.44, driftSector: 'food' },
+  { xFactor: 1.18, yFactor: 0.66, driftSector: 'services' },
+  { xFactor: 0.34, yFactor: 1.02, driftSector: 'goods' },
+  { xFactor: 1.66, yFactor: 1.02, driftSector: 'services' },
+  { xFactor: 0.86, yFactor: 1.56, driftSector: 'goods' },
+  { xFactor: 1.20, yFactor: 1.56, driftSector: 'services' },
+];
+
+export function getResidentialBlockCount(population: number): number {
+  if (population <= RESIDENTIAL_GROWTH_THRESHOLD) {
+    return BASE_RESIDENTIAL_BLOCKS;
+  }
+  const extra = Math.floor((population - RESIDENTIAL_GROWTH_THRESHOLD) / RESIDENTIAL_GROWTH_STEP) + 1;
+  return Math.max(
+    BASE_RESIDENTIAL_BLOCKS,
+    Math.min(MAX_RESIDENTIAL_BLOCKS, BASE_RESIDENTIAL_BLOCKS + extra),
+  );
+}
+
+export function getZoneLayout(
+  w: number,
+  h: number,
+  terrain: IslandTerrainState,
+  population: number = 100,
+): ZoneLayout {
   // Island center
   const cx = w / 2;
   const cy = h / 2;
@@ -67,23 +106,19 @@ export function getZoneLayout(w: number, h: number, terrain: IslandTerrainState)
     h * 0.14 * serviceSize,
   );
 
-  const residential = [
-    buildZone(
-      { x: cx * 0.68 + w * zoneOffsets.food.x * 0.5, y: cy * 0.58 + h * zoneOffsets.food.y * 0.4 },
-      w * 0.11,
-      h * 0.095,
-    ),
-    buildZone(
-      { x: cx * 0.48 + w * zoneOffsets.goods.x * 0.52, y: cy * 1.32 + h * zoneOffsets.goods.y * 0.5 },
-      w * 0.11,
-      h * 0.095,
-    ),
-    buildZone(
-      { x: cx * 1.52 + w * zoneOffsets.services.x * 0.52, y: cy * 1.3 + h * zoneOffsets.services.y * 0.5 },
-      w * 0.11,
-      h * 0.095,
-    ),
-  ];
+  const residentialCount = getResidentialBlockCount(population);
+  const residential = RESIDENTIAL_ANCHORS.slice(0, residentialCount).map((anchor, index) => {
+    const drift = zoneOffsets[anchor.driftSector];
+    const zoneScale = index >= 3 ? 0.9 : 1;
+    return buildZone(
+      {
+        x: cx * anchor.xFactor + w * drift.x * 0.48,
+        y: cy * anchor.yFactor + h * drift.y * 0.42,
+      },
+      w * 0.11 * zoneScale,
+      h * 0.095 * zoneScale,
+    );
+  });
 
   const marketCenter = clampPointToIsland({ x: cx, y: cy * 0.92 }, island, 0.88);
 

@@ -49,3 +49,9 @@ test('ui smoke: responsive breakpoints and mobile-safe overflow are present', ()
   assert.match(marketCss, /\.table\s*\{[^}]*min-width:\s*620px;/s);
 });
 
+test('ui smoke: policy recommendation filters no-op actions', () => {
+  const policyPanel = readProjectFile('src/components/PolicyPanel/PolicyPanel.tsx');
+
+  assert.match(policyPanel, /function isRecommendationRedundant\(/);
+  assert.match(policyPanel, /isRecommendationRedundant\(recommendation\.action,\s*effectivePolicyState\)/);
+});

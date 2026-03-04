@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback, useState } from 'react';
 import type { AgentState, ActiveRandomEvent, IslandTerrainState, EconomyStage } from '../../types';
 import {
   getZoneLayout,
+  getResidentialBlockCount,
   computeWorkPosition,
   computeResidencePosition,
   computeAnimatedPosition,
@@ -32,6 +33,7 @@ import {
 import styles from './IslandMap.module.css';
 
 type AutoPlaySpeed = 'slow' | 'medium' | 'fast' | null;
+export type MapFeatureType = 'bank' | 'residential' | 'farm';
 
 interface Props {
   agents: AgentState[];
@@ -41,6 +43,7 @@ interface Props {
   activeRandomEvents: ActiveRandomEvent[];
   autoPlaySpeed: AutoPlaySpeed;
   onAgentClick: (agent: AgentState) => void;
+  onFeatureClick?: (feature: MapFeatureType) => void;
 }
 
 interface AgentRenderState {
@@ -123,6 +126,49 @@ function shouldRenderWorkParticle(
     return agentId % 2 === 0;
   }
   return true;
+}
+
+function isInsideCircle(x: number, y: number, cx: number, cy: number, radius: number): boolean {
+  const dx = x - cx;
+  const dy = y - cy;
+  return (dx * dx + dy * dy) <= (radius * radius);
+}
+
+function isInsideEllipse(
+  x: number,
+  y: number,
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+): boolean {
+  const nx = (x - cx) / Math.max(1e-6, rx);
+  const ny = (y - cy) / Math.max(1e-6, ry);
+  return (nx * nx + ny * ny) <= 1;
+}
+
+function detectMapFeature(
+  x: number,
+  y: number,
+  layout: ZoneLayout,
+): MapFeatureType | null {
+  const bankX = layout.market.cx + layout.market.r * 0.34;
+  const bankRadius = Math.max(10, layout.market.r * 0.32) + 4;
+  if (isInsideCircle(x, y, bankX, layout.market.cy, bankRadius)) {
+    return 'bank';
+  }
+
+  for (const zone of layout.residential) {
+    if (isInsideEllipse(x, y, zone.cx, zone.cy, zone.rx * 1.06, zone.ry * 1.08)) {
+      return 'residential';
+    }
+  }
+
+  if (isInsideEllipse(x, y, layout.farm.cx, layout.farm.cy, layout.farm.rx * 1.04, layout.farm.ry * 1.06)) {
+    return 'farm';
+  }
+
+  return null;
 }
 
 function seededTurnRoll(agentId: number, turn: number, salt: number): number {
@@ -227,7 +273,16 @@ function zoneRenderSignature(
   ].join('|');
 }
 
-export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEvents, autoPlaySpeed, onAgentClick }: Props) {
+export function IslandMap({
+  agents,
+  turn,
+  terrain,
+  economyStage,
+  activeRandomEvents,
+  autoPlaySpeed,
+  onAgentClick,
+  onFeatureClick,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
@@ -309,6 +364,8 @@ export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEve
       const currentSpeed = autoPlaySpeedRef.current;
       const currentTerrainSig = terrainSigRef.current;
       const currentZoneSig = zoneSigRef.current;
+      const livingPopulation = currentAgents.reduce((sum, agent) => sum + (agent.alive ? 1 : 0), 0);
+      const residentialBlocks = getResidentialBlockCount(livingPopulation);
       const perfEnabled = showPerfDebug;
       const perfCounters = perfCountersRef.current;
       const documentHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
@@ -348,12 +405,12 @@ export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEve
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      const sceneKey = `${w}x${h}|${currentTerrainSig}`;
+      const sceneKey = `${w}x${h}|${currentTerrainSig}|rb${residentialBlocks}`;
       let scene = sceneCacheRef.current;
       if (!scene || scene.key !== sceneKey) {
         scene = {
           key: sceneKey,
-          layout: getZoneLayout(w, h, currentTerrain),
+          layout: getZoneLayout(w, h, currentTerrain, livingPopulation),
           island: getIslandGeometry(w, h, currentTerrain),
         };
         sceneCacheRef.current = scene;
@@ -535,8 +592,21 @@ export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEve
     }
     hoveredAgentRef.current = found;
 
+    const feature = found
+      ? null
+      : detectMapFeature(
+        x,
+        y,
+        getZoneLayout(
+          rect.width,
+          rect.height,
+          terrainRef.current,
+          agentsRef.current.reduce((sum, agent) => sum + (agent.alive ? 1 : 0), 0),
+        ),
+      );
+
     if (canvas) {
-      canvas.style.cursor = found ? 'pointer' : 'default';
+      canvas.style.cursor = (found || feature) ? 'pointer' : 'default';
     }
   }, []);
 
@@ -563,7 +633,21 @@ export function IslandMap({ agents, turn, terrain, economyStage, activeRandomEve
         return;
       }
     }
-  }, [onAgentClick]);
+
+    const feature = detectMapFeature(
+      x,
+      y,
+      getZoneLayout(
+        rect.width,
+        rect.height,
+        terrainRef.current,
+        agentsRef.current.reduce((sum, agent) => sum + (agent.alive ? 1 : 0), 0),
+      ),
+    );
+    if (feature) {
+      onFeatureClick?.(feature);
+    }
+  }, [onAgentClick, onFeatureClick]);
 
   return (
     <div className={styles.container} ref={containerRef}>

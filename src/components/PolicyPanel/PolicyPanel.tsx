@@ -90,6 +90,30 @@ function recommendationActionLabel(action: PolicyRecommendationAction): string {
   }
 }
 
+interface EffectivePolicyState {
+  taxRate: number;
+  subsidies: Record<SectorType, number>;
+  welfareEnabled: boolean;
+  publicWorksActive: boolean;
+}
+
+function isRecommendationRedundant(
+  action: PolicyRecommendationAction,
+  effective: EffectivePolicyState,
+): boolean {
+  const eps = 1e-6;
+  switch (action.type) {
+    case 'setTaxRate':
+      return Math.abs(action.value - effective.taxRate) <= eps;
+    case 'setSubsidy':
+      return Math.abs(action.value - effective.subsidies[action.sector]) <= eps;
+    case 'setWelfare':
+      return action.value === effective.welfareEnabled;
+    case 'setPublicWorks':
+      return action.value === effective.publicWorksActive;
+  }
+}
+
 function topDrivers(drivers: { id: string; label: string; value: number }[]) {
   return [...drivers]
     .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
@@ -194,9 +218,29 @@ export function PolicyPanel({
     () => buildPolicyExperimentCards(policyTimeline, statistics, { maxCards: 4, observationTurns: 3 }),
     [policyTimeline, statistics],
   );
+  const effectivePolicyState = useMemo<EffectivePolicyState>(() => ({
+    taxRate: pendingTax ? pendingTax.value as number : government.taxRate,
+    subsidies: {
+      food: (pendingPolicies.find(p => p.type === 'subsidy' && p.sector === 'food')?.value as number | undefined)
+        ?? government.subsidies.food,
+      goods: (pendingPolicies.find(p => p.type === 'subsidy' && p.sector === 'goods')?.value as number | undefined)
+        ?? government.subsidies.goods,
+      services: (pendingPolicies.find(p => p.type === 'subsidy' && p.sector === 'services')?.value as number | undefined)
+        ?? government.subsidies.services,
+    },
+    welfareEnabled: pendingWelfare ? pendingWelfare.value as boolean : government.welfareEnabled,
+    publicWorksActive: pendingPublicWorks ? pendingPublicWorks.value as boolean : government.publicWorksActive,
+  }), [government, pendingTax, pendingWelfare, pendingPublicWorks, pendingPolicies]);
   const recommendationByCardId = useMemo(
-    () => new Map(experimentCards.map(card => [card.id, buildPolicyRecommendation(card, government)])),
-    [experimentCards, government],
+    () => new Map(experimentCards.map(card => {
+      const recommendation = buildPolicyRecommendation(card, government);
+      if (!recommendation) return [card.id, null] as const;
+      if (isRecommendationRedundant(recommendation.action, effectivePolicyState)) {
+        return [card.id, null] as const;
+      }
+      return [card.id, recommendation] as const;
+    })),
+    [experimentCards, government, effectivePolicyState],
   );
 
   const applyRecommendation = (action: PolicyRecommendationAction) => {

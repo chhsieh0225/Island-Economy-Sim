@@ -14,6 +14,13 @@ import type { Government } from '../Government';
 import type { Market } from '../Market';
 import type { RNG } from '../RNG';
 
+const CHAIN_SIGNALS = {
+  supplyStage1: 'chain_supply_s1',
+  supplyStage2: 'chain_supply_s2',
+  growthStage1: 'chain_growth_s1',
+  growthStage2: 'chain_growth_s2',
+} as const;
+
 interface RandomEventsPhaseInput {
   turn: number;
   rng: RNG;
@@ -63,6 +70,27 @@ function hasEventChainSignal(signals: Record<string, number>, signal: string): b
   return (signals[signal] ?? 0) > 0;
 }
 
+function registerChainProgressByEvent(signals: Record<string, number>, eventId: string): void {
+  if (eventId === 'drought' || eventId === 'storm') {
+    registerEventChainSignal(signals, CHAIN_SIGNALS.supplyStage1, CONFIG.EVENT_CHAIN_SIGNAL_TURNS + 1);
+    return;
+  }
+
+  if (eventId === 'inflation_spike' && hasEventChainSignal(signals, CHAIN_SIGNALS.supplyStage1)) {
+    registerEventChainSignal(signals, CHAIN_SIGNALS.supplyStage2, CONFIG.EVENT_CHAIN_SIGNAL_TURNS + 1);
+    return;
+  }
+
+  if (eventId === 'good_harvest') {
+    registerEventChainSignal(signals, CHAIN_SIGNALS.growthStage1, CONFIG.EVENT_CHAIN_SIGNAL_TURNS + 1);
+    return;
+  }
+
+  if (eventId === 'trade_ship' && hasEventChainSignal(signals, CHAIN_SIGNALS.growthStage1)) {
+    registerEventChainSignal(signals, CHAIN_SIGNALS.growthStage2, CONFIG.EVENT_CHAIN_SIGNAL_TURNS + 1);
+  }
+}
+
 function sectorShortageRatio(market: Market, sector: SectorType): number {
   const demand = market.demand[sector];
   if (demand <= 0.01) return 0;
@@ -80,9 +108,12 @@ function getRandomEventProbability(
   const reasons: string[] = [];
 
   if (eventDef.id === 'inflation_spike') {
-    if (hasEventChainSignal(eventChainSignals, 'drought')) {
+    if (
+      hasEventChainSignal(eventChainSignals, CHAIN_SIGNALS.supplyStage1) ||
+      hasEventChainSignal(eventChainSignals, 'drought')
+    ) {
       multiplier *= 1.85;
-      reasons.push('乾旱導致糧食供應緊縮');
+      reasons.push('三段鏈第 1 段：供應衝擊推升通膨風險');
     }
     if (hasEventChainSignal(eventChainSignals, 'storm')) {
       multiplier *= 1.3;
@@ -94,6 +125,16 @@ function getRandomEventProbability(
       multiplier *= shortageMultiplier;
       reasons.push('食物短缺推升物價');
     }
+  }
+
+  if (eventDef.id === 'trade_ship' && hasEventChainSignal(eventChainSignals, CHAIN_SIGNALS.growthStage1)) {
+    multiplier *= 1.55;
+    reasons.push('三段鏈第 1 段：豐收擴大對外貿易');
+  }
+
+  if (eventDef.id === 'festival' && hasEventChainSignal(eventChainSignals, CHAIN_SIGNALS.growthStage2)) {
+    multiplier *= 1.65;
+    reasons.push('三段鏈第 2 段：貿易繁榮帶動慶典消費');
   }
 
   const boostedProbability = Math.min(
@@ -117,6 +158,10 @@ function getDecisionEventProbability(
   const reasons: string[] = [];
 
   if (eventDef.id === 'cost_of_living') {
+    if (hasEventChainSignal(eventChainSignals, CHAIN_SIGNALS.supplyStage2)) {
+      multiplier *= 2.35;
+      reasons.push('三段鏈第 2 段：通膨衝擊延燒到民生壓力');
+    }
     if (hasEventChainSignal(eventChainSignals, 'inflation_spike')) {
       multiplier *= 2.15;
       reasons.push('通膨壓力延燒');
@@ -132,6 +177,11 @@ function getDecisionEventProbability(
   if (eventDef.id === 'health_crisis' && hasEventChainSignal(eventChainSignals, 'epidemic')) {
     multiplier *= 1.8;
     reasons.push('疫病餘波未平');
+  }
+
+  if (eventDef.id === 'industry_lobby' && hasEventChainSignal(eventChainSignals, CHAIN_SIGNALS.growthStage2)) {
+    multiplier *= 1.45;
+    reasons.push('三段鏈第 2 段：貿易擴張提高產業升級訴求');
   }
 
   const boostedProbability = Math.min(
@@ -166,6 +216,7 @@ export function runRandomEventsPhase({
   for (const event of nextActiveEvents) {
     if (event.def.probability > 0) {
       registerEventChainSignal(nextSignals, event.def.id, 2);
+      registerChainProgressByEvent(nextSignals, event.def.id);
     }
   }
 
@@ -212,6 +263,7 @@ export function runRandomEventsPhase({
           nextLastRandomEventTurn = turn;
           if (eventDef.probability > 0) {
             registerEventChainSignal(nextSignals, eventDef.id);
+            registerChainProgressByEvent(nextSignals, eventDef.id);
           }
           if (chainReason) {
             addEvent('info', `事件連鎖：${chainReason}，觸發「${eventDef.name}」。`);

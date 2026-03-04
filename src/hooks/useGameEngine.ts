@@ -18,6 +18,7 @@ import {
   getActiveEconomicCalibrationProfileId,
   setEconomicCalibrationProfile,
 } from '../engine/economicCalibration';
+import { buildLearningJourney } from '../learning/journey';
 
 export type AutoPlaySpeed = 'slow' | 'medium' | 'fast' | null;
 
@@ -60,16 +61,72 @@ export function useGameEngine() {
   const [autoPlaySpeed, setAutoPlaySpeed] = useState<AutoPlaySpeed>(null);
   const [runHistory, setRunHistory] = useState<RunSummary[]>([]);
   const [toastQueue, setToastQueue] = useState<ToastNotification[]>([]);
+  const [tutorialToastsEnabled, setTutorialToastsEnabled] = useState<boolean>(() => {
+    try {
+      const raw = window.localStorage.getItem('econ_sim_tutorial_toasts_enabled');
+      if (raw === 'false') return false;
+    } catch {
+      // ignore localStorage read failures
+    }
+    return true;
+  });
   const [economicCalibrationMode, setEconomicCalibrationModeState] = useState<EconomicCalibrationProfileId>(
     () => getActiveEconomicCalibrationProfileId(),
   );
+  const initialLearning = buildLearningJourney(engine.getState());
   const intervalRef = useRef<number | null>(null);
   const runIdRef = useRef(1);
   const toastIdRef = useRef(0);
+  const completedQuestIdsRef = useRef<Set<string>>(
+    new Set(initialLearning.quests.filter(quest => quest.done).map(quest => quest.id)),
+  );
+  const unlockedNodeIdsRef = useRef<Set<string>>(
+    new Set(initialLearning.knowledgeNodes.filter(node => node.unlocked).map(node => node.id)),
+  );
+
+  const pushLearningToasts = useCallback((state: GameState) => {
+    const learning = buildLearningJourney(state);
+    const nextCompleted = new Set(learning.quests.filter(quest => quest.done).map(quest => quest.id));
+    const nextUnlocked = new Set(learning.knowledgeNodes.filter(node => node.unlocked).map(node => node.id));
+    const toasts: ToastNotification[] = [];
+
+    for (const quest of learning.quests) {
+      if (!quest.done || completedQuestIdsRef.current.has(quest.id)) continue;
+      toasts.push({
+        id: `toast-${toastIdRef.current++}`,
+        type: 'celebration',
+        title: `新手任務完成：${quest.title}`,
+        message: quest.objective,
+        createdAt: Date.now(),
+        duration: 5200,
+      });
+    }
+
+    for (const node of learning.knowledgeNodes) {
+      if (!node.unlocked || unlockedNodeIdsRef.current.has(node.id)) continue;
+      toasts.push({
+        id: `toast-${toastIdRef.current++}`,
+        type: 'info',
+        title: `知識解鎖：${node.title}`,
+        message: `${node.chain} · ${node.concept}`,
+        createdAt: Date.now(),
+        duration: 5200,
+      });
+    }
+
+    completedQuestIdsRef.current = nextCompleted;
+    unlockedNodeIdsRef.current = nextUnlocked;
+
+    if (tutorialToastsEnabled && toasts.length > 0) {
+      setToastQueue(prev => [...prev, ...toasts.slice(0, 3)].slice(-8));
+    }
+  }, [completedQuestIdsRef, unlockedNodeIdsRef, toastIdRef, tutorialToastsEnabled]);
 
   const syncState = useCallback(() => {
-    setGameState(engine.getState());
-  }, [engine]);
+    const state = engine.getState();
+    pushLearningToasts(state);
+    setGameState(state);
+  }, [engine, pushLearningToasts]);
 
   const stopAutoPlayInternal = useCallback(() => {
     if (intervalRef.current) {
@@ -188,6 +245,15 @@ export function useGameEngine() {
     setEconomicCalibrationModeState(mode);
   }, []);
 
+  const setTutorialToasts = useCallback((enabled: boolean) => {
+    setTutorialToastsEnabled(enabled);
+    try {
+      window.localStorage.setItem('econ_sim_tutorial_toasts_enabled', enabled ? 'true' : 'false');
+    } catch {
+      // ignore localStorage write failures
+    }
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -214,6 +280,8 @@ export function useGameEngine() {
     endGame,
     economicCalibrationMode,
     setEconomicMode,
+    tutorialToastsEnabled,
+    setTutorialToasts,
     toastQueue,
     dismissToast,
   };

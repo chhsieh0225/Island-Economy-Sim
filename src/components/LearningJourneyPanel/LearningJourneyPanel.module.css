@@ -1,0 +1,236 @@
+.panel {
+  background: #16213e;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ccd6f6;
+}
+
+.titleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.toastToggleBtn {
+  border: 1px solid #2d4468;
+  border-radius: 999px;
+  background: #0f1a30;
+  color: #ccd6f6;
+  font-size: 11px;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.toastToggleBtn:hover {
+  border-color: #64ffda;
+}
+
+.toastToggleOn {
+  border-color: #64ffda;
+  color: #64ffda;
+}
+
+.toastToggleOff {
+  border-color: #4b5f82;
+  color: #9bb0cf;
+}
+
+.section {
+  margin-top: 10px;
+  border: 1px solid #223a5c;
+  border-radius: 8px;
+  background: #0f1a30;
+  padding: 10px;
+}
+
+.sectionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #64ffda;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.progressBar {
+  margin-top: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #1c2d4a;
+  overflow: hidden;
+}
+
+.progressBar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #4fc3f7, #64ffda);
+}
+
+.questList {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.questBtn {
+  width: 100%;
+  text-align: left;
+  background: #12223d;
+  border: 1px solid #2a4368;
+  border-radius: 6px;
+  color: #d7e2f5;
+  padding: 7px 8px;
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.questBtn:hover {
+  border-color: #64ffda;
+}
+
+.questBtnActive {
+  border-color: #64ffda;
+  background: #12304f;
+}
+
+.questBtnDone {
+  background: #102a41;
+}
+
+.questStatus {
+  color: #64ffda;
+  font-weight: 700;
+}
+
+.questName {
+  color: #e6f1ff;
+}
+
+.questProgress {
+  color: #9bb0cf;
+  font-variant-numeric: tabular-nums;
+}
+
+.detailCard {
+  margin-top: 8px;
+  border: 1px solid #2a4368;
+  border-radius: 6px;
+  background: #11233e;
+  padding: 8px;
+}
+
+.detailTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e6f1ff;
+}
+
+.detailLine {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #9bb0cf;
+  line-height: 1.35;
+}
+
+.detailBar {
+  margin-top: 6px;
+  height: 5px;
+  border-radius: 999px;
+  background: #1b2f4e;
+  overflow: hidden;
+}
+
+.detailBar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7cc8ff, #64ffda);
+}
+
+.nextHint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #64ffda;
+}
+
+.nextHintDone {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #8bc34a;
+}
+
+.nodeList {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.nodeBtn {
+  width: 100%;
+  text-align: left;
+  background: #12223d;
+  border: 1px solid #2a4368;
+  border-radius: 6px;
+  color: #d7e2f5;
+  padding: 7px 8px;
+  cursor: pointer;
+}
+
+.nodeBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.nodeBtnActive {
+  border-color: #64ffda;
+  background: #12304f;
+}
+
+.nodeTitleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.nodeChain {
+  font-size: 10px;
+  color: #8fa2c1;
+  text-transform: uppercase;
+}
+
+.nodeUnlocked {
+  font-size: 10px;
+  color: #64ffda;
+}
+
+.nodeLocked {
+  font-size: 10px;
+  color: #f4b183;
+}
+
+.nodeTitle {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #e6f1ff;
+}
+
+.lockHint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #8fa2c1;
+}

@@ -17,6 +17,7 @@ import { TerrainPanel } from './components/TerrainPanel/TerrainPanel';
 import { NarrativeModal } from './components/NarrativeModal/NarrativeModal';
 import { Toast } from './components/Toast/Toast';
 import { EconomyCalibrationPanel } from './components/EconomyCalibrationPanel/EconomyCalibrationPanel';
+import { LearningJourneyPanel } from './components/LearningJourneyPanel/LearningJourneyPanel';
 import { SCENARIOS } from './data/scenarios';
 import type { AgentState, ScenarioId, ScenarioNarrative } from './types';
 import styles from './App.module.css';
@@ -39,6 +40,8 @@ function App() {
     endGame,
     economicCalibrationMode,
     setEconomicMode,
+    tutorialToastsEnabled,
+    setTutorialToasts,
     toastQueue,
     dismissToast,
   } = useGameEngine();
@@ -104,6 +107,12 @@ function App() {
             <EconomyCalibrationPanel
               mode={economicCalibrationMode}
               onChangeMode={setEconomicMode}
+            />
+
+            <LearningJourneyPanel
+              state={gameState}
+              tutorialToastsEnabled={tutorialToastsEnabled}
+              onSetTutorialToasts={setTutorialToasts}
             />
 
             <PolicyPanel

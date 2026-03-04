@@ -77,6 +77,28 @@
   background: #10253f;
 }
 
+.panelFallback {
+  background: #16213e;
+  border: 1px solid #2a3d5f;
+  border-radius: 8px;
+  padding: 18px 14px;
+  color: #a9b7d3;
+  font-size: 12px;
+}
+
+.overlayFallback {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(7, 15, 28, 0.52);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d7e2f3;
+  font-size: 13px;
+  backdrop-filter: blur(1px);
+}
+
 @media (max-width: 1200px) {
   .columns {
     grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
@@ -129,5 +151,10 @@
   .rightTabBtn {
     padding: 6px 9px;
     font-size: 11px;
+  }
+
+  .panelFallback {
+    font-size: 11px;
+    padding: 14px 10px;
   }
 }

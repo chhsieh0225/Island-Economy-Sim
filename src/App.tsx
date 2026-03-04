@@ -1,19 +1,12 @@
-import { useState, useCallback } from 'react';
+import { lazy, Suspense, useState, useCallback } from 'react';
 import { useGameEngine } from './hooks/useGameEngine';
 import { Dashboard } from './components/Dashboard/Dashboard';
-import { MarketPanel } from './components/MarketPanel/MarketPanel';
 import { JobsPanel } from './components/JobsPanel/JobsPanel';
 import { PolicyPanel } from './components/PolicyPanel/PolicyPanel';
-import { EventLog } from './components/EventLog/EventLog';
-import { AgentInspector } from './components/AgentInspector/AgentInspector';
 import { ControlBar } from './components/ControlBar/ControlBar';
 import { IslandMap } from './components/IslandMap/IslandMap';
 import { AgentRoster } from './components/AgentRoster/AgentRoster';
-import { GameOver } from './components/GameOver/GameOver';
-import { DecisionPanel } from './components/DecisionPanel/DecisionPanel';
 import { SimulationLab } from './components/SimulationLab/SimulationLab';
-import { MilestonePanel } from './components/MilestonePanel/MilestonePanel';
-import { TerrainPanel } from './components/TerrainPanel/TerrainPanel';
 import { NarrativeModal } from './components/NarrativeModal/NarrativeModal';
 import { Toast } from './components/Toast/Toast';
 import { EconomyCalibrationPanel } from './components/EconomyCalibrationPanel/EconomyCalibrationPanel';
@@ -21,6 +14,41 @@ import { LearningJourneyPanel } from './components/LearningJourneyPanel/Learning
 import { SCENARIOS } from './data/scenarios';
 import type { AgentState, ScenarioId, ScenarioNarrative } from './types';
 import styles from './App.module.css';
+
+const MarketPanel = lazy(async () => {
+  const module = await import('./components/MarketPanel/MarketPanel');
+  return { default: module.MarketPanel };
+});
+
+const TerrainPanel = lazy(async () => {
+  const module = await import('./components/TerrainPanel/TerrainPanel');
+  return { default: module.TerrainPanel };
+});
+
+const EventLog = lazy(async () => {
+  const module = await import('./components/EventLog/EventLog');
+  return { default: module.EventLog };
+});
+
+const MilestonePanel = lazy(async () => {
+  const module = await import('./components/MilestonePanel/MilestonePanel');
+  return { default: module.MilestonePanel };
+});
+
+const AgentInspector = lazy(async () => {
+  const module = await import('./components/AgentInspector/AgentInspector');
+  return { default: module.AgentInspector };
+});
+
+const GameOver = lazy(async () => {
+  const module = await import('./components/GameOver/GameOver');
+  return { default: module.GameOver };
+});
+
+const DecisionPanel = lazy(async () => {
+  const module = await import('./components/DecisionPanel/DecisionPanel');
+  return { default: module.DecisionPanel };
+});
 
 function App() {
   const {
@@ -164,48 +192,56 @@ function App() {
               </button>
             </div>
 
-            {rightTab === 'market' && (
-              <MarketPanel market={gameState.market} terrain={gameState.terrain} />
-            )}
-            {rightTab === 'terrain' && (
-              <TerrainPanel terrain={gameState.terrain} />
-            )}
-            {rightTab === 'events' && (
-              <EventLog
-                events={gameState.events}
-                activeRandomEvents={gameState.activeRandomEvents}
-              />
-            )}
-            {rightTab === 'milestones' && (
-              <MilestonePanel
-                milestones={gameState.milestones}
-                agents={gameState.agents}
-                onAgentClick={handleAgentClick}
-              />
-            )}
+            <Suspense fallback={<div className={styles.panelFallback}>載入中...</div>}>
+              {rightTab === 'market' && (
+                <MarketPanel market={gameState.market} terrain={gameState.terrain} />
+              )}
+              {rightTab === 'terrain' && (
+                <TerrainPanel terrain={gameState.terrain} />
+              )}
+              {rightTab === 'events' && (
+                <EventLog
+                  events={gameState.events}
+                  activeRandomEvents={gameState.activeRandomEvents}
+                />
+              )}
+              {rightTab === 'milestones' && (
+                <MilestonePanel
+                  milestones={gameState.milestones}
+                  agents={gameState.agents}
+                  onAgentClick={handleAgentClick}
+                />
+              )}
+            </Suspense>
           </div>
         </div>
       </div>
 
       {selectedAgent && (
-        <AgentInspector
-          agent={selectedAgent}
-          onClose={() => setSelectedAgent(null)}
-        />
+        <Suspense fallback={<div className={styles.overlayFallback}>載入中...</div>}>
+          <AgentInspector
+            agent={selectedAgent}
+            onClose={() => setSelectedAgent(null)}
+          />
+        </Suspense>
       )}
 
       {gameState.gameOver && (
-        <GameOver
-          gameOver={gameState.gameOver}
-          onRestart={reset}
-        />
+        <Suspense fallback={<div className={styles.overlayFallback}>載入中...</div>}>
+          <GameOver
+            gameOver={gameState.gameOver}
+            onRestart={reset}
+          />
+        </Suspense>
       )}
 
       {gameState.pendingDecision && (
-        <DecisionPanel
-          decision={gameState.pendingDecision}
-          onChoose={chooseDecision}
-        />
+        <Suspense fallback={<div className={styles.overlayFallback}>載入中...</div>}>
+          <DecisionPanel
+            decision={gameState.pendingDecision}
+            onChoose={chooseDecision}
+          />
+        </Suspense>
       )}
 
       {narrativeToShow && (

@@ -1,4 +1,4 @@
-import type { PolicyTimelineEntry, TurnSnapshot } from '../../types';
+import type { PendingPolicyType, PolicyTimelineEntry, SectorType, TurnSnapshot } from '../../types';
 
 export type PolicyExperimentStatus = 'pending' | 'collecting' | 'complete';
 
@@ -11,7 +11,10 @@ export interface PolicyExperimentMetrics {
 
 export interface PolicyExperimentCard {
   id: string;
+  type: PendingPolicyType;
   summary: string;
+  value: number | boolean;
+  sector?: SectorType;
   requestedTurn: number;
   applyTurn: number;
   windowEndTurn: number;
@@ -55,7 +58,10 @@ export function buildPolicyExperimentCards(
       if (item.status === 'pending' || latestTurn < item.applyTurn) {
         return {
           id: item.id,
+          type: item.type,
           summary: item.summary,
+          value: item.value,
+          sector: item.sector,
           requestedTurn: item.requestedTurn,
           applyTurn: item.applyTurn,
           windowEndTurn,
@@ -73,7 +79,10 @@ export function buildPolicyExperimentCards(
       if (!baseline || !observed || observed.turn <= baseline.turn) {
         return {
           id: item.id,
+          type: item.type,
           summary: item.summary,
+          value: item.value,
+          sector: item.sector,
           requestedTurn: item.requestedTurn,
           applyTurn: item.applyTurn,
           windowEndTurn,
@@ -97,7 +106,10 @@ export function buildPolicyExperimentCards(
 
       return {
         id: item.id,
+        type: item.type,
         summary: item.summary,
+        value: item.value,
+        sector: item.sector,
         requestedTurn: item.requestedTurn,
         applyTurn: item.applyTurn,
         windowEndTurn,
@@ -108,4 +120,3 @@ export function buildPolicyExperimentCards(
       };
     });
 }
-

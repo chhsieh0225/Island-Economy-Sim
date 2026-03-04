@@ -10,6 +10,10 @@ import type {
 import { Tooltip } from '../Tooltip/Tooltip';
 import { POLICY_TOOLTIPS } from '../../data/tooltipContent';
 import { buildPolicyExperimentCards } from '../../engine/modules/policyExperimentModule';
+import {
+  buildPolicyRecommendation,
+  type PolicyRecommendationAction,
+} from '../../engine/modules/policyRecommendationModule';
 import styles from './PolicyPanel.module.css';
 
 interface Props {
@@ -63,6 +67,19 @@ function statusLabel(status: 'pending' | 'collecting' | 'complete'): string {
       return '觀察中';
     case 'complete':
       return '已結算';
+  }
+}
+
+function recommendationActionLabel(action: PolicyRecommendationAction): string {
+  switch (action.type) {
+    case 'setTaxRate':
+      return `稅率 ${(action.value * 100).toFixed(0)}%`;
+    case 'setSubsidy':
+      return `${SECTOR_LABELS[action.sector]} ${action.value.toFixed(0)}%`;
+    case 'setWelfare':
+      return `福利 ${action.value ? '啟用' : '停用'}`;
+    case 'setPublicWorks':
+      return `公共建設 ${action.value ? '啟用' : '停用'}`;
   }
 }
 
@@ -140,6 +157,27 @@ export function PolicyPanel({
     () => buildPolicyExperimentCards(policyTimeline, statistics, { maxCards: 4, observationTurns: 3 }),
     [policyTimeline, statistics],
   );
+  const recommendationByCardId = useMemo(
+    () => new Map(experimentCards.map(card => [card.id, buildPolicyRecommendation(card, government)])),
+    [experimentCards, government],
+  );
+
+  const applyRecommendation = (action: PolicyRecommendationAction) => {
+    switch (action.type) {
+      case 'setTaxRate':
+        onSetTaxRate(action.value);
+        return;
+      case 'setSubsidy':
+        onSetSubsidy(action.sector, action.value);
+        return;
+      case 'setWelfare':
+        onSetWelfare(action.value);
+        return;
+      case 'setPublicWorks':
+        onSetPublicWorks(action.value);
+        return;
+    }
+  };
 
   return (
     <div className={styles.panel}>
@@ -297,60 +335,79 @@ export function PolicyPanel({
         <div className={styles.empty}>先下達至少 1 次政策，這裡會自動追蹤預測與實際結果。</div>
       ) : (
         <div className={styles.experimentList}>
-          {experimentCards.map(card => (
-            <div key={card.id} className={styles.experimentCard}>
-              <div className={styles.experimentHead}>
-                <span className={styles.experimentTitle}>{card.summary}</span>
-                <span className={`${styles.experimentStatus} ${styles[`experimentStatus${card.status}`]}`}>
-                  {statusLabel(card.status)}
-                </span>
-              </div>
-              <div className={styles.experimentMeta}>
-                行動 T{card.requestedTurn}，生效 T{card.applyTurn}，觀察窗 T{card.applyTurn}~T{card.windowEndTurn}
-              </div>
-              <div className={styles.experimentBlock}>
-                <div className={styles.experimentBlockTitle}>Prediction</div>
-                <div className={styles.experimentPrediction}>{card.predictions.join(' / ')}</div>
-              </div>
-              <div className={styles.experimentBlock}>
-                <div className={styles.experimentBlockTitle}>Outcome</div>
-                {!card.metrics ? (
-                  <div className={styles.experimentPending}>
-                    {card.status === 'pending'
-                      ? '尚未進入觀察窗口。'
-                      : `資料收集中（目前觀察到 T${card.observedTurn ?? '-'}）。`}
+          {experimentCards.map(card => {
+            const recommendation = recommendationByCardId.get(card.id) ?? null;
+            return (
+              <div key={card.id} className={styles.experimentCard}>
+                <div className={styles.experimentHead}>
+                  <span className={styles.experimentTitle}>{card.summary}</span>
+                  <span className={`${styles.experimentStatus} ${styles[`experimentStatus${card.status}`]}`}>
+                    {statusLabel(card.status)}
+                  </span>
+                </div>
+                <div className={styles.experimentMeta}>
+                  行動 T{card.requestedTurn}，生效 T{card.applyTurn}，觀察窗 T{card.applyTurn}~T{card.windowEndTurn}
+                </div>
+                <div className={styles.experimentBlock}>
+                  <div className={styles.experimentBlockTitle}>Prediction</div>
+                  <div className={styles.experimentPrediction}>{card.predictions.join(' / ')}</div>
+                </div>
+                <div className={styles.experimentBlock}>
+                  <div className={styles.experimentBlockTitle}>Outcome</div>
+                  {!card.metrics ? (
+                    <div className={styles.experimentPending}>
+                      {card.status === 'pending'
+                        ? '尚未進入觀察窗口。'
+                        : `資料收集中（目前觀察到 T${card.observedTurn ?? '-'}）。`}
+                    </div>
+                  ) : (
+                    <div className={styles.experimentMetrics}>
+                      <div className={styles.experimentMetric}>
+                        <span>滿意度 Δ</span>
+                        <span className={card.metrics.satisfactionDelta >= 0 ? styles.impactUp : styles.impactDown}>
+                          {signed(card.metrics.satisfactionDelta, 2)}
+                        </span>
+                      </div>
+                      <div className={styles.experimentMetric}>
+                        <span>國庫 Δ</span>
+                        <span className={card.metrics.treasuryDelta >= 0 ? styles.impactUp : styles.impactDown}>
+                          {signed(card.metrics.treasuryDelta, 0)}
+                        </span>
+                      </div>
+                      <div className={styles.experimentMetric}>
+                        <span>GDP Δ%</span>
+                        <span className={card.metrics.gdpDeltaPercent >= 0 ? styles.impactUp : styles.impactDown}>
+                          {signed(card.metrics.gdpDeltaPercent, 2)}%
+                        </span>
+                      </div>
+                      <div className={styles.experimentMetric}>
+                        <span>人口淨變化</span>
+                        <span className={card.metrics.populationDelta >= 0 ? styles.impactUp : styles.impactDown}>
+                          {signed(card.metrics.populationDelta, 0)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {recommendation ? (
+                  <div className={styles.experimentRecommend}>
+                    <div className={styles.experimentRecommendText}>{recommendation.reason}</div>
+                    <div className={styles.experimentImpactHint}>{recommendation.impactHint}</div>
+                    <button
+                      className={styles.experimentRecommendBtn}
+                      onClick={() => applyRecommendation(recommendation.action)}
+                    >
+                      採納建議：{recommendationActionLabel(recommendation.action)}
+                    </button>
                   </div>
                 ) : (
-                  <div className={styles.experimentMetrics}>
-                    <div className={styles.experimentMetric}>
-                      <span>滿意度 Δ</span>
-                      <span className={card.metrics.satisfactionDelta >= 0 ? styles.impactUp : styles.impactDown}>
-                        {signed(card.metrics.satisfactionDelta, 2)}
-                      </span>
-                    </div>
-                    <div className={styles.experimentMetric}>
-                      <span>國庫 Δ</span>
-                      <span className={card.metrics.treasuryDelta >= 0 ? styles.impactUp : styles.impactDown}>
-                        {signed(card.metrics.treasuryDelta, 0)}
-                      </span>
-                    </div>
-                    <div className={styles.experimentMetric}>
-                      <span>GDP Δ%</span>
-                      <span className={card.metrics.gdpDeltaPercent >= 0 ? styles.impactUp : styles.impactDown}>
-                        {signed(card.metrics.gdpDeltaPercent, 2)}%
-                      </span>
-                    </div>
-                    <div className={styles.experimentMetric}>
-                      <span>人口淨變化</span>
-                      <span className={card.metrics.populationDelta >= 0 ? styles.impactUp : styles.impactDown}>
-                        {signed(card.metrics.populationDelta, 0)}
-                      </span>
-                    </div>
+                  <div className={styles.experimentRecommendIdle}>
+                    目前訊號偏中性，建議先觀察下一個窗口。
                   </div>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

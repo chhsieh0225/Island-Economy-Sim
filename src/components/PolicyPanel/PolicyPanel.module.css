@@ -296,3 +296,49 @@
   font-size: 11px;
   color: #b6c8e8;
 }
+
+.experimentRecommend {
+  margin-top: 8px;
+  border-top: 1px dashed #2c4f7c;
+  padding-top: 7px;
+}
+
+.experimentRecommendText {
+  font-size: 11px;
+  color: #a8c4e4;
+  line-height: 1.35;
+}
+
+.experimentImpactHint {
+  margin-top: 4px;
+  font-size: 10px;
+  color: #8fd4f7;
+}
+
+.experimentRecommendBtn {
+  margin-top: 6px;
+  width: 100%;
+  border: 1px solid #3b789f;
+  border-radius: 6px;
+  background: #123149;
+  color: #d6efff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 7px 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s, background 0.15s;
+}
+
+.experimentRecommendBtn:hover {
+  border-color: #64ffda;
+  background: #163d5a;
+  transform: translateY(-1px);
+}
+
+.experimentRecommendIdle {
+  margin-top: 8px;
+  border-top: 1px dashed #254062;
+  padding-top: 7px;
+  font-size: 11px;
+  color: #88a1c4;
+}

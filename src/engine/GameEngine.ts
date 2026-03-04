@@ -47,6 +47,12 @@ import {
   deriveGameOverReason,
 } from './modules/gameOverModule';
 import {
+  getPolicySideEffects as getPolicySideEffectsModule,
+  markPolicyTimelineApplied as markPolicyTimelineAppliedModule,
+  queuePolicyChange,
+} from './modules/policyModule';
+import { runTurnPipeline, type TurnGovernmentSummary } from './modules/turnPipelineModule';
+import {
   DEFAULT_ECONOMIC_CALIBRATION_PROFILE_ID,
   getEconomicCalibrationProfile,
   type EconomicCalibrationProfile,
@@ -344,29 +350,8 @@ export class GameEngine {
 
   advanceTurn(): TurnSnapshot {
     const latestSnapshot = this.statistics.history[this.statistics.history.length - 1];
-    const emptyCausalReplay = buildZeroCausalReplay();
-
-    if (this.gameOver) {
-      return latestSnapshot ?? this.statistics.recordTurn(
-        this.turn,
-        this.agents,
-        this.market,
-        this.government,
-        { births: 0, deaths: 0 },
-        emptyCausalReplay,
-      );
-    }
-
-    // Pause simulation until user resolves the current decision.
-    if (this.pendingDecision) {
-      return latestSnapshot ?? this.statistics.recordTurn(
-        this.turn,
-        this.agents,
-        this.market,
-        this.government,
-        { births: 0, deaths: 0 },
-        emptyCausalReplay,
-      );
+    if (this.gameOver || this.pendingDecision) {
+      return this.latestSnapshotOrRecord(latestSnapshot);
     }
 
     this.turn++;
@@ -375,70 +360,41 @@ export class GameEngine {
     this.market.clearOrders();
 
     const aliveAgents = this.agents.filter(a => a.alive);
-    const turnStartPopulation = aliveAgents.length;
-    const turnStartAvgSatisfaction = this.averageAgentMetric(aliveAgents, agent => agent.satisfaction);
-    const turnStartAvgHealth = this.averageAgentMetric(aliveAgents, agent => agent.health);
     this.market.setAgents(aliveAgents);
 
-    // Phase 0: Roll luck
-    this.phaseRollLuck(aliveAgents);
+    const pipeline = runTurnPipeline({
+      aliveAgents,
+      getAliveAgents: () => this.agents.filter(a => a.alive),
+      averageMetric: (agents, accessor) => this.averageAgentMetric(agents, accessor),
+      phaseRollLuck: agents => this.phaseRollLuck(agents),
+      phaseProduction: agents => this.phaseProduction(agents),
+      phaseMarketPosting: agents => this.phaseMarketPosting(agents),
+      clearMarket: () => this.market.clearMarket(),
+      phaseSpoilage: agents => this.phaseSpoilage(agents),
+      phaseConsumption: agents => this.phaseConsumption(agents),
+      phaseFamilySupport: agents => this.phaseFamilySupport(agents),
+      phaseGovernment: agents => this.phaseGovernment(agents),
+      phaseAgentDecisions: agents => this.phaseAgentDecisions(agents),
+      phaseAging: agents => this.phaseAging(agents),
+      phaseLifeDeath: agents => this.phaseLifeDeath(agents),
+      phaseRandomEvents: () => this.phaseRandomEvents(),
+      phaseEconomyProgression: agents => this.phaseEconomyProgression(agents),
+    });
 
-    // Phase 1: Production
-    this.phaseProduction(aliveAgents);
-
-    // Phase 2: Market Posting
-    this.phaseMarketPosting(aliveAgents);
-
-    // Phase 3: Market Clearing
-    this.market.clearMarket();
-
-    // Phase 3.5: Inventory spoilage
-    this.phaseSpoilage(aliveAgents);
-
-    // Phase 4: Consumption
-    const consumptionSummary = this.phaseConsumption(aliveAgents);
-
-    // Phase 4.5: Family support transfers
-    this.phaseFamilySupport(aliveAgents);
-
-    // Phase 5: Government
-    const governmentSummary = this.phaseGovernment(aliveAgents);
-
-    // Phase 6: Agent Decisions
-    this.phaseAgentDecisions(aliveAgents);
-
-    // Phase 7: Aging
-    const healthBeforeAging = this.averageAgentMetric(aliveAgents, agent => agent.health);
-    this.phaseAging(aliveAgents);
-    const healthAfterAging = this.averageAgentMetric(aliveAgents, agent => agent.health);
-    const agingHealthDelta = healthAfterAging - healthBeforeAging;
-
-    // Phase 8: Life/Death + Births
-    const demographics = this.phaseLifeDeath(aliveAgents);
-
-    // Phase 9: Random events and decision events
-    this.phaseRandomEvents();
-
-    // Phase 9.5: Economy progression unlock (applies to next-turn behavior)
-    this.phaseEconomyProgression(this.agents.filter(a => a.alive));
-
-    const endAliveAgents = this.agents.filter(a => a.alive);
-    const turnEndAvgSatisfaction = this.averageAgentMetric(endAliveAgents, agent => agent.satisfaction);
-    const turnEndAvgHealth = this.averageAgentMetric(endAliveAgents, agent => agent.health);
     const causalReplay = buildTurnCausalReplayModule({
-      startPopulation: turnStartPopulation,
-      startAvgSatisfaction: turnStartAvgSatisfaction,
-      endAvgSatisfaction: turnEndAvgSatisfaction,
-      startAvgHealth: turnStartAvgHealth,
-      endAvgHealth: turnEndAvgHealth,
-      consumptionSummary,
-      agingHealthDelta,
-      governmentSummary,
-      demographics,
+      startPopulation: pipeline.startPopulation,
+      startAvgSatisfaction: pipeline.startAvgSatisfaction,
+      endAvgSatisfaction: pipeline.endAvgSatisfaction,
+      startAvgHealth: pipeline.startAvgHealth,
+      endAvgHealth: pipeline.endAvgHealth,
+      consumptionSummary: pipeline.consumptionSummary,
+      agingHealthDelta: pipeline.agingHealthDelta,
+      governmentSummary: pipeline.governmentSummary,
+      demographics: pipeline.demographics,
     });
 
     // Phase 10: Record income & statistics
-    for (const agent of this.agents.filter(a => a.alive)) {
+    for (const agent of pipeline.endAliveAgents) {
       agent.recordIncome();
     }
     const snapshot = this.statistics.recordTurn(
@@ -446,7 +402,7 @@ export class GameEngine {
       this.agents,
       this.market,
       this.government,
-      demographics,
+      pipeline.demographics,
       causalReplay,
     );
     this.phaseMilestones();
@@ -472,6 +428,18 @@ export class GameEngine {
     );
 
     return snapshot;
+  }
+
+  private latestSnapshotOrRecord(latestSnapshot?: TurnSnapshot): TurnSnapshot {
+    if (latestSnapshot) return latestSnapshot;
+    return this.statistics.recordTurn(
+      this.turn,
+      this.agents,
+      this.market,
+      this.government,
+      { births: 0, deaths: 0 },
+      buildZeroCausalReplay(),
+    );
   }
 
   private phaseRollLuck(agents: Agent[]): void {
@@ -567,14 +535,7 @@ export class GameEngine {
     }
   }
 
-  private phaseGovernment(agents: Agent[]): {
-    taxCollected: number;
-    welfareSpent: number;
-    welfareRecipients: number;
-    publicWorksSpent: number;
-    treasuryDelta: number;
-    perCapitaCashDelta: number;
-  } {
+  private phaseGovernment(agents: Agent[]): TurnGovernmentSummary {
     const aliveCount = agents.filter(a => a.alive).length;
     const treasuryStart = this.government.treasury;
 
@@ -771,7 +732,13 @@ export class GameEngine {
       turn: this.turn,
       pendingPolicies: this.pendingPolicies,
       government: this.government,
-      markPolicyApplied: policy => this.markPolicyTimelineApplied(policy),
+      markPolicyApplied: policy => {
+        this.policyTimeline = markPolicyTimelineAppliedModule({
+          policyTimeline: this.policyTimeline,
+          policy,
+          resolvedTurn: this.turn,
+        });
+      },
       addEvent: (type, message) => this.addEvent(type, message),
     });
   }
@@ -809,59 +776,6 @@ export class GameEngine {
     this.markStateDirty('milestones', 'agents');
   }
 
-  private upsertPolicyTimeline(policy: PendingPolicyChange): void {
-    const nextEntry: PolicyTimelineEntry = {
-      id: policy.id,
-      type: policy.type,
-      requestedTurn: policy.requestedTurn,
-      applyTurn: policy.applyTurn,
-      status: 'pending',
-      value: policy.value,
-      sector: policy.sector,
-      summary: policy.summary,
-      sideEffects: [...policy.sideEffects],
-    };
-
-    const existingIdx = this.policyTimeline.findIndex(entry => entry.id === policy.id);
-    if (existingIdx >= 0) {
-      this.policyTimeline[existingIdx] = nextEntry;
-    } else {
-      this.policyTimeline.unshift(nextEntry);
-      if (this.policyTimeline.length > 80) {
-        this.policyTimeline.pop();
-      }
-    }
-  }
-
-  private markPolicyTimelineApplied(policy: PendingPolicyChange): void {
-    const existingIdx = this.policyTimeline.findIndex(entry => entry.id === policy.id);
-    if (existingIdx >= 0) {
-      this.policyTimeline[existingIdx] = {
-        ...this.policyTimeline[existingIdx],
-        status: 'applied',
-        resolvedTurn: this.turn,
-        applyTurn: policy.applyTurn,
-        value: policy.value,
-        summary: policy.summary,
-        sideEffects: [...policy.sideEffects],
-      };
-      return;
-    }
-
-    this.policyTimeline.unshift({
-      id: policy.id,
-      type: policy.type,
-      requestedTurn: policy.requestedTurn,
-      applyTurn: policy.applyTurn,
-      resolvedTurn: this.turn,
-      status: 'applied',
-      value: policy.value,
-      sector: policy.sector,
-      summary: policy.summary,
-      sideEffects: [...policy.sideEffects],
-    });
-  }
-
   private queuePolicy(change: {
     type: PendingPolicyType;
     value: number | boolean;
@@ -869,53 +783,22 @@ export class GameEngine {
     summary: string;
     sideEffects: string[];
   }): void {
-    let nextPolicy: PendingPolicyChange = {
-      id: `policy_${this.nextPolicyId++}`,
-      type: change.type,
-      requestedTurn: this.turn,
-      applyTurn: this.turn + CONFIG.POLICY_DELAY_TURNS,
-      value: change.value,
-      sector: change.sector,
-      summary: change.summary,
-      sideEffects: change.sideEffects,
-    };
-
-    const existingIdx = this.pendingPolicies.findIndex(
-      p => p.type === change.type && p.sector === change.sector,
+    const result = queuePolicyChange({
+      turn: this.turn,
+      policyDelayTurns: CONFIG.POLICY_DELAY_TURNS,
+      nextPolicyId: this.nextPolicyId,
+      pendingPolicies: this.pendingPolicies,
+      policyTimeline: this.policyTimeline,
+      change,
+    });
+    this.nextPolicyId = result.nextPolicyId;
+    this.pendingPolicies = result.pendingPolicies;
+    this.policyTimeline = result.policyTimeline;
+    this.addEvent(
+      'info',
+      `${result.updatedExisting ? '政策更新' : '政策排程'}：${change.summary}（將於 ${result.scheduledPolicy.applyTurn} 回合生效）`,
     );
-
-    if (existingIdx >= 0) {
-      nextPolicy = { ...nextPolicy, id: this.pendingPolicies[existingIdx].id };
-      this.pendingPolicies[existingIdx] = nextPolicy;
-      this.addEvent('info', `政策更新：${change.summary}（將於 ${nextPolicy.applyTurn} 回合生效）`);
-    } else {
-      this.pendingPolicies.push(nextPolicy);
-      this.addEvent('info', `政策排程：${change.summary}（將於 ${nextPolicy.applyTurn} 回合生效）`);
-    }
-    this.upsertPolicyTimeline(nextPolicy);
     this.markStateDirty('pendingPolicies', 'policyTimeline', 'events');
-  }
-
-  private getPolicySideEffects(type: PendingPolicyType, value: number | boolean): string[] {
-    switch (type) {
-      case 'tax': {
-        const numeric = value as number;
-        if (numeric >= 0.25) {
-          return ['國庫收入增加', '消費與需求可能放緩'];
-        }
-        return ['刺激消費與交易', '國庫累積速度下降'];
-      }
-      case 'subsidy':
-        return ['目標產業產量上升', '可能造成跨產業失衡'];
-      case 'welfare':
-        return value
-          ? ['底層居民現金改善', '國庫支出增加']
-          : ['減少財政支出', '弱勢風險升高'];
-      case 'publicWorks':
-        return value
-          ? ['全體生產力短期提升', '每回合固定消耗國庫']
-          : ['停止固定支出', '失去公共建設加成'];
-    }
   }
 
   private checkEndConditions(): GameOverState | null {
@@ -989,7 +872,7 @@ export class GameEngine {
       type: 'tax',
       value: clamped,
       summary: `稅率調整至 ${(clamped * 100).toFixed(0)}%`,
-      sideEffects: this.getPolicySideEffects('tax', clamped),
+      sideEffects: getPolicySideEffectsModule('tax', clamped),
     });
   }
 
@@ -1004,7 +887,7 @@ export class GameEngine {
       value: clamped,
       sector,
       summary: `${this.sectorLabel(sector)}補貼調整至 ${clamped.toFixed(0)}%`,
-      sideEffects: this.getPolicySideEffects('subsidy', clamped),
+      sideEffects: getPolicySideEffectsModule('subsidy', clamped),
     });
   }
 
@@ -1017,7 +900,7 @@ export class GameEngine {
       type: 'welfare',
       value: enabled,
       summary: `社會福利 ${enabled ? '啟用' : '停用'}`,
-      sideEffects: this.getPolicySideEffects('welfare', enabled),
+      sideEffects: getPolicySideEffectsModule('welfare', enabled),
     });
   }
 
@@ -1030,7 +913,7 @@ export class GameEngine {
       type: 'publicWorks',
       value: active,
       summary: `公共建設 ${active ? '啟用' : '停用'}`,
-      sideEffects: this.getPolicySideEffects('publicWorks', active),
+      sideEffects: getPolicySideEffectsModule('publicWorks', active),
     });
   }
 

@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
-import { useTutorialStore, type ObjectiveStatus } from '../../stores/tutorialStore';
-import { TUTORIAL_LESSONS, type TutorialLesson } from '../../data/tutorialLessons';
+import { useTutorialStore } from '../../stores/tutorialStore';
+import { TUTORIAL_LESSONS } from '../../data/tutorialLessons';
 import { getEncyclopediaEntry } from '../../data/encyclopedia';
 import type { GameState } from '../../types';
 import styles from './TutorialPanel.module.css';

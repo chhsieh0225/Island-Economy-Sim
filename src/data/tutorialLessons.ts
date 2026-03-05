@@ -1,4 +1,4 @@
-import type { GameState, SectorType } from '../types';
+import type { GameState } from '../types';
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Tutorial Lesson System

@@ -106,5 +106,16 @@
   "common.confirm": "Confirm",
   "common.cancel": "Cancel",
 
-  "locale.toggle": "Switch Language"
+  "locale.toggle": "Switch Language",
+
+  "tutorial.mode": "Tutorial Mode",
+  "tutorial.freeplay": "Free Play",
+  "tutorial.lesson": "Lesson",
+  "tutorial.objectives": "Objectives",
+  "tutorial.hints": "Hints",
+  "tutorial.start": "Start Learning",
+  "tutorial.next": "Next Lesson",
+  "tutorial.complete": "Lesson Complete",
+  "tutorial.exit": "Exit Tutorial",
+  "tutorial.backToMenu": "Back to Menu"
 }

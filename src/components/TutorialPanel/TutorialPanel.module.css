@@ -1,0 +1,303 @@
+.panel {
+  background: #16213e;
+  border: 1px solid #2a3d5f;
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ─── Header ─────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.lessonEmoji {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.lessonLabel {
+  font-size: 11px;
+  color: #8892b0;
+  letter-spacing: 0.3px;
+}
+
+.lessonTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #e6f1ff;
+  line-height: 1.3;
+}
+
+.exitBtn {
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  color: #ff6b6b;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.exitBtn:hover {
+  background: rgba(255, 107, 107, 0.18);
+}
+
+/* ─── Progress Dots ──────────────────────────────────────────────────── */
+
+.progressRow {
+  display: flex;
+  gap: 4px;
+  padding: 0 2px;
+}
+
+.progressDot {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: #233554;
+  transition: background 0.2s;
+}
+
+.progressDotDone {
+  background: #64ffda;
+}
+
+.progressDotCurrent {
+  background: #ffc857;
+}
+
+/* ─── Instruction ────────────────────────────────────────────────────── */
+
+.instruction {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(100, 255, 218, 0.06);
+  border: 1px solid rgba(100, 255, 218, 0.15);
+  border-radius: 8px;
+}
+
+.instructionIcon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.instructionText {
+  font-size: 13px;
+  color: #ccd6f6;
+  line-height: 1.5;
+}
+
+/* ─── Sections ───────────────────────────────────────────────────────── */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sectionTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: #8892b0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ─── Objectives ─────────────────────────────────────────────────────── */
+
+.objectiveCount {
+  font-size: 11px;
+  color: #64ffda;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.objectives {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.objective {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(35, 53, 84, 0.4);
+  transition: background 0.15s;
+}
+
+.objectiveDone {
+  background: rgba(100, 255, 218, 0.06);
+}
+
+.objectiveCheck {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.objectiveText {
+  font-size: 12px;
+  color: #a8b2d1;
+}
+
+.objectiveDone .objectiveText {
+  color: #64ffda;
+  text-decoration: line-through;
+  text-decoration-color: rgba(100, 255, 218, 0.3);
+}
+
+/* ─── Hints ──────────────────────────────────────────────────────────── */
+
+.hints {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hint {
+  padding: 8px 10px;
+  background: rgba(255, 200, 87, 0.06);
+  border: 1px solid rgba(255, 200, 87, 0.15);
+  border-radius: 8px;
+  font-size: 12px;
+  color: #e6d58e;
+  line-height: 1.5;
+  animation: hintFade 0.3s ease;
+}
+
+@keyframes hintFade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Related Concepts ───────────────────────────────────────────────── */
+
+.concepts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.conceptCard {
+  padding: 8px 10px;
+  background: rgba(35, 53, 84, 0.5);
+  border-radius: 6px;
+  cursor: default;
+}
+
+.conceptTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ccd6f6;
+  margin-bottom: 2px;
+}
+
+.conceptIntro {
+  font-size: 11px;
+  color: #8892b0;
+  line-height: 1.4;
+}
+
+/* ─── Lesson List ────────────────────────────────────────────────────── */
+
+.lessonList {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lessonListItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  color: #8892b0;
+  transition: background 0.1s;
+}
+
+.lessonListItem:hover {
+  background: rgba(35, 53, 84, 0.5);
+}
+
+.lessonListCurrent {
+  background: rgba(255, 200, 87, 0.08);
+  color: #ffc857;
+}
+
+.lessonListDone {
+  color: #64ffda;
+}
+
+.lessonListEmoji {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.lessonListName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lessonListCheck {
+  color: #64ffda;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.lessonListBadge {
+  font-size: 10px;
+  background: rgba(255, 200, 87, 0.15);
+  color: #ffc857;
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .panel {
+    padding: 10px;
+  }
+
+  .lessonTitle {
+    font-size: 14px;
+  }
+
+  .lessonEmoji {
+    font-size: 24px;
+  }
+}

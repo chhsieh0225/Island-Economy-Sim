@@ -1,7 +1,8 @@
-import { lazy, Suspense, useCallback, useState } from 'react';
+import { lazy, Suspense, useCallback, useState, useEffect } from 'react';
 import { useGameStore } from './stores/gameStore';
 import { useUiStore } from './stores/uiStore';
 import { useNotificationStore } from './stores/notificationStore';
+import { useTutorialStore } from './stores/tutorialStore';
 import { ErrorBoundary } from './components/ErrorBoundary/ErrorBoundary';
 import { Dashboard } from './components/Dashboard/Dashboard';
 import { JobsPanel } from './components/JobsPanel/JobsPanel';
@@ -18,6 +19,10 @@ import { MapFeaturePanel } from './components/MapFeaturePanel/MapFeaturePanel';
 import { SandboxPanel } from './components/SandboxPanel/SandboxPanel';
 import { InfrastructurePanel } from './components/InfrastructurePanel/InfrastructurePanel';
 import { CompetitionPanel } from './components/CompetitionPanel/CompetitionPanel';
+import { StartScreen } from './components/StartScreen/StartScreen';
+import { TutorialPanel } from './components/TutorialPanel/TutorialPanel';
+import { TutorialModal } from './components/TutorialModal/TutorialModal';
+import { TUTORIAL_LESSONS } from './data/tutorialLessons';
 import { SCENARIOS } from './data/scenarios';
 import { useI18n } from './i18n/useI18n';
 import type { ScenarioId } from './types';
@@ -64,6 +69,10 @@ const EncyclopediaPanel = lazy(async () => {
 });
 
 function App() {
+  // App mode
+  const appMode = useUiStore(s => s.appMode);
+  const setAppMode = useUiStore(s => s.setAppMode);
+
   // Game store
   const gameState = useGameStore(s => s.gameState);
   const autoPlaySpeed = useGameStore(s => s.autoPlaySpeed);
@@ -104,10 +113,41 @@ function App() {
   const tutorialToastsEnabled = useNotificationStore(s => s.tutorialToastsEnabled);
   const setTutorialToasts = useNotificationStore(s => s.setTutorialToasts);
 
+  // Tutorial store
+  const tutorialActive = useTutorialStore(s => s.active);
+  const tutorialPhase = useTutorialStore(s => s.phase);
+  const currentLessonIndex = useTutorialStore(s => s.currentLessonIndex);
+  const completedLessons = useTutorialStore(s => s.completedLessons);
+  const getEnabledControls = useTutorialStore(s => s.getEnabledControls);
+  const startTutorial = useTutorialStore(s => s.startTutorial);
+  const dismissIntro = useTutorialStore(s => s.dismissIntro);
+  const checkObjectives = useTutorialStore(s => s.checkObjectives);
+  const nextLesson = useTutorialStore(s => s.nextLesson);
+  const exitTutorial = useTutorialStore(s => s.exitTutorial);
+
   const { locale, setLocale, t } = useI18n();
 
   const [sandboxEnabled, setSandboxEnabled] = useState(false);
 
+  // ─── Tutorial objective checking ─────────────────────────────────────
+  useEffect(() => {
+    if (appMode === 'tutorial' && tutorialActive && tutorialPhase === 'playing') {
+      checkObjectives(gameState);
+    }
+  }, [appMode, tutorialActive, tutorialPhase, gameState, checkObjectives]);
+
+  // ─── Tutorial: auto-resolve pending decisions ─────────────────────────
+  useEffect(() => {
+    if (appMode === 'tutorial' && tutorialActive && gameState.pendingDecision) {
+      // In tutorial mode, automatically pick the first choice
+      const firstChoice = gameState.pendingDecision.choices[0];
+      if (firstChoice) {
+        chooseDecision(firstChoice.id);
+      }
+    }
+  }, [appMode, tutorialActive, gameState.pendingDecision, chooseDecision]);
+
+  // ─── Callbacks ───────────────────────────────────────────────────────
   const scrollToAnchor = useCallback((id: string) => {
     const target = document.getElementById(id);
     if (!target) return;
@@ -138,20 +178,100 @@ function App() {
     }
   }, [startNewRun, resetSelections]);
 
+  const handleStartFreePlay = useCallback(() => {
+    setAppMode('freeplay');
+  }, [setAppMode]);
+
+  const handleStartTutorial = useCallback(() => {
+    startTutorial();
+    setAppMode('tutorial');
+    // Start a new game with the tutorial lesson's seed
+    const lesson = TUTORIAL_LESSONS[useTutorialStore.getState().currentLessonIndex];
+    if (lesson) {
+      startNewRun(lesson.seed, lesson.useInflationPrices ? 'inflation' : 'baseline');
+    }
+  }, [setAppMode, startTutorial, startNewRun]);
+
+  const handleTutorialDismissIntro = useCallback(() => {
+    dismissIntro();
+  }, [dismissIntro]);
+
+  const handleTutorialNextLesson = useCallback(() => {
+    nextLesson();
+    const store = useTutorialStore.getState();
+    if (store.phase === 'finished') {
+      // All done, go to start screen
+      exitTutorial();
+      setAppMode('start');
+      return;
+    }
+    // Start the next lesson's game
+    const lesson = TUTORIAL_LESSONS[store.currentLessonIndex];
+    if (lesson) {
+      startNewRun(lesson.seed, lesson.useInflationPrices ? 'inflation' : 'baseline');
+      resetSelections();
+    }
+  }, [nextLesson, exitTutorial, setAppMode, startNewRun, resetSelections]);
+
+  const handleExitTutorial = useCallback(() => {
+    exitTutorial();
+    setAppMode('start');
+  }, [exitTutorial, setAppMode]);
+
+  const handleBackToMenu = useCallback(() => {
+    stopAutoPlay();
+    setAppMode('start');
+  }, [stopAutoPlay, setAppMode]);
+
+  // ─── Start Screen ────────────────────────────────────────────────────
+  if (appMode === 'start') {
+    return (
+      <StartScreen
+        locale={locale}
+        completedLessons={completedLessons}
+        onStartFreePlay={handleStartFreePlay}
+        onStartTutorial={handleStartTutorial}
+      />
+    );
+  }
+
+  // ─── Get tutorial state for rendering ────────────────────────────────
+  const isTutorial = appMode === 'tutorial' && tutorialActive;
+  const currentLesson = isTutorial ? TUTORIAL_LESSONS[currentLessonIndex] : null;
+  const enabledControls = isTutorial ? getEnabledControls() : undefined;
+
+  // ─── Main Game UI ────────────────────────────────────────────────────
   return (
     <div className={styles.app}>
       <div className={styles.header}>
         <div>
-          <div className={styles.headerTitle}>{t('app.title')}</div>
-          <div className={styles.headerSub}>{locale === 'zh-TW' ? 'Island Economy Simulator' : ''}</div>
+          <div className={styles.headerTitle}>
+            {isTutorial
+              ? (locale === 'zh-TW' ? '📚 教學模式' : '📚 Tutorial Mode')
+              : t('app.title')}
+          </div>
+          <div className={styles.headerSub}>
+            {isTutorial
+              ? (locale === 'zh-TW' ? 'Island Economy Simulator — Tutorial' : '')
+              : (locale === 'zh-TW' ? 'Island Economy Simulator' : '')}
+          </div>
         </div>
-        <button
-          className={styles.localeToggle}
-          onClick={() => setLocale(locale === 'zh-TW' ? 'en' : 'zh-TW')}
-          title={t('locale.toggle')}
-        >
-          {locale === 'zh-TW' ? 'EN' : '中'}
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            className={styles.localeToggle}
+            onClick={handleBackToMenu}
+            title={locale === 'zh-TW' ? '回主選單' : 'Back to Menu'}
+          >
+            ☰
+          </button>
+          <button
+            className={styles.localeToggle}
+            onClick={() => setLocale(locale === 'zh-TW' ? 'en' : 'zh-TW')}
+            title={t('locale.toggle')}
+          >
+            {locale === 'zh-TW' ? 'EN' : '中'}
+          </button>
+        </div>
       </div>
 
       <div className={styles.content}>
@@ -159,8 +279,8 @@ function App() {
 
         <ControlBar
           autoPlaySpeed={autoPlaySpeed}
-          isGameOver={gameState.gameOver !== null}
-          hasPendingDecision={gameState.pendingDecision !== null}
+          isGameOver={isTutorial ? false : gameState.gameOver !== null}
+          hasPendingDecision={isTutorial ? false : gameState.pendingDecision !== null}
           onAdvanceTurn={advanceTurn}
           onStartAutoPlay={startAutoPlay}
           onStopAutoPlay={stopAutoPlay}
@@ -192,61 +312,97 @@ function App() {
 
         <div className={styles.columns}>
           <div className={styles.leftColumn}>
-            <SimulationLab
-              scenarioId={gameState.scenarioId}
-              seed={gameState.seed}
-              runHistory={runHistory}
-              onStartRun={handleStartNewRun}
-            />
+            {/* ─── Tutorial Mode: show TutorialPanel + restricted PolicyPanel ── */}
+            {isTutorial && (
+              <>
+                <TutorialPanel
+                  state={gameState}
+                  locale={locale}
+                  onExitTutorial={handleExitTutorial}
+                />
 
-            <EconomyCalibrationPanel
-              mode={economicCalibrationMode}
-              onChangeMode={setEconomicMode}
-            />
+                {currentLesson && currentLesson.enabledControls.size > 0 && (
+                  <div id="policy-panel-anchor">
+                    <PolicyPanel
+                      turn={gameState.turn}
+                      government={gameState.government}
+                      statistics={gameState.statistics}
+                      activeRandomEvents={gameState.activeRandomEvents}
+                      pendingPolicies={gameState.pendingPolicies}
+                      policyTimeline={gameState.policyTimeline}
+                      onSetTaxRate={setTaxRate}
+                      onSetSubsidy={setSubsidy}
+                      onSetWelfare={setWelfare}
+                      onSetPublicWorks={setPublicWorks}
+                      onSetPolicyRate={setPolicyRate}
+                      onSetLiquiditySupport={setLiquiditySupport}
+                      enabledSections={enabledControls}
+                    />
+                  </div>
+                )}
+              </>
+            )}
 
-            <LearningJourneyPanel
-              state={gameState}
-              tutorialToastsEnabled={tutorialToastsEnabled}
-              onSetTutorialToasts={setTutorialToasts}
-            />
+            {/* ─── Free Play Mode: show all panels ────────────────────────── */}
+            {!isTutorial && (
+              <>
+                <SimulationLab
+                  scenarioId={gameState.scenarioId}
+                  seed={gameState.seed}
+                  runHistory={runHistory}
+                  onStartRun={handleStartNewRun}
+                />
 
-            <SandboxPanel
-              enabled={sandboxEnabled}
-              onToggle={setSandboxEnabled}
-            />
+                <EconomyCalibrationPanel
+                  mode={economicCalibrationMode}
+                  onChangeMode={setEconomicMode}
+                />
 
-            <div id="policy-panel-anchor">
-              <PolicyPanel
-                turn={gameState.turn}
-                government={gameState.government}
-                statistics={gameState.statistics}
-                activeRandomEvents={gameState.activeRandomEvents}
-                pendingPolicies={gameState.pendingPolicies}
-                policyTimeline={gameState.policyTimeline}
-                onSetTaxRate={setTaxRate}
-                onSetSubsidy={setSubsidy}
-                onSetWelfare={setWelfare}
-                onSetPublicWorks={setPublicWorks}
-                onSetPolicyRate={setPolicyRate}
-                onSetLiquiditySupport={setLiquiditySupport}
-              />
-            </div>
+                <LearningJourneyPanel
+                  state={gameState}
+                  tutorialToastsEnabled={tutorialToastsEnabled}
+                  onSetTutorialToasts={setTutorialToasts}
+                />
 
-            <InfrastructurePanel
-              treasury={gameState.government.treasury}
-              infrastructure={gameState.infrastructure}
-            />
+                <SandboxPanel
+                  enabled={sandboxEnabled}
+                  onToggle={setSandboxEnabled}
+                />
 
-            <CompetitionPanel state={gameState} />
+                <div id="policy-panel-anchor">
+                  <PolicyPanel
+                    turn={gameState.turn}
+                    government={gameState.government}
+                    statistics={gameState.statistics}
+                    activeRandomEvents={gameState.activeRandomEvents}
+                    pendingPolicies={gameState.pendingPolicies}
+                    policyTimeline={gameState.policyTimeline}
+                    onSetTaxRate={setTaxRate}
+                    onSetSubsidy={setSubsidy}
+                    onSetWelfare={setWelfare}
+                    onSetPublicWorks={setPublicWorks}
+                    onSetPolicyRate={setPolicyRate}
+                    onSetLiquiditySupport={setLiquiditySupport}
+                  />
+                </div>
 
-            <div id="agent-roster-anchor">
-              <AgentRoster
-                agents={gameState.agents}
-                onAgentClick={selectAgent}
-              />
-            </div>
+                <InfrastructurePanel
+                  treasury={gameState.government.treasury}
+                  infrastructure={gameState.infrastructure}
+                />
 
-            <JobsPanel state={gameState} />
+                <CompetitionPanel state={gameState} />
+
+                <div id="agent-roster-anchor">
+                  <AgentRoster
+                    agents={gameState.agents}
+                    onAgentClick={selectAgent}
+                  />
+                </div>
+
+                <JobsPanel state={gameState} />
+              </>
+            )}
           </div>
 
           <div className={styles.rightColumn}>
@@ -259,30 +415,36 @@ function App() {
               >
                 {t('tabs.market')}
               </button>
-              <button
-                role="tab"
-                aria-selected={rightTab === 'terrain'}
-                className={`${styles.rightTabBtn} ${rightTab === 'terrain' ? styles.rightTabBtnActive : ''}`}
-                onClick={() => setRightTab('terrain')}
-              >
-                {t('tabs.terrain')}
-              </button>
-              <button
-                role="tab"
-                aria-selected={rightTab === 'events'}
-                className={`${styles.rightTabBtn} ${rightTab === 'events' ? styles.rightTabBtnActive : ''}`}
-                onClick={() => setRightTab('events')}
-              >
-                {t('tabs.events')}
-              </button>
-              <button
-                role="tab"
-                aria-selected={rightTab === 'milestones'}
-                className={`${styles.rightTabBtn} ${rightTab === 'milestones' ? styles.rightTabBtnActive : ''}`}
-                onClick={() => setRightTab('milestones')}
-              >
-                {t('tabs.milestones')}
-              </button>
+              {!isTutorial && (
+                <button
+                  role="tab"
+                  aria-selected={rightTab === 'terrain'}
+                  className={`${styles.rightTabBtn} ${rightTab === 'terrain' ? styles.rightTabBtnActive : ''}`}
+                  onClick={() => setRightTab('terrain')}
+                >
+                  {t('tabs.terrain')}
+                </button>
+              )}
+              {!isTutorial && (
+                <button
+                  role="tab"
+                  aria-selected={rightTab === 'events'}
+                  className={`${styles.rightTabBtn} ${rightTab === 'events' ? styles.rightTabBtnActive : ''}`}
+                  onClick={() => setRightTab('events')}
+                >
+                  {t('tabs.events')}
+                </button>
+              )}
+              {!isTutorial && (
+                <button
+                  role="tab"
+                  aria-selected={rightTab === 'milestones'}
+                  className={`${styles.rightTabBtn} ${rightTab === 'milestones' ? styles.rightTabBtnActive : ''}`}
+                  onClick={() => setRightTab('milestones')}
+                >
+                  {t('tabs.milestones')}
+                </button>
+              )}
               <button
                 role="tab"
                 aria-selected={rightTab === 'encyclopedia'}
@@ -300,16 +462,16 @@ function App() {
                     <MarketPanel market={gameState.market} terrain={gameState.terrain} />
                   </div>
                 )}
-                {rightTab === 'terrain' && (
+                {rightTab === 'terrain' && !isTutorial && (
                   <TerrainPanel terrain={gameState.terrain} />
                 )}
-                {rightTab === 'events' && (
+                {rightTab === 'events' && !isTutorial && (
                   <EventLog
                     events={gameState.events}
                     activeRandomEvents={gameState.activeRandomEvents}
                   />
                 )}
-                {rightTab === 'milestones' && (
+                {rightTab === 'milestones' && !isTutorial && (
                   <MilestonePanel
                     milestones={gameState.milestones}
                     agents={gameState.agents}
@@ -336,7 +498,7 @@ function App() {
         </ErrorBoundary>
       )}
 
-      {gameState.gameOver && (
+      {gameState.gameOver && !isTutorial && (
         <ErrorBoundary fallbackLabel="結算面板發生錯誤">
           <Suspense fallback={<div className={styles.overlayFallback}>載入中...</div>}>
             <GameOver
@@ -347,7 +509,7 @@ function App() {
         </ErrorBoundary>
       )}
 
-      {gameState.pendingDecision && (
+      {gameState.pendingDecision && !isTutorial && (
         <ErrorBoundary fallbackLabel="決策面板發生錯誤">
           <Suspense fallback={<div className={styles.overlayFallback}>載入中...</div>}>
             <DecisionPanel
@@ -358,10 +520,22 @@ function App() {
         </ErrorBoundary>
       )}
 
-      {narrativeToShow && (
+      {narrativeToShow && !isTutorial && (
         <NarrativeModal
           narrative={narrativeToShow}
           onDismiss={dismissNarrative}
+        />
+      )}
+
+      {/* Tutorial modal overlays */}
+      {isTutorial && currentLesson && (tutorialPhase === 'intro' || tutorialPhase === 'completed' || tutorialPhase === 'finished') && (
+        <TutorialModal
+          lesson={currentLesson}
+          phase={tutorialPhase}
+          locale={locale}
+          onDismissIntro={handleTutorialDismissIntro}
+          onNextLesson={handleTutorialNextLesson}
+          onExitTutorial={handleExitTutorial}
         />
       )}
 

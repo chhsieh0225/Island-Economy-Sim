@@ -1,0 +1,208 @@
+.backdrop {
+  min-height: 100dvh;
+  background: linear-gradient(170deg, #0a192f 0%, #112240 40%, #1a3456 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.container {
+  max-width: 680px;
+  width: 100%;
+  text-align: center;
+}
+
+.island {
+  font-size: 64px;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 4px 12px rgba(100, 255, 218, 0.15));
+}
+
+.title {
+  font-size: clamp(24px, 5vw, 36px);
+  font-weight: 800;
+  color: #ccd6f6;
+  margin: 0 0 4px;
+  letter-spacing: 0.5px;
+}
+
+.subtitle {
+  font-size: 15px;
+  color: #8892b0;
+  margin: 0 0 32px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.card {
+  background: rgba(22, 33, 62, 0.85);
+  border: 1px solid #2d466a;
+  border-radius: 12px;
+  padding: 24px 18px 18px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card:hover {
+  border-color: #64ffda;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(100, 255, 218, 0.08);
+}
+
+.card:active {
+  transform: translateY(0);
+}
+
+.cardIcon {
+  font-size: 36px;
+}
+
+.cardTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: #e6f1ff;
+}
+
+.cardDesc {
+  font-size: 13px;
+  color: #a8b2d1;
+  line-height: 1.55;
+}
+
+.cardProgress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progressBar {
+  height: 4px;
+  background: #233554;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #64ffda, #48d1cc);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progressText {
+  font-size: 11px;
+  color: #8892b0;
+}
+
+.cardBadge {
+  display: inline-block;
+  background: rgba(100, 255, 218, 0.1);
+  color: #64ffda;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  align-self: flex-start;
+}
+
+.cardFeatures {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.featureTag {
+  background: rgba(136, 146, 176, 0.12);
+  color: #a8b2d1;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.lessonPreview {
+  background: rgba(22, 33, 62, 0.5);
+  border: 1px solid #233554;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.previewTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ccd6f6;
+  margin-bottom: 12px;
+}
+
+.lessonList {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 16px;
+}
+
+.lessonItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #a8b2d1;
+  transition: background 0.15s;
+}
+
+.lessonItem:hover {
+  background: rgba(100, 255, 218, 0.04);
+}
+
+.lessonDone {
+  color: #64ffda;
+}
+
+.lessonEmoji {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.lessonName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lessonCheck {
+  color: #64ffda;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ─── Responsive ───────────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .lessonList {
+    grid-template-columns: 1fr;
+  }
+
+  .island {
+    font-size: 48px;
+  }
+
+  .title {
+    font-size: 22px;
+  }
+}

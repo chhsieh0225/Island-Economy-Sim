@@ -4,6 +4,7 @@ import type { NarrativeContent } from '../data/narrative';
 
 export type MapFeatureType = 'bank' | 'residential' | 'farm' | 'goods' | 'services';
 export type RightTab = 'market' | 'terrain' | 'events' | 'milestones' | 'encyclopedia';
+export type AppMode = 'start' | 'freeplay' | 'tutorial';
 
 /** Union type for all narratives the modal can display */
 export type NarrativeDisplay =
@@ -13,12 +14,14 @@ export type NarrativeDisplay =
 const FEATURE_HIGHLIGHT_MS = 1700;
 
 interface UiState {
+  appMode: AppMode;
   selectedAgent: AgentState | null;
   selectedMapFeature: MapFeatureType | null;
   featureHighlight: { feature: MapFeatureType; untilMs: number } | null;
   rightTab: RightTab;
   narrativeToShow: NarrativeDisplay | null;
 
+  setAppMode: (mode: AppMode) => void;
   selectAgent: (agent: AgentState) => void;
   clearAgent: () => void;
   selectMapFeature: (feature: MapFeatureType) => void;
@@ -31,11 +34,16 @@ interface UiState {
 }
 
 export const useUiStore = create<UiState>((set) => ({
+  appMode: 'start',
   selectedAgent: null,
   selectedMapFeature: null,
   featureHighlight: null,
   rightTab: 'terrain',
   narrativeToShow: null,
+
+  setAppMode: (mode) => {
+    set({ appMode: mode });
+  },
 
   selectAgent: (agent) => {
     set({ selectedAgent: agent, selectedMapFeature: null });

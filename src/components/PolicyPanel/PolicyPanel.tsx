@@ -30,6 +30,8 @@ interface Props {
   onSetPublicWorks: (active: boolean) => void;
   onSetPolicyRate: (rate: number) => void;
   onSetLiquiditySupport: (active: boolean) => void;
+  /** When set, only show the specified policy sections (tutorial mode) */
+  enabledSections?: Set<string>;
 }
 
 const SECTOR_LABELS: Record<SectorType, string> = {
@@ -189,7 +191,12 @@ export const PolicyPanel = memo(function PolicyPanel({
   onSetPublicWorks,
   onSetPolicyRate,
   onSetLiquiditySupport,
+  enabledSections,
 }: Props) {
+  // In tutorial mode, only show enabled sections
+  const isTutorial = enabledSections !== undefined;
+  const showSection = (section: string): boolean =>
+    !isTutorial || enabledSections.has(section);
   const pendingTax = pendingPolicies.find(p => p.type === 'tax');
   const pendingPolicyRate = pendingPolicies.find(p => p.type === 'policyRate');
   const pendingWelfare = pendingPolicies.find(p => p.type === 'welfare');
@@ -263,111 +270,135 @@ export const PolicyPanel = memo(function PolicyPanel({
   return (
     <div className={styles.panel}>
       <div className={styles.title}>政策控制 Policy</div>
-      <div className={styles.delayHint}>政策有 1 回合延遲，右下方可查看待生效清單。</div>
+      {!isTutorial && (
+        <div className={styles.delayHint}>政策有 1 回合延遲，右下方可查看待生效清單。</div>
+      )}
+      {isTutorial && (
+        <div className={styles.delayHint}>政策有 1 回合延遲。只有本課解鎖的工具可以使用。</div>
+      )}
 
-      <div className={styles.control}>
-        <div className={styles.controlLabel}>
-          <Tooltip content={POLICY_TOOLTIPS.taxRate.content} detail={POLICY_TOOLTIPS.taxRate.detail}>
-            <span>稅率 Tax Rate</span>
-          </Tooltip>
-          <span className={styles.controlValue}>{taxDisplay.toFixed(0)}%</span>
-        </div>
-        <input
-          type="range"
-          className={styles.slider}
-          min="0"
-          max="50"
-          step="1"
-          value={taxDisplay}
-          onChange={e => onSetTaxRate(Number(e.target.value) / 100)}
-        />
-      </div>
-
-      <div className={styles.sectionTitle}>產業補貼 Subsidies</div>
-
-      {(['food', 'goods', 'services'] as const).map(sector => {
-        const subsidyDisplay = getSubsidyDisplay(sector);
-        const tooltipKey = SUBSIDY_TOOLTIP_KEY[sector];
-        const tip = POLICY_TOOLTIPS[tooltipKey];
-        return (
-          <div key={sector} className={styles.control}>
-            <div className={styles.controlLabel}>
-              <Tooltip content={tip.content} detail={tip.detail}>
-                <span>{SECTOR_LABELS[sector]}</span>
-              </Tooltip>
-              <span className={styles.controlValue}>{subsidyDisplay.toFixed(0)}%</span>
-            </div>
-            <input
-              type="range"
-              className={styles.slider}
-              min="0"
-              max="100"
-              step="5"
-              value={subsidyDisplay}
-              onChange={e => onSetSubsidy(sector, Number(e.target.value))}
-            />
+      {showSection('taxRate') && (
+        <div className={styles.control}>
+          <div className={styles.controlLabel}>
+            <Tooltip content={POLICY_TOOLTIPS.taxRate.content} detail={POLICY_TOOLTIPS.taxRate.detail}>
+              <span>稅率 Tax Rate</span>
+            </Tooltip>
+            <span className={styles.controlValue}>{taxDisplay.toFixed(0)}%</span>
           </div>
-        );
-      })}
-
-      <div className={styles.sectionTitle}>社會政策 Social</div>
-
-      <label className={styles.toggle}>
-        <input
-          type="checkbox"
-          className={styles.checkbox}
-          checked={welfareDisplay}
-          onChange={e => onSetWelfare(e.target.checked)}
-        />
-        <Tooltip content={POLICY_TOOLTIPS.welfare.content} detail={POLICY_TOOLTIPS.welfare.detail}>
-          <span className={styles.toggleLabel}>社會福利 Welfare</span>
-        </Tooltip>
-      </label>
-
-      <label className={styles.toggle}>
-        <input
-          type="checkbox"
-          className={styles.checkbox}
-          checked={publicWorksDisplay}
-          onChange={e => onSetPublicWorks(e.target.checked)}
-        />
-        <Tooltip content={POLICY_TOOLTIPS.publicWorks.content} detail={POLICY_TOOLTIPS.publicWorks.detail}>
-          <span className={styles.toggleLabel}>公共建設 Public Works</span>
-        </Tooltip>
-      </label>
-
-      <div className={styles.sectionTitle}>貨幣政策 Monetary</div>
-      <div className={styles.control}>
-        <div className={styles.controlLabel}>
-          <Tooltip content={POLICY_TOOLTIPS.policyRate.content} detail={POLICY_TOOLTIPS.policyRate.detail}>
-            <span>政策利率 Policy Rate</span>
-          </Tooltip>
-          <span className={styles.controlValue}>{policyRateDisplay.toFixed(2)}%</span>
+          <input
+            type="range"
+            className={styles.slider}
+            min="0"
+            max="50"
+            step="1"
+            value={taxDisplay}
+            onChange={e => onSetTaxRate(Number(e.target.value) / 100)}
+          />
         </div>
-        <input
-          type="range"
-          className={styles.slider}
-          min="0"
-          max="8"
-          step="0.25"
-          value={policyRateDisplay}
-          onChange={e => onSetPolicyRate(Number(e.target.value) / 100)}
-        />
-      </div>
+      )}
 
-      <label className={styles.toggle}>
-        <input
-          type="checkbox"
-          className={styles.checkbox}
-          checked={liquiditySupportDisplay}
-          onChange={e => onSetLiquiditySupport(e.target.checked)}
-        />
-        <Tooltip content={POLICY_TOOLTIPS.liquiditySupport.content} detail={POLICY_TOOLTIPS.liquiditySupport.detail}>
-          <span className={styles.toggleLabel}>流動性支持 Liquidity Support</span>
-        </Tooltip>
-      </label>
+      {showSection('subsidy') && (
+        <>
+          <div className={styles.sectionTitle}>產業補貼 Subsidies</div>
 
-      {forecast && (
+          {(['food', 'goods', 'services'] as const).map(sector => {
+            const subsidyDisplay = getSubsidyDisplay(sector);
+            const tooltipKey = SUBSIDY_TOOLTIP_KEY[sector];
+            const tip = POLICY_TOOLTIPS[tooltipKey];
+            return (
+              <div key={sector} className={styles.control}>
+                <div className={styles.controlLabel}>
+                  <Tooltip content={tip.content} detail={tip.detail}>
+                    <span>{SECTOR_LABELS[sector]}</span>
+                  </Tooltip>
+                  <span className={styles.controlValue}>{subsidyDisplay.toFixed(0)}%</span>
+                </div>
+                <input
+                  type="range"
+                  className={styles.slider}
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={subsidyDisplay}
+                  onChange={e => onSetSubsidy(sector, Number(e.target.value))}
+                />
+              </div>
+            );
+          })}
+        </>
+      )}
+
+      {(showSection('welfare') || showSection('publicWorks')) && (
+        <div className={styles.sectionTitle}>社會政策 Social</div>
+      )}
+
+      {showSection('welfare') && (
+        <label className={styles.toggle}>
+          <input
+            type="checkbox"
+            className={styles.checkbox}
+            checked={welfareDisplay}
+            onChange={e => onSetWelfare(e.target.checked)}
+          />
+          <Tooltip content={POLICY_TOOLTIPS.welfare.content} detail={POLICY_TOOLTIPS.welfare.detail}>
+            <span className={styles.toggleLabel}>社會福利 Welfare</span>
+          </Tooltip>
+        </label>
+      )}
+
+      {showSection('publicWorks') && (
+        <label className={styles.toggle}>
+          <input
+            type="checkbox"
+            className={styles.checkbox}
+            checked={publicWorksDisplay}
+            onChange={e => onSetPublicWorks(e.target.checked)}
+          />
+          <Tooltip content={POLICY_TOOLTIPS.publicWorks.content} detail={POLICY_TOOLTIPS.publicWorks.detail}>
+            <span className={styles.toggleLabel}>公共建設 Public Works</span>
+          </Tooltip>
+        </label>
+      )}
+
+      {(showSection('policyRate') || showSection('liquiditySupport')) && (
+        <div className={styles.sectionTitle}>貨幣政策 Monetary</div>
+      )}
+
+      {showSection('policyRate') && (
+        <div className={styles.control}>
+          <div className={styles.controlLabel}>
+            <Tooltip content={POLICY_TOOLTIPS.policyRate.content} detail={POLICY_TOOLTIPS.policyRate.detail}>
+              <span>政策利率 Policy Rate</span>
+            </Tooltip>
+            <span className={styles.controlValue}>{policyRateDisplay.toFixed(2)}%</span>
+          </div>
+          <input
+            type="range"
+            className={styles.slider}
+            min="0"
+            max="8"
+            step="0.25"
+            value={policyRateDisplay}
+            onChange={e => onSetPolicyRate(Number(e.target.value) / 100)}
+          />
+        </div>
+      )}
+
+      {showSection('liquiditySupport') && (
+        <label className={styles.toggle}>
+          <input
+            type="checkbox"
+            className={styles.checkbox}
+            checked={liquiditySupportDisplay}
+            onChange={e => onSetLiquiditySupport(e.target.checked)}
+          />
+          <Tooltip content={POLICY_TOOLTIPS.liquiditySupport.content} detail={POLICY_TOOLTIPS.liquiditySupport.detail}>
+            <span className={styles.toggleLabel}>流動性支持 Liquidity Support</span>
+          </Tooltip>
+        </label>
+      )}
+
+      {!isTutorial && forecast && (
         <div className={styles.forecastCard}>
           <div className={styles.forecastTitle}>📊 下回合預測 Next-Turn Forecast</div>
           <div className={styles.forecastRow}>
@@ -411,179 +442,183 @@ export const PolicyPanel = memo(function PolicyPanel({
         </div>
       )}
 
-      <div className={styles.sectionTitle}>政策效果拆解 Policy Impact</div>
-      {latest ? (
-        <div className={styles.impactCard}>
-          <div className={styles.impactHeadline}>
-            本回合滿意度 ΔSat:
-            <span className={latest.causalReplay.satisfaction.net >= 0 ? styles.impactUp : styles.impactDown}>
-              {signed(latest.causalReplay.satisfaction.net, 2)}%
-            </span>
-          </div>
-          {topDrivers(latest.causalReplay.satisfaction.drivers).map(driver => (
-            <div key={driver.id} className={styles.impactLine}>
-              <span>{driver.label}</span>
-              <span className={driver.value >= 0 ? styles.impactUp : styles.impactDown}>{signed(driver.value)}</span>
-            </div>
-          ))}
-          <div className={styles.impactLine}>
-            <span>稅收實績</span>
-            <span className={styles.impactUp}>+${latest.causalReplay.policy.taxCollected.toFixed(0)}</span>
-          </div>
-          <div className={styles.impactLine}>
-            <span>福利發放（{latest.causalReplay.policy.welfareRecipients} 人）</span>
-            <span className={styles.impactDown}>-${latest.causalReplay.policy.welfarePaid.toFixed(0)}</span>
-          </div>
-          <div className={styles.impactLine}>
-            <span>公共建設支出</span>
-            <span className={styles.impactDown}>-${latest.causalReplay.policy.publicWorksCost.toFixed(0)}</span>
-          </div>
-          <div className={styles.impactLine}>
-            <span>流動性注入</span>
-            <span className={styles.impactDown}>-${latest.causalReplay.policy.liquidityInjected.toFixed(0)}</span>
-          </div>
-          <div className={styles.impactLine}>
-            <span>政策利率</span>
-            <span>{(latest.causalReplay.policy.policyRate * 100).toFixed(2)}%</span>
-          </div>
-          <div className={styles.impactLine}>
-            <span>人均可支配現金 Δ</span>
-            <span className={latest.causalReplay.policy.perCapitaCashDelta >= 0 ? styles.impactUp : styles.impactDown}>
-              {signed(latest.causalReplay.policy.perCapitaCashDelta, 2)}
-            </span>
-          </div>
-          <div className={styles.impactFoot}>
-            本區塊改為「純實際執行追蹤」，不再使用估算模型。
-          </div>
-        </div>
-      ) : (
-        <div className={styles.empty}>需要至少 1 回合資料才能拆解效果。</div>
-      )}
-
-      <div className={styles.sectionTitle}>政策實驗卡 Prediction → Action → Outcome</div>
-      {experimentCards.length === 0 ? (
-        <div className={styles.empty}>先下達至少 1 次政策，這裡會自動追蹤預測與實際結果。</div>
-      ) : (
-        <div className={styles.experimentList}>
-          {experimentCards.map(card => {
-            const recommendation = recommendationByCardId.get(card.id) ?? null;
-            return (
-              <div key={card.id} className={styles.experimentCard}>
-                <div className={styles.experimentHead}>
-                  <span className={styles.experimentTitle}>{card.summary}</span>
-                  <span className={`${styles.experimentStatus} ${styles[`experimentStatus${card.status}`]}`}>
-                    {statusLabel(card.status)}
-                  </span>
-                </div>
-                <div className={styles.experimentMeta}>
-                  行動 T{card.requestedTurn}，生效 T{card.applyTurn}，觀察窗 T{card.applyTurn}~T{card.windowEndTurn}
-                </div>
-                <div className={styles.experimentBlock}>
-                  <div className={styles.experimentBlockTitle}>Prediction</div>
-                  <div className={styles.experimentPrediction}>{card.predictions.join(' / ')}</div>
-                </div>
-                <div className={styles.experimentBlock}>
-                  <div className={styles.experimentBlockTitle}>Outcome</div>
-                  {!card.metrics ? (
-                    <div className={styles.experimentPending}>
-                      {card.status === 'pending'
-                        ? '尚未進入觀察窗口。'
-                        : `資料收集中（目前觀察到 T${card.observedTurn ?? '-'}）。`}
-                    </div>
-                  ) : (
-                    <div className={styles.experimentMetrics}>
-                      <div className={styles.experimentMetric}>
-                        <span>滿意度 Δ</span>
-                        <span className={card.metrics.satisfactionDelta >= 0 ? styles.impactUp : styles.impactDown}>
-                          {signed(card.metrics.satisfactionDelta, 2)}
-                        </span>
-                      </div>
-                      <div className={styles.experimentMetric}>
-                        <span>國庫 Δ</span>
-                        <span className={card.metrics.treasuryDelta >= 0 ? styles.impactUp : styles.impactDown}>
-                          {signed(card.metrics.treasuryDelta, 0)}
-                        </span>
-                      </div>
-                      <div className={styles.experimentMetric}>
-                        <span>GDP Δ%</span>
-                        <span className={card.metrics.gdpDeltaPercent >= 0 ? styles.impactUp : styles.impactDown}>
-                          {signed(card.metrics.gdpDeltaPercent, 2)}%
-                        </span>
-                      </div>
-                      <div className={styles.experimentMetric}>
-                        <span>人口淨變化</span>
-                        <span className={card.metrics.populationDelta >= 0 ? styles.impactUp : styles.impactDown}>
-                          {signed(card.metrics.populationDelta, 0)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                {recommendation ? (
-                  <div className={styles.experimentRecommend}>
-                    <div className={styles.experimentRecommendText}>{recommendation.reason}</div>
-                    <div className={styles.experimentImpactHint}>{recommendation.impactHint}</div>
-                    <button
-                      className={styles.experimentRecommendBtn}
-                      onClick={() => applyRecommendation(recommendation.action)}
-                    >
-                      採納建議：{recommendationActionLabel(recommendation.action)}
-                    </button>
-                  </div>
-                ) : (
-                  <div className={styles.experimentRecommendIdle}>
-                    目前訊號偏中性，建議先觀察下一個窗口。
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <div className={styles.sectionTitle}>待生效政策 Pending</div>
-      {pendingPolicies.length === 0 ? (
-        <div className={styles.empty}>目前沒有待生效政策</div>
-      ) : (
-        <div className={styles.pendingList}>
-          {pendingPolicies
-            .slice()
-            .sort((a, b) => a.applyTurn - b.applyTurn)
-            .map(policy => (
-              <div key={policy.id} className={styles.pendingItem}>
-                <div className={styles.pendingMain}>
-                  <span>{pendingSummary(policy)}</span>
-                  <span className={styles.pendingTurns}>
-                    還有 {Math.max(0, policy.applyTurn - turn)} 回合
-                  </span>
-                </div>
-                <div className={styles.pendingSide}>
-                  {policy.sideEffects.join(' / ')}
-                </div>
-              </div>
-            ))}
-        </div>
-      )}
-
-      <div className={styles.sectionTitle}>政策因果時間線 Causal Timeline</div>
-      {policyTimeline.length === 0 ? (
-        <div className={styles.empty}>尚無政策紀錄。</div>
-      ) : (
-        <div className={styles.timelineList}>
-          {policyTimeline.slice(0, 8).map(item => (
-            <div key={item.id} className={styles.timelineItem}>
-              <div className={styles.timelineMain}>
-                <span>{item.summary}</span>
-                <span className={item.status === 'pending' ? styles.pendingTurns : styles.timelineApplied}>
-                  {item.status === 'pending'
-                    ? `T${item.requestedTurn} → T${item.applyTurn}（待生效）`
-                    : `T${item.requestedTurn} → T${item.resolvedTurn ?? item.applyTurn}（已生效）`}
+      {!isTutorial && (
+        <>
+          <div className={styles.sectionTitle}>政策效果拆解 Policy Impact</div>
+          {latest ? (
+            <div className={styles.impactCard}>
+              <div className={styles.impactHeadline}>
+                本回合滿意度 ΔSat:
+                <span className={latest.causalReplay.satisfaction.net >= 0 ? styles.impactUp : styles.impactDown}>
+                  {signed(latest.causalReplay.satisfaction.net, 2)}%
                 </span>
               </div>
-              <div className={styles.pendingSide}>{item.sideEffects.join(' / ')}</div>
+              {topDrivers(latest.causalReplay.satisfaction.drivers).map(driver => (
+                <div key={driver.id} className={styles.impactLine}>
+                  <span>{driver.label}</span>
+                  <span className={driver.value >= 0 ? styles.impactUp : styles.impactDown}>{signed(driver.value)}</span>
+                </div>
+              ))}
+              <div className={styles.impactLine}>
+                <span>稅收實績</span>
+                <span className={styles.impactUp}>+${latest.causalReplay.policy.taxCollected.toFixed(0)}</span>
+              </div>
+              <div className={styles.impactLine}>
+                <span>福利發放（{latest.causalReplay.policy.welfareRecipients} 人）</span>
+                <span className={styles.impactDown}>-${latest.causalReplay.policy.welfarePaid.toFixed(0)}</span>
+              </div>
+              <div className={styles.impactLine}>
+                <span>公共建設支出</span>
+                <span className={styles.impactDown}>-${latest.causalReplay.policy.publicWorksCost.toFixed(0)}</span>
+              </div>
+              <div className={styles.impactLine}>
+                <span>流動性注入</span>
+                <span className={styles.impactDown}>-${latest.causalReplay.policy.liquidityInjected.toFixed(0)}</span>
+              </div>
+              <div className={styles.impactLine}>
+                <span>政策利率</span>
+                <span>{(latest.causalReplay.policy.policyRate * 100).toFixed(2)}%</span>
+              </div>
+              <div className={styles.impactLine}>
+                <span>人均可支配現金 Δ</span>
+                <span className={latest.causalReplay.policy.perCapitaCashDelta >= 0 ? styles.impactUp : styles.impactDown}>
+                  {signed(latest.causalReplay.policy.perCapitaCashDelta, 2)}
+                </span>
+              </div>
+              <div className={styles.impactFoot}>
+                本區塊改為「純實際執行追蹤」，不再使用估算模型。
+              </div>
             </div>
-          ))}
-        </div>
+          ) : (
+            <div className={styles.empty}>需要至少 1 回合資料才能拆解效果。</div>
+          )}
+
+          <div className={styles.sectionTitle}>政策實驗卡 Prediction → Action → Outcome</div>
+          {experimentCards.length === 0 ? (
+            <div className={styles.empty}>先下達至少 1 次政策，這裡會自動追蹤預測與實際結果。</div>
+          ) : (
+            <div className={styles.experimentList}>
+              {experimentCards.map(card => {
+                const recommendation = recommendationByCardId.get(card.id) ?? null;
+                return (
+                  <div key={card.id} className={styles.experimentCard}>
+                    <div className={styles.experimentHead}>
+                      <span className={styles.experimentTitle}>{card.summary}</span>
+                      <span className={`${styles.experimentStatus} ${styles[`experimentStatus${card.status}`]}`}>
+                        {statusLabel(card.status)}
+                      </span>
+                    </div>
+                    <div className={styles.experimentMeta}>
+                      行動 T{card.requestedTurn}，生效 T{card.applyTurn}，觀察窗 T{card.applyTurn}~T{card.windowEndTurn}
+                    </div>
+                    <div className={styles.experimentBlock}>
+                      <div className={styles.experimentBlockTitle}>Prediction</div>
+                      <div className={styles.experimentPrediction}>{card.predictions.join(' / ')}</div>
+                    </div>
+                    <div className={styles.experimentBlock}>
+                      <div className={styles.experimentBlockTitle}>Outcome</div>
+                      {!card.metrics ? (
+                        <div className={styles.experimentPending}>
+                          {card.status === 'pending'
+                            ? '尚未進入觀察窗口。'
+                            : `資料收集中（目前觀察到 T${card.observedTurn ?? '-'}）。`}
+                        </div>
+                      ) : (
+                        <div className={styles.experimentMetrics}>
+                          <div className={styles.experimentMetric}>
+                            <span>滿意度 Δ</span>
+                            <span className={card.metrics.satisfactionDelta >= 0 ? styles.impactUp : styles.impactDown}>
+                              {signed(card.metrics.satisfactionDelta, 2)}
+                            </span>
+                          </div>
+                          <div className={styles.experimentMetric}>
+                            <span>國庫 Δ</span>
+                            <span className={card.metrics.treasuryDelta >= 0 ? styles.impactUp : styles.impactDown}>
+                              {signed(card.metrics.treasuryDelta, 0)}
+                            </span>
+                          </div>
+                          <div className={styles.experimentMetric}>
+                            <span>GDP Δ%</span>
+                            <span className={card.metrics.gdpDeltaPercent >= 0 ? styles.impactUp : styles.impactDown}>
+                              {signed(card.metrics.gdpDeltaPercent, 2)}%
+                            </span>
+                          </div>
+                          <div className={styles.experimentMetric}>
+                            <span>人口淨變化</span>
+                            <span className={card.metrics.populationDelta >= 0 ? styles.impactUp : styles.impactDown}>
+                              {signed(card.metrics.populationDelta, 0)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {recommendation ? (
+                      <div className={styles.experimentRecommend}>
+                        <div className={styles.experimentRecommendText}>{recommendation.reason}</div>
+                        <div className={styles.experimentImpactHint}>{recommendation.impactHint}</div>
+                        <button
+                          className={styles.experimentRecommendBtn}
+                          onClick={() => applyRecommendation(recommendation.action)}
+                        >
+                          採納建議：{recommendationActionLabel(recommendation.action)}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className={styles.experimentRecommendIdle}>
+                        目前訊號偏中性，建議先觀察下一個窗口。
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className={styles.sectionTitle}>待生效政策 Pending</div>
+          {pendingPolicies.length === 0 ? (
+            <div className={styles.empty}>目前沒有待生效政策</div>
+          ) : (
+            <div className={styles.pendingList}>
+              {pendingPolicies
+                .slice()
+                .sort((a, b) => a.applyTurn - b.applyTurn)
+                .map(policy => (
+                  <div key={policy.id} className={styles.pendingItem}>
+                    <div className={styles.pendingMain}>
+                      <span>{pendingSummary(policy)}</span>
+                      <span className={styles.pendingTurns}>
+                        還有 {Math.max(0, policy.applyTurn - turn)} 回合
+                      </span>
+                    </div>
+                    <div className={styles.pendingSide}>
+                      {policy.sideEffects.join(' / ')}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          <div className={styles.sectionTitle}>政策因果時間線 Causal Timeline</div>
+          {policyTimeline.length === 0 ? (
+            <div className={styles.empty}>尚無政策紀錄。</div>
+          ) : (
+            <div className={styles.timelineList}>
+              {policyTimeline.slice(0, 8).map(item => (
+                <div key={item.id} className={styles.timelineItem}>
+                  <div className={styles.timelineMain}>
+                    <span>{item.summary}</span>
+                    <span className={item.status === 'pending' ? styles.pendingTurns : styles.timelineApplied}>
+                      {item.status === 'pending'
+                        ? `T${item.requestedTurn} → T${item.applyTurn}（待生效）`
+                        : `T${item.requestedTurn} → T${item.resolvedTurn ?? item.applyTurn}（已生效）`}
+                    </span>
+                  </div>
+                  <div className={styles.pendingSide}>{item.sideEffects.join(' / ')}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

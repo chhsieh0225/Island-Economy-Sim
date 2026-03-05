@@ -106,5 +106,16 @@
   "common.confirm": "確認",
   "common.cancel": "取消",
 
-  "locale.toggle": "切換語言"
+  "locale.toggle": "切換語言",
+
+  "tutorial.mode": "教學模式",
+  "tutorial.freeplay": "自由模式",
+  "tutorial.lesson": "課程",
+  "tutorial.objectives": "學習目標",
+  "tutorial.hints": "提示",
+  "tutorial.start": "開始學習",
+  "tutorial.next": "下一課",
+  "tutorial.complete": "課程完成",
+  "tutorial.exit": "離開教學",
+  "tutorial.backToMenu": "回主選單"
 }

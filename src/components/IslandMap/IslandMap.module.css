@@ -63,3 +63,17 @@
     letter-spacing: 0.35px;
   }
 }
+
+@media (max-width: 480px) {
+  .canvas {
+    height: min(75vw, 300px);
+    min-height: 200px;
+  }
+
+  .perfDebug {
+    font-size: 9px;
+    padding: 4px 6px;
+    right: 6px;
+    bottom: 6px;
+  }
+}

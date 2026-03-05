@@ -1,10 +1,13 @@
-import { lazy, Suspense, useState, useCallback } from 'react';
-import { useGameEngine } from './hooks/useGameEngine';
+import { lazy, Suspense, useCallback, useState } from 'react';
+import { useGameStore } from './stores/gameStore';
+import { useUiStore } from './stores/uiStore';
+import { useNotificationStore } from './stores/notificationStore';
+import { ErrorBoundary } from './components/ErrorBoundary/ErrorBoundary';
 import { Dashboard } from './components/Dashboard/Dashboard';
 import { JobsPanel } from './components/JobsPanel/JobsPanel';
 import { PolicyPanel } from './components/PolicyPanel/PolicyPanel';
 import { ControlBar } from './components/ControlBar/ControlBar';
-import { IslandMap, type MapFeatureType } from './components/IslandMap/IslandMap';
+import { IslandMap } from './components/IslandMap/IslandMap';
 import { AgentRoster } from './components/AgentRoster/AgentRoster';
 import { SimulationLab } from './components/SimulationLab/SimulationLab';
 import { NarrativeModal } from './components/NarrativeModal/NarrativeModal';
@@ -12,11 +15,13 @@ import { Toast } from './components/Toast/Toast';
 import { EconomyCalibrationPanel } from './components/EconomyCalibrationPanel/EconomyCalibrationPanel';
 import { LearningJourneyPanel } from './components/LearningJourneyPanel/LearningJourneyPanel';
 import { MapFeaturePanel } from './components/MapFeaturePanel/MapFeaturePanel';
+import { SandboxPanel } from './components/SandboxPanel/SandboxPanel';
+import { InfrastructurePanel } from './components/InfrastructurePanel/InfrastructurePanel';
+import { CompetitionPanel } from './components/CompetitionPanel/CompetitionPanel';
 import { SCENARIOS } from './data/scenarios';
-import type { AgentState, ScenarioId, ScenarioNarrative } from './types';
+import { useI18n } from './i18n/useI18n';
+import type { ScenarioId } from './types';
 import styles from './App.module.css';
-
-const FEATURE_HIGHLIGHT_MS = 1700;
 
 const MarketPanel = lazy(async () => {
   const module = await import('./components/MarketPanel/MarketPanel');
@@ -53,49 +58,55 @@ const DecisionPanel = lazy(async () => {
   return { default: module.DecisionPanel };
 });
 
+const EncyclopediaPanel = lazy(async () => {
+  const module = await import('./components/EncyclopediaPanel/EncyclopediaPanel');
+  return { default: module.EncyclopediaPanel };
+});
+
 function App() {
-  const {
-    gameState,
-    autoPlaySpeed,
-    runHistory,
-    advanceTurn,
-    chooseDecision,
-    setTaxRate,
-    setSubsidy,
-    setWelfare,
-    setPublicWorks,
-    setPolicyRate,
-    setLiquiditySupport,
-    reset,
-    startNewRun,
-    startAutoPlay,
-    stopAutoPlay,
-    endGame,
-    economicCalibrationMode,
-    setEconomicMode,
-    tutorialToastsEnabled,
-    setTutorialToasts,
-    toastQueue,
-    dismissToast,
-  } = useGameEngine();
+  // Game store
+  const gameState = useGameStore(s => s.gameState);
+  const autoPlaySpeed = useGameStore(s => s.autoPlaySpeed);
+  const runHistory = useGameStore(s => s.runHistory);
+  const economicCalibrationMode = useGameStore(s => s.economicCalibrationMode);
+  const advanceTurn = useGameStore(s => s.advanceTurn);
+  const chooseDecision = useGameStore(s => s.chooseDecision);
+  const setTaxRate = useGameStore(s => s.setTaxRate);
+  const setSubsidy = useGameStore(s => s.setSubsidy);
+  const setWelfare = useGameStore(s => s.setWelfare);
+  const setPublicWorks = useGameStore(s => s.setPublicWorks);
+  const setPolicyRate = useGameStore(s => s.setPolicyRate);
+  const setLiquiditySupport = useGameStore(s => s.setLiquiditySupport);
+  const reset = useGameStore(s => s.reset);
+  const startNewRun = useGameStore(s => s.startNewRun);
+  const startAutoPlay = useGameStore(s => s.startAutoPlay);
+  const stopAutoPlay = useGameStore(s => s.stopAutoPlay);
+  const endGame = useGameStore(s => s.endGame);
+  const setEconomicMode = useGameStore(s => s.setEconomicMode);
 
-  const [selectedAgent, setSelectedAgent] = useState<AgentState | null>(null);
-  const [selectedMapFeature, setSelectedMapFeature] = useState<MapFeatureType | null>(null);
-  const [featureHighlight, setFeatureHighlight] = useState<{ feature: MapFeatureType; untilMs: number } | null>(null);
-  const [rightTab, setRightTab] = useState<'market' | 'terrain' | 'events' | 'milestones'>('terrain');
-  const [narrativeToShow, setNarrativeToShow] = useState<ScenarioNarrative | null>(null);
+  // UI store
+  const selectedAgent = useUiStore(s => s.selectedAgent);
+  const selectedMapFeature = useUiStore(s => s.selectedMapFeature);
+  const featureHighlight = useUiStore(s => s.featureHighlight);
+  const rightTab = useUiStore(s => s.rightTab);
+  const narrativeToShow = useUiStore(s => s.narrativeToShow);
+  const selectAgent = useUiStore(s => s.selectAgent);
+  const clearAgent = useUiStore(s => s.clearAgent);
+  const selectMapFeature = useUiStore(s => s.selectMapFeature);
+  const clearMapFeature = useUiStore(s => s.clearMapFeature);
+  const setRightTab = useUiStore(s => s.setRightTab);
+  const dismissNarrative = useUiStore(s => s.dismissNarrative);
+  const resetSelections = useUiStore(s => s.resetSelections);
 
-  const handleAgentClick = (agent: AgentState) => {
-    setSelectedAgent(agent);
-    setSelectedMapFeature(null);
-  };
+  // Notification store
+  const toastQueue = useNotificationStore(s => s.toastQueue);
+  const dismissToast = useNotificationStore(s => s.dismissToast);
+  const tutorialToastsEnabled = useNotificationStore(s => s.tutorialToastsEnabled);
+  const setTutorialToasts = useNotificationStore(s => s.setTutorialToasts);
 
-  const handleFeatureClick = useCallback((feature: MapFeatureType) => {
-    setSelectedAgent(null);
-    setSelectedMapFeature(feature);
-    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    setFeatureHighlight({ feature, untilMs: now + FEATURE_HIGHLIGHT_MS });
-  }, []);
+  const { locale, setLocale, t } = useI18n();
+
+  const [sandboxEnabled, setSandboxEnabled] = useState(false);
 
   const scrollToAnchor = useCallback((id: string) => {
     const target = document.getElementById(id);
@@ -116,26 +127,31 @@ function App() {
     window.setTimeout(() => {
       scrollToAnchor('market-panel-anchor');
     }, 90);
-  }, [scrollToAnchor]);
+  }, [scrollToAnchor, setRightTab]);
 
   const handleStartNewRun = useCallback((seed: number, scenarioId: ScenarioId) => {
     startNewRun(seed, scenarioId);
-    setSelectedMapFeature(null);
-    setSelectedAgent(null);
-    setFeatureHighlight(null);
+    resetSelections();
     const scenario = SCENARIOS.find(s => s.id === scenarioId);
     if (scenario?.openingNarrative) {
-      setNarrativeToShow(scenario.openingNarrative);
+      useUiStore.getState().showNarrative(scenario.openingNarrative);
     }
-  }, [startNewRun]);
+  }, [startNewRun, resetSelections]);
 
   return (
     <div className={styles.app}>
       <div className={styles.header}>
         <div>
-          <div className={styles.headerTitle}>小島經濟模擬器</div>
-          <div className={styles.headerSub}>Island Economy Simulator</div>
+          <div className={styles.headerTitle}>{t('app.title')}</div>
+          <div className={styles.headerSub}>{locale === 'zh-TW' ? 'Island Economy Simulator' : ''}</div>
         </div>
+        <button
+          className={styles.localeToggle}
+          onClick={() => setLocale(locale === 'zh-TW' ? 'en' : 'zh-TW')}
+          title={t('locale.toggle')}
+        >
+          {locale === 'zh-TW' ? 'EN' : '中'}
+        </button>
       </div>
 
       <div className={styles.content}>
@@ -159,8 +175,8 @@ function App() {
           economyStage={gameState.economyStage}
           activeRandomEvents={gameState.activeRandomEvents}
           autoPlaySpeed={autoPlaySpeed}
-          onAgentClick={handleAgentClick}
-          onFeatureClick={handleFeatureClick}
+          onAgentClick={selectAgent}
+          onFeatureClick={selectMapFeature}
           highlightFeature={featureHighlight?.feature ?? null}
           highlightUntilMs={featureHighlight?.untilMs ?? null}
         />
@@ -168,7 +184,7 @@ function App() {
         <MapFeaturePanel
           feature={selectedMapFeature}
           state={gameState}
-          onClose={() => setSelectedMapFeature(null)}
+          onClose={clearMapFeature}
           onJumpToPolicy={handleJumpToPolicy}
           onJumpToMarket={handleJumpToMarket}
           onJumpToRoster={handleJumpToRoster}
@@ -194,6 +210,11 @@ function App() {
               onSetTutorialToasts={setTutorialToasts}
             />
 
+            <SandboxPanel
+              enabled={sandboxEnabled}
+              onToggle={setSandboxEnabled}
+            />
+
             <div id="policy-panel-anchor">
               <PolicyPanel
                 turn={gameState.turn}
@@ -211,10 +232,17 @@ function App() {
               />
             </div>
 
+            <InfrastructurePanel
+              treasury={gameState.government.treasury}
+              infrastructure={gameState.infrastructure}
+            />
+
+            <CompetitionPanel state={gameState} />
+
             <div id="agent-roster-anchor">
               <AgentRoster
                 agents={gameState.agents}
-                onAgentClick={handleAgentClick}
+                onAgentClick={selectAgent}
               />
             </div>
 
@@ -222,95 +250,131 @@ function App() {
           </div>
 
           <div className={styles.rightColumn}>
-            <div className={styles.rightTabs}>
+            <div className={styles.rightTabs} role="tablist">
               <button
+                role="tab"
+                aria-selected={rightTab === 'market'}
                 className={`${styles.rightTabBtn} ${rightTab === 'market' ? styles.rightTabBtnActive : ''}`}
                 onClick={() => setRightTab('market')}
               >
-                市場
+                {t('tabs.market')}
               </button>
               <button
+                role="tab"
+                aria-selected={rightTab === 'terrain'}
                 className={`${styles.rightTabBtn} ${rightTab === 'terrain' ? styles.rightTabBtnActive : ''}`}
                 onClick={() => setRightTab('terrain')}
               >
-                地貌
+                {t('tabs.terrain')}
               </button>
               <button
+                role="tab"
+                aria-selected={rightTab === 'events'}
                 className={`${styles.rightTabBtn} ${rightTab === 'events' ? styles.rightTabBtnActive : ''}`}
                 onClick={() => setRightTab('events')}
               >
-                事件
+                {t('tabs.events')}
               </button>
               <button
+                role="tab"
+                aria-selected={rightTab === 'milestones'}
                 className={`${styles.rightTabBtn} ${rightTab === 'milestones' ? styles.rightTabBtnActive : ''}`}
                 onClick={() => setRightTab('milestones')}
               >
-                里程碑
+                {t('tabs.milestones')}
+              </button>
+              <button
+                role="tab"
+                aria-selected={rightTab === 'encyclopedia'}
+                className={`${styles.rightTabBtn} ${rightTab === 'encyclopedia' ? styles.rightTabBtnActive : ''}`}
+                onClick={() => setRightTab('encyclopedia')}
+              >
+                {t('tabs.encyclopedia')}
               </button>
             </div>
 
-            <Suspense fallback={<div className={styles.panelFallback}>載入中...</div>}>
-              {rightTab === 'market' && (
-                <div id="market-panel-anchor">
-                  <MarketPanel market={gameState.market} terrain={gameState.terrain} />
-                </div>
-              )}
-              {rightTab === 'terrain' && (
-                <TerrainPanel terrain={gameState.terrain} />
-              )}
-              {rightTab === 'events' && (
-                <EventLog
-                  events={gameState.events}
-                  activeRandomEvents={gameState.activeRandomEvents}
-                />
-              )}
-              {rightTab === 'milestones' && (
-                <MilestonePanel
-                  milestones={gameState.milestones}
-                  agents={gameState.agents}
-                  onAgentClick={handleAgentClick}
-                />
-              )}
-            </Suspense>
+            <ErrorBoundary fallbackLabel="右側面板發生錯誤">
+              <Suspense fallback={<div className={styles.panelFallback}>載入中...</div>}>
+                {rightTab === 'market' && (
+                  <div id="market-panel-anchor">
+                    <MarketPanel market={gameState.market} terrain={gameState.terrain} />
+                  </div>
+                )}
+                {rightTab === 'terrain' && (
+                  <TerrainPanel terrain={gameState.terrain} />
+                )}
+                {rightTab === 'events' && (
+                  <EventLog
+                    events={gameState.events}
+                    activeRandomEvents={gameState.activeRandomEvents}
+                  />
+                )}
+                {rightTab === 'milestones' && (
+                  <MilestonePanel
+                    milestones={gameState.milestones}
+                    agents={gameState.agents}
+                    onAgentClick={selectAgent}
+                  />
+                )}
+                {rightTab === 'encyclopedia' && (
+                  <EncyclopediaPanel />
+                )}
+              </Suspense>
+            </ErrorBoundary>
           </div>
         </div>
       </div>
 
       {selectedAgent && (
-        <Suspense fallback={<div className={styles.overlayFallback}>載入中...</div>}>
-          <AgentInspector
-            agent={selectedAgent}
-            onClose={() => setSelectedAgent(null)}
-          />
-        </Suspense>
+        <ErrorBoundary fallbackLabel="居民面板發生錯誤">
+          <Suspense fallback={<div className={styles.overlayFallback}>載入中...</div>}>
+            <AgentInspector
+              agent={selectedAgent}
+              onClose={clearAgent}
+            />
+          </Suspense>
+        </ErrorBoundary>
       )}
 
       {gameState.gameOver && (
-        <Suspense fallback={<div className={styles.overlayFallback}>載入中...</div>}>
-          <GameOver
-            gameOver={gameState.gameOver}
-            onRestart={reset}
-          />
-        </Suspense>
+        <ErrorBoundary fallbackLabel="結算面板發生錯誤">
+          <Suspense fallback={<div className={styles.overlayFallback}>載入中...</div>}>
+            <GameOver
+              gameOver={gameState.gameOver}
+              onRestart={reset}
+            />
+          </Suspense>
+        </ErrorBoundary>
       )}
 
       {gameState.pendingDecision && (
-        <Suspense fallback={<div className={styles.overlayFallback}>載入中...</div>}>
-          <DecisionPanel
-            decision={gameState.pendingDecision}
-            onChoose={chooseDecision}
-          />
-        </Suspense>
+        <ErrorBoundary fallbackLabel="決策面板發生錯誤">
+          <Suspense fallback={<div className={styles.overlayFallback}>載入中...</div>}>
+            <DecisionPanel
+              decision={gameState.pendingDecision}
+              onChoose={chooseDecision}
+            />
+          </Suspense>
+        </ErrorBoundary>
       )}
 
       {narrativeToShow && (
         <NarrativeModal
           narrative={narrativeToShow}
-          onDismiss={() => setNarrativeToShow(null)}
+          onDismiss={dismissNarrative}
         />
       )}
 
       <Toast toasts={toastQueue} onDismiss={dismissToast} />
+
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)' }}
+      >
+        {`回合 ${gameState.turn} | 人口 ${gameState.agents.filter(a => a.alive).length}`}
+      </div>
     </div>
   );
 }

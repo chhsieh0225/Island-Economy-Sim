@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, memo } from 'react';
 import { SCENARIOS } from '../../data/scenarios';
 import type { RunSummary, ScenarioId } from '../../types';
 import styles from './SimulationLab.module.css';
@@ -15,7 +15,7 @@ function fmtDelta(value: number, digits: number = 0): string {
   return value >= 0 ? `+${fixed}` : fixed;
 }
 
-export function SimulationLab({ scenarioId, seed, runHistory, onStartRun }: Props) {
+export const SimulationLab = memo(function SimulationLab({ scenarioId, seed, runHistory, onStartRun }: Props) {
   const [seedInput, setSeedInput] = useState(String(seed));
   const [scenarioInput, setScenarioInput] = useState<ScenarioId>(scenarioId);
   const [seedDirty, setSeedDirty] = useState(false);
@@ -128,4 +128,4 @@ export function SimulationLab({ scenarioId, seed, runHistory, onStartRun }: Prop
       )}
     </div>
   );
-}
+});

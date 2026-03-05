@@ -1,6 +1,7 @@
+import { memo } from 'react';
 import type { GameState } from '../../types';
 import { getResidentialBlockCount } from '../IslandMap/agentAnimator';
-import type { MapFeatureType } from '../IslandMap/IslandMap';
+import type { MapFeatureType } from '../../stores/uiStore';
 import styles from './MapFeaturePanel.module.css';
 
 interface Props {
@@ -50,7 +51,7 @@ function sectorLabel(sector: 'food' | 'goods' | 'services'): string {
   return '服務';
 }
 
-export function MapFeaturePanel({
+export const MapFeaturePanel = memo(function MapFeaturePanel({
   feature,
   state,
   onClose,
@@ -174,4 +175,4 @@ export function MapFeaturePanel({
       </div>
     </section>
   );
-}
+});

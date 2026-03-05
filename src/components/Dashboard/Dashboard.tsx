@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { EconomyStage, GameState, SectorType, TurnCausalReplay } from '../../types';
 import { CONFIG } from '../../config';
 import { Tooltip } from '../Tooltip/Tooltip';
@@ -200,7 +201,7 @@ function buildObjectives(state: GameState): GovernorObjective[] {
   ];
 }
 
-export function Dashboard({ state }: Props) {
+export const Dashboard = memo(function Dashboard({ state }: Props) {
   const alive = state.agents.filter(a => a.alive);
   const pop = alive.length;
   const stats = state.statistics;
@@ -522,4 +523,4 @@ export function Dashboard({ state }: Props) {
       </div>
     </div>
   );
-}
+});

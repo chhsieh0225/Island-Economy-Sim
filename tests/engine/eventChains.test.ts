@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { describe, it, expect } from 'vitest';
 
 import { RANDOM_EVENTS, DECISION_EVENTS } from '../../src/data/events';
 import { Market } from '../../src/engine/Market';
@@ -40,95 +39,97 @@ function restoreDecisionProbabilities(backup: Array<{ id: string; probability: n
   }
 }
 
-test('growth chain signal boosts trade ship trigger probability', () => {
-  const randomBackup = backupRandomProbabilities();
-  const decisionBackup = backupDecisionProbabilities();
+describe('eventChains', () => {
+  it('growth chain signal boosts trade ship trigger probability', () => {
+    const randomBackup = backupRandomProbabilities();
+    const decisionBackup = backupDecisionProbabilities();
 
-  try {
-    for (const event of RANDOM_EVENTS) {
-      event.probability = event.id === 'trade_ship' ? 0.08 : 0;
+    try {
+      for (const event of RANDOM_EVENTS) {
+        event.probability = event.id === 'trade_ship' ? 0.08 : 0;
+      }
+      for (const event of DECISION_EVENTS) {
+        event.probability = 0;
+      }
+
+      const market = new Market();
+      const rng = makeFixedRng(0.05, 0);
+      const noSignal = runRandomEventsPhase({
+        turn: 1,
+        rng: rng as unknown as RNG,
+        market,
+        activeRandomEvents: [],
+        pendingDecision: null,
+        lastRandomEventTurn: -999,
+        lastDecisionTurn: -999,
+        eventChainSignals: {},
+        addEvent: () => {},
+      });
+
+      const withGrowthSignal = runRandomEventsPhase({
+        turn: 1,
+        rng: rng as unknown as RNG,
+        market,
+        activeRandomEvents: [],
+        pendingDecision: null,
+        lastRandomEventTurn: -999,
+        lastDecisionTurn: -999,
+        eventChainSignals: { chain_growth_s1: 4 },
+        addEvent: () => {},
+      });
+
+      expect(noSignal.activeRandomEvents.some(event => event.def.id === 'trade_ship')).toBe(false);
+      expect(withGrowthSignal.activeRandomEvents.some(event => event.def.id === 'trade_ship')).toBe(true);
+    } finally {
+      restoreRandomProbabilities(randomBackup);
+      restoreDecisionProbabilities(decisionBackup);
     }
-    for (const event of DECISION_EVENTS) {
-      event.probability = 0;
+  });
+
+  it('supply chain stage 2 boosts cost-of-living decision probability', () => {
+    const randomBackup = backupRandomProbabilities();
+    const decisionBackup = backupDecisionProbabilities();
+
+    try {
+      for (const event of RANDOM_EVENTS) {
+        event.probability = 0;
+      }
+      for (const event of DECISION_EVENTS) {
+        event.probability = event.id === 'cost_of_living' ? 0.035 : 0;
+      }
+
+      const market = new Market();
+      const rng = makeFixedRng(0.06, 0);
+
+      const noSignal = runRandomEventsPhase({
+        turn: 1,
+        rng: rng as unknown as RNG,
+        market,
+        activeRandomEvents: [],
+        pendingDecision: null,
+        lastRandomEventTurn: -999,
+        lastDecisionTurn: -999,
+        eventChainSignals: {},
+        addEvent: () => {},
+      });
+
+      const withSupplySignal = runRandomEventsPhase({
+        turn: 1,
+        rng: rng as unknown as RNG,
+        market,
+        activeRandomEvents: [],
+        pendingDecision: null,
+        lastRandomEventTurn: -999,
+        lastDecisionTurn: -999,
+        eventChainSignals: { chain_supply_s2: 4 },
+        addEvent: () => {},
+      });
+
+      expect(noSignal.pendingDecision?.id ?? null).toBeNull();
+      expect(withSupplySignal.pendingDecision?.id).toBe('cost_of_living');
+    } finally {
+      restoreRandomProbabilities(randomBackup);
+      restoreDecisionProbabilities(decisionBackup);
     }
-
-    const market = new Market();
-    const rng = makeFixedRng(0.05, 0);
-    const noSignal = runRandomEventsPhase({
-      turn: 1,
-      rng: rng as unknown as RNG,
-      market,
-      activeRandomEvents: [],
-      pendingDecision: null,
-      lastRandomEventTurn: -999,
-      lastDecisionTurn: -999,
-      eventChainSignals: {},
-      addEvent: () => {},
-    });
-
-    const withGrowthSignal = runRandomEventsPhase({
-      turn: 1,
-      rng: rng as unknown as RNG,
-      market,
-      activeRandomEvents: [],
-      pendingDecision: null,
-      lastRandomEventTurn: -999,
-      lastDecisionTurn: -999,
-      eventChainSignals: { chain_growth_s1: 4 },
-      addEvent: () => {},
-    });
-
-    assert.equal(noSignal.activeRandomEvents.some(event => event.def.id === 'trade_ship'), false);
-    assert.equal(withGrowthSignal.activeRandomEvents.some(event => event.def.id === 'trade_ship'), true);
-  } finally {
-    restoreRandomProbabilities(randomBackup);
-    restoreDecisionProbabilities(decisionBackup);
-  }
-});
-
-test('supply chain stage 2 boosts cost-of-living decision probability', () => {
-  const randomBackup = backupRandomProbabilities();
-  const decisionBackup = backupDecisionProbabilities();
-
-  try {
-    for (const event of RANDOM_EVENTS) {
-      event.probability = 0;
-    }
-    for (const event of DECISION_EVENTS) {
-      event.probability = event.id === 'cost_of_living' ? 0.035 : 0;
-    }
-
-    const market = new Market();
-    const rng = makeFixedRng(0.06, 0);
-
-    const noSignal = runRandomEventsPhase({
-      turn: 1,
-      rng: rng as unknown as RNG,
-      market,
-      activeRandomEvents: [],
-      pendingDecision: null,
-      lastRandomEventTurn: -999,
-      lastDecisionTurn: -999,
-      eventChainSignals: {},
-      addEvent: () => {},
-    });
-
-    const withSupplySignal = runRandomEventsPhase({
-      turn: 1,
-      rng: rng as unknown as RNG,
-      market,
-      activeRandomEvents: [],
-      pendingDecision: null,
-      lastRandomEventTurn: -999,
-      lastDecisionTurn: -999,
-      eventChainSignals: { chain_supply_s2: 4 },
-      addEvent: () => {},
-    });
-
-    assert.equal(noSignal.pendingDecision?.id ?? null, null);
-    assert.equal(withSupplySignal.pendingDecision?.id, 'cost_of_living');
-  } finally {
-    restoreRandomProbabilities(randomBackup);
-    restoreDecisionProbabilities(decisionBackup);
-  }
+  });
 });

@@ -4,7 +4,91 @@
 .paragraph { color: #ccd6f6; font-size: 14px; line-height: 1.65; margin: 0 0 12px; }
 .challenge { background: rgba(100, 255, 218, 0.08); border: 1px solid rgba(100, 255, 218, 0.2); border-radius: 8px; padding: 12px 16px; margin: 20px 0; display: flex; gap: 8px; align-items: flex-start; color: #64ffda; font-size: 13px; line-height: 1.5; }
 .challengeIcon { font-size: 16px; flex-shrink: 0; }
-.startBtn { display: block; width: 100%; padding: 12px; background: #64ffda; color: #0a192f; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+
+/* Story page layout */
+.storyPage { display: flex; gap: 16px; align-items: flex-start; min-height: 120px; animation: pageFade 0.3s ease; }
+.portrait { width: 56px; height: 56px; flex-shrink: 0; background: rgba(100, 255, 218, 0.06); border: 1px solid rgba(100, 255, 218, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.portraitEmoji { font-size: 28px; }
+.storyText { color: #ccd6f6; font-size: 14px; line-height: 1.75; margin: 0; flex: 1; }
+
+/* Page dots */
+.pageIndicator { display: flex; justify-content: center; gap: 6px; margin: 20px 0 16px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(204, 214, 246, 0.2); transition: all 0.2s; }
+.dotActive { background: #64ffda; transform: scale(1.2); }
+
+/* Navigation */
+.navRow { display: flex; align-items: center; gap: 8px; }
+.navSpacer { flex: 1; }
+.navBtn { padding: 10px 18px; background: rgba(100, 255, 218, 0.08); color: #64ffda; border: 1px solid rgba(100, 255, 218, 0.2); border-radius: 8px; font-size: 13px; cursor: pointer; transition: all 0.15s; }
+.navBtn:hover { background: rgba(100, 255, 218, 0.15); }
+
+.startBtn { display: block; padding: 12px 24px; background: #64ffda; color: #0a192f; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
 .startBtn:hover { background: #45e6c0; transform: translateY(-1px); }
+
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes pageFade { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .modal {
+    max-width: calc(100% - 24px);
+    padding: 22px;
+  }
+
+  .title {
+    font-size: 19px;
+  }
+
+  .storyPage {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .navBtn {
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+
+  .startBtn {
+    min-height: 44px;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal {
+    max-width: calc(100% - 16px);
+    padding: 18px;
+    border-radius: 10px;
+  }
+
+  .title {
+    font-size: 17px;
+    margin-bottom: 14px;
+  }
+
+  .paragraph {
+    font-size: 13px;
+  }
+
+  .storyText {
+    font-size: 13px;
+  }
+
+  .portrait {
+    width: 48px;
+    height: 48px;
+  }
+
+  .portraitEmoji {
+    font-size: 24px;
+  }
+
+  .challenge {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+}

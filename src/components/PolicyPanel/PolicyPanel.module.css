@@ -56,6 +56,12 @@
   border-radius: 50%;
   background: #64ffda;
   cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+
+.slider:active::-webkit-slider-thumb {
+  transform: scale(1.25);
+  box-shadow: 0 0 8px rgba(100, 255, 218, 0.6);
 }
 
 .toggle {
@@ -341,4 +347,67 @@
   padding-top: 7px;
   font-size: 11px;
   color: #88a1c4;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .slider {
+    height: 10px;
+  }
+
+  .slider::-webkit-slider-thumb {
+    width: 24px;
+    height: 24px;
+  }
+
+  .slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #64ffda;
+    border: none;
+    cursor: pointer;
+  }
+
+  .checkbox {
+    width: 22px;
+    height: 22px;
+  }
+
+  .toggle {
+    min-height: 44px;
+  }
+
+  .experimentRecommendBtn {
+    min-height: 44px;
+    padding: 10px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .panel {
+    padding: 12px;
+  }
+
+  .slider {
+    height: 12px;
+  }
+
+  .slider::-webkit-slider-thumb {
+    width: 28px;
+    height: 28px;
+  }
+
+  .slider::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #64ffda;
+    border: none;
+    cursor: pointer;
+  }
+
+  .forecastRow {
+    font-size: 12px;
+  }
 }

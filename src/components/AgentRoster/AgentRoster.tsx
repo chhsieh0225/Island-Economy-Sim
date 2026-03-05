@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import type { AgentState, SectorType } from '../../types';
 import styles from './AgentRoster.module.css';
 
@@ -15,7 +15,7 @@ const SECTOR_COLORS: Record<SectorType, string> = {
 
 type SortKey = 'name' | 'money' | 'health' | 'satisfaction' | 'age' | 'intelligence';
 
-export function AgentRoster({ agents, onAgentClick }: Props) {
+export const AgentRoster = memo(function AgentRoster({ agents, onAgentClick }: Props) {
   const [filterSector, setFilterSector] = useState<SectorType | 'all'>('all');
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [showDeparted, setShowDeparted] = useState(false);
@@ -147,4 +147,4 @@ export function AgentRoster({ agents, onAgentClick }: Props) {
       )}
     </div>
   );
-}
+});

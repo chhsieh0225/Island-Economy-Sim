@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useCallback, useState, memo } from 'react';
 import type { AgentState, ActiveRandomEvent, IslandTerrainState, EconomyStage } from '../../types';
 import {
   getZoneLayout,
@@ -13,11 +13,11 @@ import {
   getAgentColor,
   getAgentOpacity,
   getAgentSize,
-  hitTestAgent,
 } from './agentAnimator';
 import type { Point, ZoneLayout } from './agentAnimator';
 import { clampPointToIsland, getIslandGeometry } from './islandGeometry';
 import type { IslandGeometry } from './islandGeometry';
+import { SpatialGrid } from './spatialGrid';
 import {
   drawWater,
   drawIsland,
@@ -413,7 +413,7 @@ function zoneRenderSignature(
   ].join('|');
 }
 
-export function IslandMap({
+export const IslandMap = memo(function IslandMap({
   agents,
   turn,
   terrain,
@@ -436,6 +436,7 @@ export function IslandMap({
 
   // Cache rendered agent positions for hit testing
   const agentPositionsRef = useRef<AgentRenderState[]>([]);
+  const spatialGridRef = useRef<SpatialGrid | null>(null);
   const hoveredAgentRef = useRef<AgentState | null>(null);
   const sceneCacheRef = useRef<CachedSceneGeometry | null>(null);
   const islandLayerRef = useRef<CachedLayer | null>(null);
@@ -677,6 +678,13 @@ export function IslandMap({
 
       agentPositionsRef.current = rendered;
 
+      // Populate spatial grid for O(1) hit testing
+      const grid = new SpatialGrid(w, h, 40);
+      for (const r of rendered) {
+        grid.insert({ agent: r.agent, x: r.pos.x, y: r.pos.y, size: r.size });
+      }
+      spatialGridRef.current = grid;
+
       // Draw tooltip for hovered agent
       const hoveredAgent = hoveredAgentRef.current;
       if (hoveredAgent) {
@@ -742,14 +750,8 @@ export function IslandMap({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Hit test against rendered agents
-    let found: AgentState | null = null;
-    for (const r of agentPositionsRef.current) {
-      if (hitTestAgent(x, y, r.pos.x, r.pos.y, r.size)) {
-        found = r.agent;
-        break;
-      }
-    }
+    // Hit test using spatial grid (O(1) instead of linear scan)
+    const found = spatialGridRef.current?.query(x, y) ?? null;
     if ((hoveredAgentRef.current?.id ?? -1) !== (found?.id ?? -1)) {
       lastDrawTsRef.current = 0;
     }
@@ -790,11 +792,10 @@ export function IslandMap({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    for (const r of agentPositionsRef.current) {
-      if (hitTestAgent(x, y, r.pos.x, r.pos.y, r.size)) {
-        onAgentClick(r.agent);
-        return;
-      }
+    const clickedAgent = spatialGridRef.current?.query(x, y) ?? null;
+    if (clickedAgent) {
+      onAgentClick(clickedAgent);
+      return;
     }
 
     const feature = detectMapFeature(
@@ -817,6 +818,9 @@ export function IslandMap({
       <div className={styles.title}>島嶼地圖 Island Map</div>
       <canvas
         ref={canvasRef}
+        role="img"
+        aria-label={`島嶼地圖：${agents.filter(a => a.alive).length} 位居民`}
+        tabIndex={0}
         className={styles.canvas}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -832,4 +836,4 @@ export function IslandMap({
       )}
     </div>
   );
-}
+});

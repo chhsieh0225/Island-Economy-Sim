@@ -16,15 +16,16 @@ import type {
   EconomyStage,
   MilestoneRecord,
   IslandTerrainState,
+  Infrastructure,
+  InfrastructureType,
 } from '../types';
-import { SECTORS } from '../types';
 import { Agent } from './Agent';
 import { Market } from './Market';
 import { Government } from './Government';
 import { Statistics } from './Statistics';
 import { RNG } from './RNG';
 import { generateName } from '../data/names';
-import { DEFAULT_SCENARIO, getScenarioById } from '../data/scenarios';
+import { DEFAULT_SCENARIO } from '../data/scenarios';
 import { runSpoilagePhase, runProductionPhase, runMarketPostingPhase } from './phases/productionPhase';
 import { runConsumptionPhase } from './phases/consumptionPhase';
 import type { ConsumptionPhaseSummary } from './phases/consumptionPhase';
@@ -52,12 +53,28 @@ import {
   queuePolicyChange,
 } from './modules/policyModule';
 import { runTurnPipeline, type TurnGovernmentSummary } from './modules/turnPipelineModule';
+import { generateTerrainProfile, buildTerrainAnnouncement } from './modules/terrainModule';
+import { applyScenarioSetup } from './modules/scenarioModule';
+import {
+  type StateDirtyFlags,
+  createDirtyFlags,
+  clearDirtyFlags,
+  markDirty,
+  buildGameState,
+} from './modules/stateSerializerModule';
 import {
   DEFAULT_ECONOMIC_CALIBRATION_PROFILE_ID,
   getEconomicCalibrationProfile,
   type EconomicCalibrationProfile,
   type EconomicCalibrationProfileId,
 } from './economicCalibration';
+import {
+  buildInfrastructure as buildInfrastructureItem,
+  tickInfrastructure,
+  computeInfrastructureEffects,
+  canBuild as canBuildInfrastructure,
+  getInfrastructureDef,
+} from './modules/infrastructureModule';
 
 export class GameEngine {
   turn: number = 0;
@@ -73,6 +90,7 @@ export class GameEngine {
   pendingDecision: PendingDecision | null = null;
   pendingPolicies: PendingPolicyChange[] = [];
   policyTimeline: PolicyTimelineEntry[] = [];
+  infrastructure: Infrastructure[] = [];
 
   rng: RNG;
   seed: number;
@@ -91,33 +109,7 @@ export class GameEngine {
   private stageTransitionFrom: EconomyStage | null = null;
   private stageTransitionStartTurn: number | null = null;
   private cachedState: GameState | null = null;
-  private stateDirty: {
-    agents: boolean;
-    terrain: boolean;
-    market: boolean;
-    government: boolean;
-    statistics: boolean;
-    events: boolean;
-    milestones: boolean;
-    activeRandomEvents: boolean;
-    pendingDecision: boolean;
-    pendingPolicies: boolean;
-    policyTimeline: boolean;
-    gameOver: boolean;
-  } = {
-      agents: true,
-      terrain: true,
-      market: true,
-      government: true,
-      statistics: true,
-      events: true,
-      milestones: true,
-      activeRandomEvents: true,
-      pendingDecision: true,
-      pendingPolicies: true,
-      policyTimeline: true,
-      gameOver: true,
-    };
+  private stateDirty: StateDirtyFlags = createDirtyFlags(true);
 
   constructor(
     seed?: number,
@@ -133,7 +125,7 @@ export class GameEngine {
     });
     this.government = new Government();
     this.statistics = new Statistics();
-    this.terrain = this.generateTerrainProfile(this.seed);
+    this.terrain = generateTerrainProfile(this.seed);
     this.initializeAgents();
   }
 
@@ -149,25 +141,8 @@ export class GameEngine {
     return getEconomicCalibrationProfile(this.economicCalibrationProfileId);
   }
 
-  private markStateDirty(...keys: Array<keyof GameEngine['stateDirty']>): void {
-    for (const key of keys) {
-      this.stateDirty[key] = true;
-    }
-  }
-
-  private clearStateDirty(): void {
-    this.stateDirty.agents = false;
-    this.stateDirty.terrain = false;
-    this.stateDirty.market = false;
-    this.stateDirty.government = false;
-    this.stateDirty.statistics = false;
-    this.stateDirty.events = false;
-    this.stateDirty.milestones = false;
-    this.stateDirty.activeRandomEvents = false;
-    this.stateDirty.pendingDecision = false;
-    this.stateDirty.pendingPolicies = false;
-    this.stateDirty.policyTimeline = false;
-    this.stateDirty.gameOver = false;
+  private markStateDirty(...keys: Array<keyof StateDirtyFlags>): void {
+    markDirty(this.stateDirty, ...keys);
   }
 
   private initializeAgents(): void {
@@ -199,161 +174,13 @@ export class GameEngine {
     this.nextAgentId = CONFIG.INITIAL_POPULATION;
     this.nextFamilyId = familyId;
     this.market.setAgents(this.agents);
-    this.applyScenarioSetup();
-    this.announceTerrainProfile();
-  }
-
-  private generateTerrainProfile(seed: number): IslandTerrainState {
-    const terrainRng = new RNG((seed ^ 0x9e3779b9) >>> 0);
-
-    const coastlineOffsets = Array.from({ length: 14 }, () => 0.9 + terrainRng.next() * 0.22);
-    // Light smoothing keeps the coastline organic but avoids sharp spikes.
-    for (let i = 0; i < coastlineOffsets.length; i++) {
-      const prev = coastlineOffsets[(i - 1 + coastlineOffsets.length) % coastlineOffsets.length];
-      const curr = coastlineOffsets[i];
-      const next = coastlineOffsets[(i + 1) % coastlineOffsets.length];
-      coastlineOffsets[i] = 0.25 * prev + 0.5 * curr + 0.25 * next;
-    }
-
-    const islandScaleX = 0.96 + terrainRng.next() * 0.1;
-    const islandScaleY = 0.96 + terrainRng.next() * 0.1;
-    const islandRotation = (terrainRng.next() - 0.5) * 0.35;
-
-    const zoneOffsets: IslandTerrainState['zoneOffsets'] = {
-      food: {
-        x: (terrainRng.next() - 0.5) * 0.1,
-        y: -0.08 + terrainRng.next() * 0.07,
-      },
-      goods: {
-        x: -0.11 + terrainRng.next() * 0.08,
-        y: 0.02 + terrainRng.next() * 0.09,
-      },
-      services: {
-        x: 0.04 + terrainRng.next() * 0.08,
-        y: 0.02 + terrainRng.next() * 0.09,
-      },
-    };
-
-    const shuffled = [...SECTORS];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = terrainRng.nextInt(0, i);
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    const baseSuitability = [1.14, 1.0, 0.88];
-    const sectorSuitability: Record<SectorType, number> = { food: 1, goods: 1, services: 1 };
-    for (let i = 0; i < shuffled.length; i++) {
-      const sector = shuffled[i];
-      const noise = (terrainRng.next() - 0.5) * 0.08;
-      sectorSuitability[sector] = Math.max(0.82, Math.min(1.2, baseSuitability[i] + noise));
-    }
-
-    const sectorFeatures: Record<SectorType, string> = {
-      food: this.pickTerrainFeature('food', sectorSuitability.food, terrainRng),
-      goods: this.pickTerrainFeature('goods', sectorSuitability.goods, terrainRng),
-      services: this.pickTerrainFeature('services', sectorSuitability.services, terrainRng),
-    };
-
-    return {
-      seed,
-      coastlineOffsets,
-      islandScaleX,
-      islandScaleY,
-      islandRotation,
-      zoneOffsets,
-      sectorSuitability,
-      sectorFeatures,
-    };
-  }
-
-  private pickTerrainFeature(sector: SectorType, suitability: number, rng: RNG): string {
-    const highPools: Record<SectorType, string[]> = {
-      food: ['沖積平原', '濕潤谷地', '黑土農帶'],
-      goods: ['礦脈丘陵', '工業盆地', '石灰岩台地'],
-      services: ['天然港灣', '觀光海岬', '交通樞紐'],
-    };
-    const midPools: Record<SectorType, string[]> = {
-      food: ['一般農地', '混合地貌', '丘陵農區'],
-      goods: ['一般工地', '混合地貌', '河港工區'],
-      services: ['一般市鎮', '混合地貌', '商業聚落'],
-    };
-    const lowPools: Record<SectorType, string[]> = {
-      food: ['鹽鹼薄土', '乾燥坡地', '碎石地'],
-      goods: ['缺礦地帶', '鬆散砂地', '分散聚落'],
-      services: ['內陸閉塞', '交通瓶頸', '低密度聚落'],
-    };
-
-    const pool = suitability >= 1.05
-      ? highPools[sector]
-      : suitability <= 0.95
-        ? lowPools[sector]
-        : midPools[sector];
-    return rng.pick(pool);
-  }
-
-  private announceTerrainProfile(): void {
-    const labels = SECTORS.map(sector => {
-      const pct = (this.terrain.sectorSuitability[sector] - 1) * 100;
-      const sign = pct >= 0 ? '+' : '';
-      return `${this.sectorLabel(sector)}${sign}${pct.toFixed(0)}%（${this.terrain.sectorFeatures[sector]}）`;
+    applyScenarioSetup({
+      scenarioId: this.scenarioId,
+      government: this.government,
+      agents: this.agents,
+      market: this.market,
     });
-    this.addEvent('info', `新地貌生成：${labels.join('、')}`);
-  }
-
-  private applyScenarioSetup(): void {
-    const scenario = getScenarioById(this.scenarioId);
-
-    if (scenario.initialTreasury !== undefined) {
-      this.government.treasury = scenario.initialTreasury;
-    }
-    if (scenario.initialTaxRate !== undefined) {
-      this.government.setTaxRate(scenario.initialTaxRate);
-    }
-    if (scenario.initialPolicyRate !== undefined) {
-      this.government.setPolicyRate(scenario.initialPolicyRate);
-    }
-    if (scenario.initialSubsidies) {
-      for (const [sector, amount] of Object.entries(scenario.initialSubsidies)) {
-        this.government.setSubsidy(sector as SectorType, amount ?? 0);
-      }
-    }
-    if (scenario.enableWelfare !== undefined) {
-      this.government.setWelfare(scenario.enableWelfare);
-    }
-    if (scenario.enablePublicWorks !== undefined) {
-      this.government.setPublicWorks(scenario.enablePublicWorks);
-    }
-    if (scenario.enableLiquiditySupport !== undefined) {
-      this.government.setLiquiditySupport(scenario.enableLiquiditySupport);
-    }
-
-    if (scenario.priceMultiplier) {
-      for (const [sector, mult] of Object.entries(scenario.priceMultiplier)) {
-        const key = sector as SectorType;
-        this.market.prices[key] *= mult ?? 1;
-        this.market.priceHistory[key][0] = Math.round(this.market.prices[key] * 100) / 100;
-      }
-    }
-
-    if (scenario.ageShiftTurns) {
-      for (const agent of this.agents) {
-        agent.shiftAge(scenario.ageShiftTurns);
-      }
-    }
-
-    if (scenario.wealthSkew) {
-      const sorted = [...this.agents].sort((a, b) => b.productivity - a.productivity);
-      const topCount = Math.max(1, Math.floor(sorted.length * scenario.wealthSkew.topPercent));
-      for (let idx = 0; idx < sorted.length; idx++) {
-        const agent = sorted[idx];
-        if (idx < topCount) {
-          agent.money *= scenario.wealthSkew.topMultiplier;
-        } else {
-          agent.money *= scenario.wealthSkew.bottomMultiplier;
-        }
-      }
-    }
-
-    this.market.setMonetaryStance(this.government.policyRate, this.government.liquiditySupportActive);
+    this.addEvent('info', buildTerrainAnnouncement(this.terrain));
   }
 
   advanceTurn(): TurnSnapshot {
@@ -365,6 +192,8 @@ export class GameEngine {
     this.turn++;
     this._newMilestonesThisTurn = [];
     this.applyPendingPolicies();
+    this.infrastructure = tickInfrastructure(this.infrastructure);
+    this.applyInfrastructureEffects();
     this.market.clearOrders();
 
     const aliveAgents = this.agents.filter(a => a.alive);
@@ -437,6 +266,7 @@ export class GameEngine {
       'pendingDecision',
       'pendingPolicies',
       'policyTimeline',
+      'infrastructure',
       'gameOver',
     );
 
@@ -453,6 +283,24 @@ export class GameEngine {
       { births: 0, deaths: 0 },
       buildZeroCausalReplay(),
     );
+  }
+
+  private applyInfrastructureEffects(): void {
+    const fx = computeInfrastructureEffects(this.infrastructure);
+    const hBoost = fx.healthBoost ?? 0;
+    const sBoost = fx.satisfactionBoost ?? 0;
+    if (hBoost <= 0 && sBoost <= 0) return;
+
+    const aliveAgents = this.agents.filter(a => a.alive);
+    for (const agent of aliveAgents) {
+      if (hBoost > 0) {
+        agent.health = Math.min(100, agent.health + hBoost);
+      }
+      if (sBoost > 0) {
+        agent.satisfaction = Math.min(100, agent.satisfaction + sBoost);
+      }
+    }
+    // Productivity boosts are applied via the production phase
   }
 
   private phaseRollLuck(agents: Agent[]): void {
@@ -475,6 +323,7 @@ export class GameEngine {
 
   private phaseProduction(agents: Agent[]): void {
     const allowedSectors = this.getUnlockedSectors();
+    const infraFx = computeInfrastructureEffects(this.infrastructure);
     runProductionPhase({
       agents,
       activeRandomEvents: this.activeRandomEvents,
@@ -485,6 +334,8 @@ export class GameEngine {
       caregiverPenaltyPerChild: CONFIG.CAREGIVER_PRODUCTIVITY_PENALTY_PER_CHILD,
       caregiverPenaltyMax: CONFIG.CAREGIVER_PRODUCTIVITY_PENALTY_MAX,
       calibration: this.getEconomicCalibration(),
+      infrastructureSectorBoost: infraFx.productivityBoost,
+      infrastructureOverallBoost: infraFx.overallProductivity,
     });
   }
 
@@ -998,111 +849,32 @@ export class GameEngine {
     });
   }
 
-  private cloneTerrainState(): IslandTerrainState {
-    return {
-      ...this.terrain,
-      coastlineOffsets: [...this.terrain.coastlineOffsets],
-      zoneOffsets: {
-        food: { ...this.terrain.zoneOffsets.food },
-        goods: { ...this.terrain.zoneOffsets.goods },
-        services: { ...this.terrain.zoneOffsets.services },
-      },
-      sectorSuitability: { ...this.terrain.sectorSuitability },
-      sectorFeatures: { ...this.terrain.sectorFeatures },
-    };
-  }
-
-  private appendOrCloneArray<T>(source: T[], previous?: T[]): T[] {
-    if (!previous) {
-      return [...source];
-    }
-    if (source.length === previous.length + 1) {
-      return [...previous, source[source.length - 1]];
-    }
-    if (
-      source.length === previous.length &&
-      source.length > 0 &&
-      source[0] === previous[0] &&
-      source[source.length - 1] === previous[source.length - 1]
-    ) {
-      return previous;
-    }
-    if (source.length === 0 && previous.length === 0) {
-      return previous;
-    }
-    return [...source];
-  }
-
   getState(previous?: GameState): GameState {
-    const prev = previous ?? this.cachedState ?? undefined;
-
-    const agents = this.stateDirty.agents || !prev
-      ? this.agents.map(a => a.toState())
-      : prev.agents;
-    const terrain = this.stateDirty.terrain || !prev
-      ? this.cloneTerrainState()
-      : prev.terrain;
-    const market = this.stateDirty.market || !prev
-      ? this.market.toState(prev?.market)
-      : prev.market;
-    const government = this.stateDirty.government || !prev
-      ? this.government.toState(prev?.government)
-      : prev.government;
-    const statistics = this.stateDirty.statistics || !prev
-      ? this.appendOrCloneArray(this.statistics.history, prev?.statistics)
-      : prev.statistics;
-    const events = this.stateDirty.events || !prev
-      ? this.appendOrCloneArray(this.events, prev?.events)
-      : prev.events;
-    const milestones = this.stateDirty.milestones || !prev
-      ? this.appendOrCloneArray(this.milestones, prev?.milestones)
-      : prev.milestones;
-    const activeRandomEvents = this.stateDirty.activeRandomEvents || !prev
-      ? this.activeRandomEvents.map(e => ({
-        def: e.def,
-        turnsRemaining: e.turnsRemaining,
-      }))
-      : prev.activeRandomEvents;
-    const pendingDecision = this.stateDirty.pendingDecision || !prev
-      ? (this.pendingDecision
-        ? {
-          ...this.pendingDecision,
-          choices: [...this.pendingDecision.choices] as PendingDecision['choices'],
-        }
-        : null)
-      : prev.pendingDecision;
-    const pendingPolicies = this.stateDirty.pendingPolicies || !prev
-      ? [...this.pendingPolicies]
-      : prev.pendingPolicies;
-    const policyTimeline = this.stateDirty.policyTimeline || !prev
-      ? this.policyTimeline.map(entry => ({ ...entry, sideEffects: [...entry.sideEffects] }))
-      : prev.policyTimeline;
-    const gameOver = this.stateDirty.gameOver || !prev
-      ? this.gameOver
-      : prev.gameOver;
-
-    const nextState: GameState = {
+    const nextState = buildGameState({
       turn: this.turn,
-      agents,
-      terrain,
       economyStage: this.economyStage,
-      market,
-      government,
-      statistics,
-      events,
-      milestones,
-      activeRandomEvents,
-      pendingDecision,
-      pendingPolicies,
-      policyTimeline,
-      rngState: this.rng.getState(),
       seed: this.seed,
       scenarioId: this.scenarioId,
-      gameOver,
-    };
+      agents: this.agents,
+      terrain: this.terrain,
+      market: this.market,
+      government: this.government,
+      statistics: this.statistics,
+      events: this.events,
+      milestones: this.milestones,
+      activeRandomEvents: this.activeRandomEvents,
+      pendingDecision: this.pendingDecision,
+      pendingPolicies: this.pendingPolicies,
+      policyTimeline: this.policyTimeline,
+      infrastructure: this.infrastructure,
+      gameOver: this.gameOver,
+      rng: this.rng,
+      dirty: this.stateDirty,
+      previous: previous ?? this.cachedState ?? null,
+    });
 
     this.cachedState = nextState;
-    this.clearStateDirty();
+    clearDirtyFlags(this.stateDirty);
     return nextState;
   }
 
@@ -1114,6 +886,7 @@ export class GameEngine {
     this.pendingDecision = null;
     this.pendingPolicies = [];
     this.policyTimeline = [];
+    this.infrastructure = [];
     this.gameOver = null;
     this.nextPolicyId = 1;
     this.lastRandomEventTurn = -999;
@@ -1126,7 +899,7 @@ export class GameEngine {
     this.seed = seed ?? Date.now();
     this.scenarioId = scenarioId;
     this.rng = new RNG(this.seed);
-    this.terrain = this.generateTerrainProfile(this.seed);
+    this.terrain = generateTerrainProfile(this.seed);
 
     this.market.reset();
     this.government.reset();
@@ -1145,7 +918,18 @@ export class GameEngine {
       'pendingDecision',
       'pendingPolicies',
       'policyTimeline',
+      'infrastructure',
       'gameOver',
     );
+  }
+
+  requestBuildInfrastructure(type: InfrastructureType): boolean {
+    const check = canBuildInfrastructure(type, this.infrastructure, this.government.treasury);
+    if (!check.ok) return false;
+    const def = getInfrastructureDef(type);
+    this.government.treasury -= def.cost;
+    this.infrastructure = [...this.infrastructure, buildInfrastructureItem(type, this.turn, this.infrastructure)];
+    markDirty(this.stateDirty, 'infrastructure', 'government');
+    return true;
   }
 }

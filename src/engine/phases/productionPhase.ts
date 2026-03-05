@@ -16,6 +16,10 @@ interface ProductionPhaseInput {
   caregiverPenaltyPerChild: number;
   caregiverPenaltyMax: number;
   calibration: EconomicCalibrationProfile;
+  /** Per-sector infrastructure productivity boosts (additive ratio, e.g. 0.1 = +10%) */
+  infrastructureSectorBoost?: Partial<Record<SectorType, number>>;
+  /** Overall infrastructure productivity boost (additive ratio) */
+  infrastructureOverallBoost?: number;
 }
 
 interface MarketPostingPhaseInput {
@@ -49,6 +53,8 @@ export function runProductionPhase({
   caregiverPenaltyPerChild,
   caregiverPenaltyMax,
   calibration,
+  infrastructureSectorBoost,
+  infrastructureOverallBoost,
 }: ProductionPhaseInput): void {
   const productivityMods: Record<SectorType, number> = { food: 1, goods: 1, services: 1 };
   for (const event of activeRandomEvents) {
@@ -61,6 +67,15 @@ export function runProductionPhase({
       for (const s of SECTORS) {
         productivityMods[s] *= event.def.effects.productivityPenalty;
       }
+    }
+  }
+
+  // Apply infrastructure productivity boosts
+  const overallBoost = infrastructureOverallBoost ?? 0;
+  if (overallBoost > 0 || infrastructureSectorBoost) {
+    for (const s of SECTORS) {
+      const sectorBoost = infrastructureSectorBoost?.[s] ?? 0;
+      productivityMods[s] *= (1 + overallBoost + sectorBoost);
     }
   }
 

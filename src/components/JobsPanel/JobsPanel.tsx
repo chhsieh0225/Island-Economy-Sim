@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { GameState, SectorType } from '../../types';
 import styles from './JobsPanel.module.css';
 
@@ -11,7 +12,7 @@ const SECTOR_LABELS: Record<SectorType, string> = {
   services: '服務',
 };
 
-export function JobsPanel({ state }: Props) {
+export const JobsPanel = memo(function JobsPanel({ state }: Props) {
   const alive = state.agents.filter(a => a.alive);
   const total = alive.length || 1;
   const dist: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
@@ -37,4 +38,4 @@ export function JobsPanel({ state }: Props) {
       ))}
     </div>
   );
-}
+});

@@ -26,7 +26,7 @@ function buildImpactTags(choice: DecisionChoice): { text: string; positive: bool
 export function DecisionPanel({ decision, onChoose }: Props) {
   return (
     <div className={styles.overlay}>
-      <div className={styles.panel}>
+      <div className={styles.panel} role="dialog" aria-modal="true">
         <div className={styles.title}>市政抉擇 Civic Decision</div>
         <div className={styles.name}>{decision.name}</div>
         <div className={styles.message}>{decision.message}</div>

@@ -1,11 +1,12 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { describe, it, expect } from 'vitest';
 
 import { getResidentialBlockCount } from '../../src/components/IslandMap/agentAnimator';
 
-test('island layout: residential blocks expand as population grows', () => {
-  assert.equal(getResidentialBlockCount(100), 3);
-  assert.equal(getResidentialBlockCount(111), 4);
-  assert.equal(getResidentialBlockCount(139), 5);
-  assert.equal(getResidentialBlockCount(1000), 9);
+describe('islandLayout', () => {
+  it('residential blocks expand as population grows', () => {
+    expect(getResidentialBlockCount(100)).toBe(3);
+    expect(getResidentialBlockCount(111)).toBe(4);
+    expect(getResidentialBlockCount(139)).toBe(5);
+    expect(getResidentialBlockCount(1000)).toBe(9);
+  });
 });

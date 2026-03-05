@@ -265,3 +265,59 @@
 .up { color: #4caf50; }
 .down { color: #f44336; }
 .neutral { color: #8892b0; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .dashboard {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .stat {
+    flex: 1 1 calc(50% - 10px);
+    min-width: 0;
+  }
+
+  .value {
+    font-size: 18px;
+  }
+
+  .objectiveList {
+    grid-template-columns: 1fr;
+  }
+
+  .causalGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .causalTimelineRow {
+    grid-template-columns: 48px 1fr 1fr 1fr;
+    gap: 4px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .stat {
+    flex: 1 1 calc(50% - 8px);
+    padding: 6px 8px;
+  }
+
+  .value {
+    font-size: 16px;
+  }
+
+  .label {
+    font-size: 10px;
+  }
+
+  .causalTimelineRow {
+    grid-template-columns: 40px 1fr 1fr;
+    font-size: 10px;
+  }
+}

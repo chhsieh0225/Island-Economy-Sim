@@ -1,95 +1,91 @@
-import assert from 'node:assert/strict';
+import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import test from 'node:test';
 
 function readProjectFile(relativePath: string): string {
-  const root = resolve(__dirname, '../../..');
+  const root = resolve(process.cwd());
   return readFileSync(resolve(root, relativePath), 'utf8');
 }
 
-test('ui smoke: heavy right-column panels are lazy-loaded', () => {
-  const appTsx = readProjectFile('src/App.tsx');
+describe('uiLayoutSmoke', () => {
+  it('heavy right-column panels are lazy-loaded', () => {
+    const appTsx = readProjectFile('src/App.tsx');
 
-  const lazyPanels = [
-    'MarketPanel',
-    'TerrainPanel',
-    'EventLog',
-    'MilestonePanel',
-  ] as const;
+    const lazyPanels = [
+      'MarketPanel',
+      'TerrainPanel',
+      'EventLog',
+      'MilestonePanel',
+    ] as const;
 
-  for (const panel of lazyPanels) {
-    assert.match(
-      appTsx,
-      new RegExp(`const\\s+${panel}\\s*=\\s*lazy\\(`),
-      `${panel} should be loaded through React.lazy`,
-    );
-    assert.match(
-      appTsx,
-      new RegExp(`import\\('\\./components/${panel}/${panel}'\\)`),
-      `${panel} should use dynamic import`,
-    );
-    assert.doesNotMatch(
-      appTsx,
-      new RegExp(`^import\\s+\\{\\s*${panel}\\s*\\}\\s+from\\s+'\\./components/${panel}/${panel}';`, 'm'),
-      `${panel} should not be statically imported`,
-    );
-  }
-});
+    for (const panel of lazyPanels) {
+      expect(appTsx).toMatch(
+        new RegExp(`const\\s+${panel}\\s*=\\s*lazy\\(`),
+      );
+      expect(appTsx).toMatch(
+        new RegExp(`import\\('\\./components/${panel}/${panel}'\\)`),
+      );
+      expect(appTsx).not.toMatch(
+        new RegExp(`^import\\s+\\{\\s*${panel}\\s*\\}\\s+from\\s+'\\./components/${panel}/${panel}';`, 'm'),
+      );
+    }
+  });
 
-test('ui smoke: responsive breakpoints and mobile-safe overflow are present', () => {
-  const appCss = readProjectFile('src/App.module.css');
-  const marketCss = readProjectFile('src/components/MarketPanel/MarketPanel.module.css');
+  it('responsive breakpoints and mobile-safe overflow are present', () => {
+    const appCss = readProjectFile('src/App.module.css');
+    const marketCss = readProjectFile('src/components/MarketPanel/MarketPanel.module.css');
 
-  assert.match(appCss, /@media\s*\(max-width:\s*980px\)/);
-  assert.match(appCss, /\.rightTabs\s*\{[^}]*overflow-x:\s*auto;/s);
-  assert.match(appCss, /\.columns\s*\{[^}]*grid-template-columns:\s*1fr;/s);
+    expect(appCss).toMatch(/@media\s*\(max-width:\s*980px\)/);
+    expect(appCss).toMatch(/\.rightTabs\s*\{[^}]*overflow-x:\s*auto;/s);
+    expect(appCss).toMatch(/\.columns\s*\{[^}]*grid-template-columns:\s*1fr;/s);
 
-  assert.match(marketCss, /\.tableWrap\s*\{[^}]*overflow-x:\s*auto;/s);
-  assert.match(marketCss, /\.table\s*\{[^}]*min-width:\s*620px;/s);
-});
+    expect(marketCss).toMatch(/\.tableWrap\s*\{[^}]*overflow-x:\s*auto;/s);
+    expect(marketCss).toMatch(/\.table\s*\{[^}]*min-width:\s*620px;/s);
+  });
 
-test('ui smoke: policy recommendation filters no-op actions', () => {
-  const policyPanel = readProjectFile('src/components/PolicyPanel/PolicyPanel.tsx');
+  it('policy recommendation filters no-op actions', () => {
+    const policyPanel = readProjectFile('src/components/PolicyPanel/PolicyPanel.tsx');
 
-  assert.match(policyPanel, /function isRecommendationRedundant\(/);
-  assert.match(policyPanel, /isRecommendationRedundant\(recommendation\.action,\s*effectivePolicyState\)/);
-});
+    expect(policyPanel).toMatch(/function isRecommendationRedundant\(/);
+    expect(policyPanel).toMatch(/isRecommendationRedundant\(recommendation\.action,\s*effectivePolicyState\)/);
+  });
 
-test('ui smoke: island map feature union includes full industry set', () => {
-  const islandMap = readProjectFile('src/components/IslandMap/IslandMap.tsx');
-  assert.match(islandMap, /MapFeatureType = 'bank' \| 'residential' \| 'farm' \| 'goods' \| 'services'/);
-});
+  it('island map feature union includes full industry set', () => {
+    const islandMap = readProjectFile('src/components/IslandMap/IslandMap.tsx');
+    expect(islandMap).toMatch(/MapFeatureType = 'bank' \| 'residential' \| 'farm' \| 'goods' \| 'services'/);
+  });
 
-test('ui smoke: island renderer shows clickable markers for all sectors', () => {
-  const islandRenderer = readProjectFile('src/components/IslandMap/islandRenderer.ts');
-  assert.match(islandRenderer, /drawClickableNode\(/);
-  assert.match(islandRenderer, /'🌾'/);
-  assert.match(islandRenderer, /'🏭'/);
-  assert.match(islandRenderer, /'🏢'/);
-  assert.match(islandRenderer, /'點擊'/);
-});
+  it('island renderer shows clickable markers for all sectors', () => {
+    const zoneLayer = readProjectFile('src/components/IslandMap/layers/zoneLayer.ts');
+    expect(zoneLayer).toMatch(/drawClickableNode\(/);
+    expect(zoneLayer).toMatch(/'🌾'/);
+    expect(zoneLayer).toMatch(/'🏭'/);
+    expect(zoneLayer).toMatch(/'🏢'/);
+    expect(zoneLayer).toMatch(/'點擊'/);
+  });
 
-test('ui smoke: feature clicks trigger transient highlight pulse', () => {
-  const appTsx = readProjectFile('src/App.tsx');
-  const islandMap = readProjectFile('src/components/IslandMap/IslandMap.tsx');
+  it('feature clicks trigger transient highlight pulse', () => {
+    const appTsx = readProjectFile('src/App.tsx');
+    const islandMap = readProjectFile('src/components/IslandMap/IslandMap.tsx');
+    const uiStore = readProjectFile('src/stores/uiStore.ts');
 
-  assert.match(appTsx, /FEATURE_HIGHLIGHT_MS = 1700/);
-  assert.match(appTsx, /highlightFeature=\{featureHighlight\?\.feature \?\? null\}/);
-  assert.match(appTsx, /highlightUntilMs=\{featureHighlight\?\.untilMs \?\? null\}/);
-  assert.match(islandMap, /FEATURE_HIGHLIGHT_MS = 1700/);
-  assert.match(islandMap, /drawFeatureHighlight\(/);
-});
+    expect(uiStore).toMatch(/FEATURE_HIGHLIGHT_MS = 1700/);
+    expect(appTsx).toMatch(/highlightFeature=\{featureHighlight\?\.feature \?\? null\}/);
+    expect(appTsx).toMatch(/highlightUntilMs=\{featureHighlight\?\.untilMs \?\? null\}/);
+    expect(islandMap).toMatch(/FEATURE_HIGHLIGHT_MS = 1700/);
+    expect(islandMap).toMatch(/drawFeatureHighlight\(/);
+  });
 
-test('ui smoke: learning journey includes coach guidance scaffolding', () => {
-  const panel = readProjectFile('src/components/LearningJourneyPanel/LearningJourneyPanel.tsx');
-  const journey = readProjectFile('src/learning/journey.ts');
+  it('learning journey includes coach guidance scaffolding', () => {
+    const panel = readProjectFile('src/components/LearningJourneyPanel/LearningJourneyPanel.tsx');
+    const journey = readProjectFile('src/learning/journey.ts');
 
-  assert.match(panel, /經濟教練 Coach/);
-  assert.match(panel, /下一步操作（建議順序）/);
-  assert.match(panel, /coach\.actions\.map/);
+    expect(panel).toMatch(/經濟教練 Coach/);
+    expect(panel).toMatch(/下一步操作（建議順序）/);
+    expect(panel).toMatch(/coach\.actions\.map/);
 
-  assert.match(journey, /interface LearningCoachBrief/);
-  assert.match(journey, /phaseLabel:/);
-  assert.match(journey, /keywords:/);
+    expect(journey).toMatch(/interface LearningCoachBrief/);
+    expect(journey).toMatch(/phaseLabel:/);
+    expect(journey).toMatch(/keywords:/);
+  });
 });

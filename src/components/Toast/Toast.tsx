@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, memo } from 'react';
 import type { ToastNotification } from '../../types';
 import styles from './Toast.module.css';
 
@@ -65,7 +65,7 @@ function ToastItem({
   );
 }
 
-export function Toast({ toasts, onDismiss }: Props) {
+export const Toast = memo(function Toast({ toasts, onDismiss }: Props) {
   const visible = toasts.slice(-MAX_VISIBLE);
 
   if (visible.length === 0) return null;
@@ -77,4 +77,4 @@ export function Toast({ toasts, onDismiss }: Props) {
       ))}
     </div>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, memo } from 'react';
 import type { GameState } from '../../types';
 import { buildLearningJourney } from '../../learning/journey';
 import styles from './LearningJourneyPanel.module.css';
@@ -14,7 +14,7 @@ function firstIncomplete(items: ReturnType<typeof buildLearningJourney>['quests'
   return next ?? null;
 }
 
-export function LearningJourneyPanel({ state, tutorialToastsEnabled, onSetTutorialToasts }: Props) {
+export const LearningJourneyPanel = memo(function LearningJourneyPanel({ state, tutorialToastsEnabled, onSetTutorialToasts }: Props) {
   const [activeQuestId, setActiveQuestId] = useState<string>('turn_3');
   const [activeNodeId, setActiveNodeId] = useState<string>('market_signal');
   const { coach, quests, knowledgeNodes } = useMemo(() => buildLearningJourney(state), [state]);
@@ -179,4 +179,4 @@ export function LearningJourneyPanel({ state, tutorialToastsEnabled, onSetTutori
       </div>
     </div>
   );
-}
+});

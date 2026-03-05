@@ -1,0 +1,43 @@
+.panel { background: #112240; border: 1px solid #233554; border-radius: 10px; overflow: hidden; }
+.header { display: flex; align-items: center; width: 100%; padding: 12px 16px; background: none; border: none; color: #e6f1ff; cursor: pointer; }
+.headerTitle { flex: 1; text-align: left; font-size: 14px; font-weight: 600; }
+.chevron { font-size: 14px; color: #8892b0; transition: transform 0.2s; }
+.chevronOpen { transform: rotate(180deg); }
+
+.body { padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 16px; }
+
+.section { display: flex; flex-direction: column; gap: 8px; }
+.sectionTitle { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 600; color: #ccd6f6; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* Strategy buttons */
+.strategyRow { display: flex; gap: 6px; }
+.strategyBtn { padding: 6px 14px; background: rgba(100, 255, 218, 0.06); border: 1px solid rgba(100, 255, 218, 0.12); border-radius: 6px; color: #8892b0; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+.strategyBtn:hover { background: rgba(100, 255, 218, 0.1); }
+.strategyBtnActive { background: rgba(100, 255, 218, 0.15); border-color: rgba(100, 255, 218, 0.3); color: #64ffda; }
+
+/* Score comparison */
+.comparison { display: flex; align-items: center; gap: 12px; padding: 10px; background: rgba(0,0,0,0.15); border-radius: 8px; }
+.scoreCard { flex: 1; text-align: center; }
+.scoreLabel { font-size: 11px; color: #8892b0; margin-bottom: 2px; }
+.scoreValue { font-size: 22px; font-weight: 700; color: #e6f1ff; }
+.scoreSub { font-size: 10px; color: #5c6b8a; margin-top: 2px; }
+.vs { font-size: 13px; font-weight: 700; color: #5c6b8a; }
+
+/* Metric tabs */
+.metricTabs { display: flex; gap: 4px; }
+.metricTab { padding: 4px 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 4px; color: #8892b0; font-size: 11px; cursor: pointer; transition: all 0.15s; }
+.metricTabActive { background: rgba(100, 255, 218, 0.1); border-color: rgba(100, 255, 218, 0.2); color: #64ffda; }
+
+.chartWrap { background: rgba(0,0,0,0.1); border-radius: 8px; padding: 8px 4px; }
+
+/* Save button */
+.saveBtn { padding: 4px 10px; background: rgba(100, 255, 218, 0.1); border: 1px solid rgba(100, 255, 218, 0.2); border-radius: 4px; color: #64ffda; font-size: 11px; cursor: pointer; transition: all 0.15s; }
+.saveBtn:hover { background: rgba(100, 255, 218, 0.2); }
+
+/* Leaderboard */
+.emptyBoard { font-size: 12px; color: #5c6b8a; text-align: center; padding: 12px 0; }
+.board { display: flex; flex-direction: column; gap: 4px; }
+.boardRow { display: flex; align-items: center; gap: 10px; padding: 6px 8px; background: rgba(0,0,0,0.1); border-radius: 4px; }
+.rank { font-size: 12px; font-weight: 700; color: #64ffda; width: 28px; }
+.boardScore { font-size: 14px; font-weight: 600; color: #e6f1ff; width: 50px; }
+.boardMeta { font-size: 11px; color: #5c6b8a; }

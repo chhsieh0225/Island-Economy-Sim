@@ -185,3 +185,97 @@
   color: #c7d6ee;
   line-height: 1.35;
 }
+
+.dialogueBubble {
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px;
+  margin: 6px 0;
+  background: #0d1b32;
+  border: 1px solid #1e3350;
+  border-radius: 8px;
+}
+
+.moodEmoji {
+  font-size: 22px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  line-height: 1;
+}
+
+.dialogueContent {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.speech {
+  font-size: 12px;
+  color: #ccd6f6;
+  line-height: 1.5;
+}
+
+.thought {
+  font-size: 11px;
+  color: #6b7fa5;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .modal {
+    min-width: 0;
+    width: calc(100% - 24px);
+    max-width: 520px;
+    padding: 18px;
+    max-height: 85vh;
+  }
+
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .name {
+    font-size: 18px;
+  }
+
+  .closeBtn {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal {
+    width: calc(100% - 16px);
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .statValue {
+    font-size: 13px;
+  }
+
+  .name {
+    font-size: 16px;
+  }
+
+  .lifeEventList {
+    max-height: 130px;
+  }
+
+  .chartContainer {
+    height: 60px;
+  }
+}

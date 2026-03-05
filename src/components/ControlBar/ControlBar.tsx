@@ -1,4 +1,7 @@
-import type { AutoPlaySpeed } from '../../hooks/useGameEngine';
+import { memo } from 'react';
+import type { AutoPlaySpeed } from '../../stores/gameStore';
+import { useGameStore } from '../../stores/gameStore';
+import { useAudioStore } from '../../audio/audioManager';
 import styles from './ControlBar.module.css';
 
 interface Props {
@@ -12,7 +15,54 @@ interface Props {
   onEndGame: () => void;
 }
 
-export function ControlBar({
+function SaveLoadControls() {
+  const hasSavedGame = useGameStore(s => s.hasSavedGame);
+  const save = useGameStore(s => s.saveCurrentGame);
+  const load = useGameStore(s => s.loadSavedGame);
+
+  return (
+    <div className={styles.saveLoadGroup}>
+      <button className={styles.saveBtn} onClick={save} title="儲存 Save">
+        存
+      </button>
+      <button
+        className={styles.loadBtn}
+        onClick={load}
+        disabled={!hasSavedGame}
+        title="讀取 Load"
+      >
+        讀
+      </button>
+    </div>
+  );
+}
+
+function AudioControls() {
+  const muted = useAudioStore(s => s.muted);
+  const volume = useAudioStore(s => s.volume);
+  const toggleMute = useAudioStore(s => s.toggleMute);
+  const setVolume = useAudioStore(s => s.setVolume);
+
+  return (
+    <div className={styles.audioControls}>
+      <button className={styles.muteBtn} onClick={toggleMute} title={muted ? '取消靜音' : '靜音'}>
+        {muted ? '🔇' : volume > 0.5 ? '🔊' : '🔉'}
+      </button>
+      <input
+        type="range"
+        min="0"
+        max="1"
+        step="0.05"
+        value={muted ? 0 : volume}
+        onChange={e => setVolume(parseFloat(e.target.value))}
+        className={styles.volumeSlider}
+        title={`音量 ${Math.round(volume * 100)}%`}
+      />
+    </div>
+  );
+}
+
+export const ControlBar = memo(function ControlBar({
   autoPlaySpeed, isGameOver, hasPendingDecision,
   onAdvanceTurn, onStartAutoPlay, onStopAutoPlay, onReset, onEndGame,
 }: Props) {
@@ -69,6 +119,9 @@ export function ControlBar({
       <button className={styles.resetBtn} onClick={onReset}>
         重置
       </button>
+
+      <SaveLoadControls />
+      <AudioControls />
     </div>
   );
-}
+});

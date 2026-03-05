@@ -133,6 +133,68 @@
   font-weight: 600;
 }
 
+.saveLoadGroup {
+  display: flex;
+  gap: 4px;
+  margin-left: 4px;
+}
+
+.saveBtn,
+.loadBtn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.saveBtn {
+  background: rgba(100, 255, 218, 0.1);
+  color: #64ffda;
+  border: 1px solid rgba(100, 255, 218, 0.3);
+}
+.saveBtn:hover {
+  background: rgba(100, 255, 218, 0.2);
+}
+
+.loadBtn {
+  background: rgba(136, 146, 176, 0.1);
+  color: #8892b0;
+  border: 1px solid rgba(136, 146, 176, 0.3);
+}
+.loadBtn:hover:not(:disabled) {
+  background: rgba(136, 146, 176, 0.2);
+  color: #ccd6f6;
+}
+.loadBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.audioControls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.muteBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  line-height: 1;
+}
+
+.volumeSlider {
+  width: 60px;
+  height: 4px;
+  accent-color: #64ffda;
+  cursor: pointer;
+}
+
 @media (max-width: 768px) {
   .bar {
     padding: 12px;
@@ -162,5 +224,48 @@
     width: 100%;
     margin-left: 0;
     text-align: center;
+  }
+
+  .saveBtn,
+  .loadBtn {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+
+  .saveLoadGroup {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .audioControls {
+    width: 100%;
+    margin-left: 0;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .bar {
+    padding: 10px;
+    gap: 6px;
+  }
+
+  .nextTurnBtn,
+  .pauseBtn {
+    min-height: 44px;
+    font-size: 13px;
+    padding: 10px 10px;
+  }
+
+  .speedBtn {
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .endGameBtn,
+  .resetBtn {
+    min-height: 44px;
+    padding: 8px 12px;
   }
 }

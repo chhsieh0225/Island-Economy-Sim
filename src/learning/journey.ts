@@ -189,6 +189,98 @@ export function buildLearningJourney(state: GameState): LearningJourneyState {
       progressLabel: latest ? `Sat Δ ${latest.causalReplay.satisfaction.net.toFixed(2)}` : '--',
       done: q6Progress >= 1 || state.turn >= 8,
     },
+    // --- Advanced Quests ---
+    {
+      id: 'gini_target',
+      title: '壓低不平等 (Gini < 0.35)',
+      objective: '目標：Gini 係數 < 0.35 且 GDP 仍有成長',
+      why: '真正的治理藝術是在公平和效率之間找到平衡。',
+      action: '使用福利搭配適度稅率，同時維持生產補貼。',
+      progress: gini < 0.35 ? 1 : clamp01((0.5 - gini) / 0.15),
+      progressLabel: `Gini ${gini.toFixed(3)}`,
+      done: gini < 0.35 && state.economyStage !== 'agriculture',
+    },
+    {
+      id: 'survive_crisis',
+      title: '安然度過天災衝擊',
+      objective: '目標：遭遇天災後人口不低於 85',
+      why: '韌性比成長更重要——系統能否在衝擊下自我修復？',
+      action: '天災來襲時迅速補貼受衝擊產業，維持民心穩定。',
+      progress: hasRandomShock ? clamp01(state.agents.filter(a => a.alive).length / 85) : 0,
+      progressLabel: hasRandomShock ? `人口 ${state.agents.filter(a => a.alive).length}` : '等待天災',
+      done: hasRandomShock && state.agents.filter(a => a.alive).length >= 85,
+    },
+    {
+      id: 'service_economy',
+      title: '建立服務經濟 (服務業 > 40%)',
+      objective: '目標：服務業勞動力佔比 > 40%',
+      why: '高附加價值的服務經濟是已開發國家的典型結構。',
+      action: '穩定農業與工業後，讓市場自然引導勞動力轉移。',
+      progress: (() => {
+        const alive = state.agents.filter(a => a.alive);
+        const svcPct = alive.length > 0 ? alive.filter(a => a.sector === 'services').length / alive.length : 0;
+        return clamp01(svcPct / 0.4);
+      })(),
+      progressLabel: (() => {
+        const alive = state.agents.filter(a => a.alive);
+        const svcPct = alive.length > 0 ? alive.filter(a => a.sector === 'services').length / alive.length : 0;
+        return `${(svcPct * 100).toFixed(0)}%`;
+      })(),
+      done: (() => {
+        const alive = state.agents.filter(a => a.alive);
+        return alive.length > 0 && alive.filter(a => a.sector === 'services').length / alive.length > 0.4;
+      })(),
+    },
+    {
+      id: 'dependency_control',
+      title: '控制扶養比 (< 0.5) 20 回合',
+      objective: '目標：扶養比持續 < 0.5',
+      why: '人口結構是經濟的慢性根基，高扶養比會侵蝕成長動能。',
+      action: '維持穩定的民心以降低離島率，保持勞動力比例。',
+      progress: clamp01(dependency < 0.5 ? state.turn / 20 : 0),
+      progressLabel: `扶養比 ${dependency.toFixed(2)}`,
+      done: dependency < 0.5 && state.turn >= 20,
+    },
+    {
+      id: 'policy_experiment',
+      title: '完成一次控制實驗',
+      objective: '目標：在模擬實驗室比較不同政策的結果',
+      why: '科學精神的核心是對照實驗——用同一個種子碼跑不同政策路線。',
+      action: '在模擬實驗室用相同種子碼跑兩局，對比不同策略的結果。',
+      progress: clamp01(state.statistics.length > 0 ? 0.5 : 0),
+      progressLabel: `歷史紀錄`,
+      done: false, // Tracked externally by run history count
+    },
+    {
+      id: 'balanced_growth',
+      title: '平衡成長 (GDP↑ Gini↓ Sat↑)',
+      objective: '目標：連續 5 回合 GDP 成長、Gini 下降、滿意度上升',
+      why: '只有三指標同時改善，才算真正的可持續發展。',
+      action: '精細調控政策組合，避免過度傾斜任何單一目標。',
+      progress: (() => {
+        if (state.statistics.length < 6) return 0;
+        let streak = 0;
+        for (let i = state.statistics.length - 1; i >= 1 && streak < 5; i--) {
+          const cur = state.statistics[i];
+          const prv = state.statistics[i - 1];
+          if (cur.gdp > prv.gdp && cur.giniCoefficient < prv.giniCoefficient && cur.avgSatisfaction > prv.avgSatisfaction) {
+            streak++;
+          } else break;
+        }
+        return clamp01(streak / 5);
+      })(),
+      progressLabel: '需連續 5 回合',
+      done: (() => {
+        if (state.statistics.length < 6) return false;
+        for (let i = state.statistics.length - 1; i >= state.statistics.length - 5; i--) {
+          if (i < 1) return false;
+          const cur = state.statistics[i];
+          const prv = state.statistics[i - 1];
+          if (!(cur.gdp > prv.gdp && cur.giniCoefficient < prv.giniCoefficient && cur.avgSatisfaction > prv.avgSatisfaction)) return false;
+        }
+        return true;
+      })(),
+    },
   ];
 
   const knowledgeNodes: LearningKnowledgeNode[] = [
@@ -263,6 +355,88 @@ export function buildLearningJourney(state: GameState): LearningJourneyState {
       worldLink: '對照真實世界：可持續治理重點在「穩定預期」而不是短期衝高單一指標。',
       nextPrompt: '挑一個目標（成長/公平/穩定）並設計 5 回合政策路線圖。',
       unlocked: state.turn >= 18 && hasPolicyApplied && state.economyStage !== 'agriculture',
+    },
+    // --- Advanced Knowledge Nodes ---
+    {
+      id: 'monetary_transmission',
+      title: '貨幣政策傳導機制',
+      chain: '貨幣金融鏈',
+      concept: '利率變化經由儲蓄、借貸、消費逐層傳導，影響實體經濟需時數回合。',
+      gameSignal: `政策利率 ${(state.government.policyRate * 100).toFixed(1)}%，銀行存款總額 $${state.agents.filter(a => a.alive).reduce((s, a) => s + a.savings, 0).toFixed(0)}`,
+      worldLink: '對照真實世界：Fed 升息後約 6-18 個月才傳導至就業與通膨。',
+      nextPrompt: '調一次利率，追蹤 5 回合銀行存款與消費變化。',
+      unlocked: state.government.policyRate !== 0.02 || state.turn >= 15,
+    },
+    {
+      id: 'fiscal_sustainability',
+      title: '財政可持續性',
+      chain: '分配財政鏈',
+      concept: '稅收、支出、國庫餘額三者必須長期平衡，否則政策空間會萎縮。',
+      gameSignal: `國庫 $${treasury.toFixed(0)}，趨勢：${treasury > 500 ? '充裕' : treasury > 100 ? '可控' : '吃緊'}`,
+      worldLink: '對照真實世界：長期財政赤字會推高公債利息，排擠公共投資。',
+      nextPrompt: '嘗試在不增稅的前提下讓國庫連 10 回合正成長。',
+      unlocked: treasury < 50 || (state.turn >= 20 && hasPolicyApplied),
+    },
+    {
+      id: 'stagflation',
+      title: '停滯性通膨 Stagflation',
+      chain: '總體協調鏈',
+      concept: '經濟停滯加上物價上漲，政策左右為難——刺激加劇通膨，緊縮加劇衰退。',
+      gameSignal: (() => {
+        if (!latest || !prev) return '尚未觸發';
+        const gdpDown = latest.gdp < prev.gdp;
+        const priceUp = maxPriceSwing > 0.05;
+        return gdpDown && priceUp ? '可能正在經歷停滯性通膨！' : '目前未出現';
+      })(),
+      worldLink: '對照真實世界：1970s 石油危機後美國經歷典型停滯性通膨。',
+      nextPrompt: '如果出現此情境，嘗試用供給側政策（補貼特定產業）而非純需求刺激來應對。',
+      unlocked: (() => {
+        if (!latest || !prev) return false;
+        return (latest.gdp < prev.gdp && maxPriceSwing > 0.05) || state.turn >= 25;
+      })(),
+    },
+    {
+      id: 'dutch_disease',
+      title: '荷蘭病 Dutch Disease',
+      chain: '人口產業鏈',
+      concept: '某一產業過度繁榮會吸走其他產業的勞動力，造成經濟結構失衡。',
+      gameSignal: (() => {
+        const alive = state.agents.filter(a => a.alive);
+        if (alive.length === 0) return '--';
+        const maxSector = ['food', 'goods', 'services'].reduce((max, s) => {
+          const count = alive.filter(a => a.sector === s).length;
+          return count > max.count ? { sector: s, count } : max;
+        }, { sector: '', count: 0 });
+        const ratio = maxSector.count / alive.length;
+        return ratio > 0.6 ? `${maxSector.sector} 佔 ${(ratio * 100).toFixed(0)}%，結構偏斜！` : '產業分配尚可';
+      })(),
+      worldLink: '對照真實世界：荷蘭發現天然氣後製造業萎縮，委內瑞拉過度依賴石油。',
+      nextPrompt: '如果某產業佔比 > 60%，嘗試用補貼引導分散化。',
+      unlocked: (() => {
+        const alive = state.agents.filter(a => a.alive);
+        if (alive.length === 0) return false;
+        const maxRatio = Math.max(
+          alive.filter(a => a.sector === 'food').length,
+          alive.filter(a => a.sector === 'goods').length,
+          alive.filter(a => a.sector === 'services').length,
+        ) / alive.length;
+        return maxRatio > 0.55 || state.turn >= 20;
+      })(),
+    },
+    {
+      id: 'laffer_effect',
+      title: '拉弗曲線效應',
+      chain: '分配財政鏈',
+      concept: '稅率太高反而降低稅收——因為經濟萎縮、人口外流，稅基消失。',
+      gameSignal: `稅率 ${(taxRate * 100).toFixed(0)}%，國庫趨勢：${(() => {
+        if (state.statistics.length < 3) return '--';
+        const recent = state.statistics.slice(-3);
+        const taxTrend = recent[recent.length - 1].causalReplay.policy.taxCollected - recent[0].causalReplay.policy.taxCollected;
+        return taxTrend >= 0 ? '稅收上升' : '稅收下降';
+      })()}`,
+      worldLink: '對照真實世界：高稅率可能促使企業/人才外移至低稅地區。',
+      nextPrompt: '試著把稅率調到 30% 以上，觀察 5 回合稅收是增是減。',
+      unlocked: taxRate >= 0.25 || state.turn >= 22,
     },
   ];
 
@@ -407,41 +581,144 @@ export function buildLearningJourney(state: GameState): LearningJourneyState {
       } satisfies LearningCoachBrief;
     }
 
+    // Phase 5: intermediate — first 25 turns after passing phase 4
+    if (state.turn < 25) {
+      return {
+        phaseLabel: 'Phase 5｜系統治理與反事實',
+        phaseGoal: '從單點調參升級成可驗證的政策路線。',
+        diagnosis: '你已跨過新手期，建議改用「小步、可比較、可回顧」的實驗式治理。',
+        turnNarrative,
+        actions: [
+          {
+            id: 'one_knob',
+            title: '固定 5 回合只調 1 個政策旋鈕',
+            rationale: '維持可比較性，避免混合干擾。',
+            steps: [
+              '先選一個主目標（成長/公平/穩定）。',
+              '只動一個政策，觀察完整窗口。',
+            ],
+            expectedSignal: '因果回放會更乾淨，決策準確度大幅提升。',
+          },
+          {
+            id: 'counterfactual_note',
+            title: '每 5 回合記錄一次「若不做這步會怎樣」',
+            rationale: '建立反事實思維，才是真正的經濟治理能力。',
+            steps: [
+              '在心中設定對照組：維持原政策不變。',
+              '比較兩者對滿意度/GDP/Gini 的差異。',
+            ],
+            expectedSignal: '你會更快找到對當前局勢最有效的政策組合。',
+          },
+        ],
+        watchlist: [
+          'GDP、Gini、滿意度三指標是否同時可接受',
+          '政策時間線是否過度擁塞',
+          '隨機衝擊下系統恢復速度',
+        ],
+        pitfall: '常見錯誤：指標好轉就連續加碼，反而讓系統過熱後反噬。',
+        economicsLink: '這是在學總體政策協調與韌性治理，接近真實世界決策節奏。',
+        keywords: ['政策組合', '反事實', '韌性'],
+      } satisfies LearningCoachBrief;
+    }
+
+    // Phase 6: advanced macro — monetary + fiscal coordination
+    const hasUsedMonetary = state.government.policyRate !== 0.02 || state.government.liquiditySupportActive;
+    if (state.turn < 40 || !hasUsedMonetary) {
+      return {
+        phaseLabel: 'Phase 6｜進階總體經濟',
+        phaseGoal: '掌握貨幣與財政政策的協調，應對複合衝擊。',
+        diagnosis: (() => {
+          const parts: string[] = [];
+          if (!hasUsedMonetary) parts.push('尚未使用貨幣政策工具（利率/流動性支援）');
+          if (treasury < 200) parts.push(`國庫 $${treasury.toFixed(0)} 偏緊`);
+          if (gini > 0.38) parts.push(`Gini ${gini.toFixed(3)} 仍偏高`);
+          return parts.length > 0 ? parts.join('；') + '。' : '系統運行穩定，可嘗試更進階的政策組合。';
+        })(),
+        turnNarrative,
+        actions: [
+          {
+            id: 'monetary_experiment',
+            title: '用利率調節儲蓄與消費行為',
+            rationale: '貨幣政策透過利率影響借貸與消費意願，是總體穩定的第二支柱。',
+            steps: [
+              '把政策利率調高 0.5%，觀察 3 回合銀行存款變化。',
+              '再調回原位，比較消費與價格的反應速度。',
+            ],
+            expectedSignal: '升息後消費減緩、存款增加；降息後相反。注意傳導有 1-2 回合延遲。',
+          },
+          {
+            id: 'fiscal_monetary_mix',
+            title: '財政+貨幣雙管齊下',
+            rationale: '真實央行與財政部門需要協調——同方向強化效果，反方向則互相抵消。',
+            steps: [
+              '在經濟衰退時同時降息 + 增加補貼，觀察 GDP 與通膨。',
+              '在過熱時同時升息 + 減少補貼，觀察是否軟著陸。',
+            ],
+            expectedSignal: '雙管齊下效果更快但風險更高，需密切監控物價穩定。',
+          },
+        ],
+        watchlist: [
+          '利率調整後 1-3 回合的消費/存款變化',
+          '財政赤字是否在可控範圍（國庫不連續大幅下降）',
+          '通膨與就業的同步走勢（Phillips 曲線效應）',
+        ],
+        pitfall: '常見錯誤：貨幣寬鬆+財政擴張同時全開，短期繁榮但很快過熱崩盤。',
+        economicsLink: '這是在學 IS-LM 模型的直覺：財政移 IS、貨幣移 LM，要看哪條先碰壁。',
+        keywords: ['貨幣政策', '利率傳導', 'IS-LM', '政策協調'],
+      } satisfies LearningCoachBrief;
+    }
+
+    // Phase 7: system mastery — long-run structural governance
     return {
-      phaseLabel: 'Phase 5｜系統治理與反事實',
-      phaseGoal: '從單點調參升級成可驗證的政策路線。',
-      diagnosis: '你已跨過新手期，建議改用「小步、可比較、可回顧」的實驗式治理。',
+      phaseLabel: 'Phase 7｜系統大師',
+      phaseGoal: '從政策操作者升級為制度設計者，追求長期可持續發展。',
+      diagnosis: (() => {
+        const alive = state.agents.filter(a => a.alive).length;
+        const gdpPerCap = latest ? latest.gdp / Math.max(1, alive) : 0;
+        return `人口 ${alive}，人均 GDP $${gdpPerCap.toFixed(0)}，Gini ${gini.toFixed(3)}。你已掌握基本工具，現在挑戰長期韌性。`;
+      })(),
       turnNarrative,
       actions: [
         {
-          id: 'one_knob',
-          title: '固定 5 回合只調 1 個政策旋鈕',
-          rationale: '維持可比較性，避免混合干擾。',
+          id: 'structural_design',
+          title: '設計 20 回合永續治理路線',
+          rationale: '從回合制反應升級成前瞻規劃，預判衝擊而非被動應對。',
           steps: [
-            '先選一個主目標（成長/公平/穩定）。',
-            '只動一個政策，觀察完整窗口。',
+            '設定明確目標：GDP 年增率、Gini 上限、人口下限。',
+            '規劃各階段的政策組合與切換時機。',
+            '遇到衝擊時微調而非全盤推翻。',
           ],
-          expectedSignal: '因果回放會更乾淨，決策準確度大幅提升。',
+          expectedSignal: '20 回合後三大指標（GDP/Gini/滿意度）波動幅度明顯縮小。',
         },
         {
-          id: 'counterfactual_note',
-          title: '每 5 回合記錄一次「若不做這步會怎樣」',
-          rationale: '建立反事實思維，才是真正的經濟治理能力。',
+          id: 'anti_fragile',
+          title: '測試系統反脆弱性',
+          rationale: '好的制度不是避免衝擊，而是讓衝擊反而強化系統。',
           steps: [
-            '在心中設定對照組：維持原政策不變。',
-            '比較兩者對滿意度/GDP/Gini 的差異。',
+            '故意在穩定期降低補貼，測試經濟自主恢復能力。',
+            '遭遇天災後觀察恢復速度，比較有/無預備金的差異。',
           ],
-          expectedSignal: '你會更快找到對當前局勢最有效的政策組合。',
+          expectedSignal: '系統能在 3-5 回合內自行回穩，不需要持續高強度干預。',
+        },
+        {
+          id: 'comparative_systems',
+          title: '比較不同治理路線',
+          rationale: '制度差異是各國經濟表現分化的根本原因。',
+          steps: [
+            '用模擬實驗室分別測試：高稅高福利 vs 低稅低干預。',
+            '記錄各路線 30 回合的 GDP、Gini、人口曲線。',
+          ],
+          expectedSignal: '你會發現沒有「最優制度」，只有「最適當下」的制度選擇。',
         },
       ],
       watchlist: [
-        'GDP、Gini、滿意度三指標是否同時可接受',
-        '政策時間線是否過度擁塞',
-        '隨機衝擊下系統恢復速度',
+        '長期趨勢線（20 回合滑動平均）是否穩定向好',
+        '衝擊後恢復速度是否越來越快',
+        '政策干預頻率是否減少（制度自動穩定器發揮作用）',
       ],
-      pitfall: '常見錯誤：指標好轉就連續加碼，反而讓系統過熱後反噬。',
-      economicsLink: '這是在學總體政策協調與韌性治理，接近真實世界決策節奏。',
-      keywords: ['政策組合', '反事實', '韌性'],
+      pitfall: '常見錯誤：追求完美均衡——真實經濟永遠在動態調整中，接受適度波動是成熟治理的標誌。',
+      economicsLink: '這是在學制度經濟學與長期發展理論：制度 > 政策 > 個別決策。',
+      keywords: ['制度設計', '反脆弱', '長期發展', '比較制度'],
     } satisfies LearningCoachBrief;
   })();
 

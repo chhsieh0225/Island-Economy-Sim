@@ -6,8 +6,6 @@ import type {
   SectorType,
   AgentState,
   Gender,
-  SellOrder,
-  BuyOrder,
 } from '../types';
 import { SECTORS } from '../types';
 import {
@@ -17,6 +15,11 @@ import {
 } from './economicCalibration';
 import type { Market } from './Market';
 import type { RNG } from './RNG';
+import type { AgentContext, GoalWeights } from './agent/agentContext';
+import { computeProductionOutput, computeSellOrder } from './agent/productionStrategy';
+import { computeBuyOrders, computeConsumption, computeCashReserveTarget } from './agent/demandStrategy';
+import { chooseGoalType, evaluateJobSwitch } from './agent/decisionStrategy';
+import { computeHouseholdBanking } from './agent/bankingStrategy';
 
 export interface AgentOptions {
   age?: number;
@@ -27,39 +30,6 @@ export interface AgentOptions {
   familyId?: number;
   goalType?: AgentGoalType;
   getEconomicCalibration?: () => EconomicCalibrationProfile;
-}
-
-interface GoalWeights {
-  survival: number;
-  wealth: number;
-  happiness: number;
-  stability: number;
-}
-
-function chooseGoalType(ageTurns: number, rng: RNG): AgentGoalType {
-  // Age-biased aspiration distribution keeps the simulation diverse but plausible.
-  const r = rng.next();
-  const isYouth = ageTurns <= CONFIG.AGE_GROUP_MAX_AGE.youth;
-  const isSenior = ageTurns > CONFIG.AGE_GROUP_MAX_AGE.adult;
-
-  if (isSenior) {
-    if (r < 0.45) return 'survival';
-    if (r < 0.75) return 'happiness';
-    if (r < 0.9) return 'balanced';
-    return 'wealth';
-  }
-
-  if (isYouth) {
-    if (r < 0.35) return 'wealth';
-    if (r < 0.65) return 'happiness';
-    if (r < 0.85) return 'balanced';
-    return 'survival';
-  }
-
-  if (r < 0.28) return 'wealth';
-  if (r < 0.50) return 'survival';
-  if (r < 0.72) return 'happiness';
-  return 'balanced';
 }
 
 export class Agent {
@@ -123,7 +93,7 @@ export class Agent {
     this.gender = options?.gender ?? (rng.next() < 0.5 ? 'M' : 'F');
     this.age = options?.age ?? rng.nextInt(CONFIG.MIN_STARTING_AGE, CONFIG.MAX_STARTING_AGE);
     const rawMaxAge = options?.maxAge ?? rng.nextInt(CONFIG.MIN_LIFESPAN, CONFIG.MAX_LIFESPAN);
-    this.maxAge = Math.max(rawMaxAge, this.age + 120); // at least 10 years remaining
+    this.maxAge = Math.max(rawMaxAge, this.age + 120);
     this.goalType = options?.goalType ?? chooseGoalType(this.age, rng);
     this.intelligence = options?.intelligence ?? Math.max(
       CONFIG.INTELLIGENCE_MIN,
@@ -135,10 +105,10 @@ export class Agent {
     this.productivity = baseProductivity * (1 + (this.intelligence / CONFIG.INTELLIGENCE_MEAN - 1) * CONFIG.INTELLIGENCE_PRODUCTIVITY_WEIGHT);
   }
 
+  // --- Read-only computed properties ---
+
   get effectiveProductivity(): number {
-    if (this.turnsInSector < 2) {
-      return this.productivity * CONFIG.JOB_SWITCH_PRODUCTIVITY_PENALTY;
-    }
+    if (this.turnsInSector < 2) return this.productivity * CONFIG.JOB_SWITCH_PRODUCTIVITY_PENALTY;
     return this.productivity;
   }
 
@@ -176,106 +146,68 @@ export class Agent {
   }
 
   get decisionNoiseAmplitude(): number {
-    // Higher IQ reduces evaluation noise and random mistakes.
     const reduction = 0.08 + this.intelligenceDecisionFactor * 0.84;
     return Math.max(0.04, CONFIG.INTELLIGENCE_DECISION_NOISE_BASE * (1 - reduction));
   }
 
-  private getNeedForSector(sector: SectorType, demandMultiplier: number = 1): number {
-    const base = CONFIG.CONSUMPTION[sector];
-    const ageMult = CONFIG.CONSUMPTION_AGE_MULTIPLIERS[this.ageGroup][sector];
-    return base * ageMult * demandMultiplier;
+  get isOld(): boolean { return this.age >= this.maxAge; }
+  get isDead(): boolean { return this.health <= CONFIG.DEATH_HEALTH_THRESHOLD; }
+
+  get shouldLeave(): boolean {
+    return this.satisfaction <= CONFIG.LEAVE_SATISFACTION_THRESHOLD && this.turnsInSector > 5;
   }
 
-  private getTargetBufferTurns(sector: SectorType): number {
-    const weights = this.goalWeights;
-    let turns =
-      CONFIG.GOAL_BUFFER_BASE_TURNS +
-      weights.survival * CONFIG.GOAL_BUFFER_SURVIVAL_WEIGHT +
-      weights.happiness * CONFIG.GOAL_BUFFER_HAPPINESS_WEIGHT +
-      this.intelligenceDecisionFactor * CONFIG.GOAL_BUFFER_IQ_WEIGHT;
+  get leaveProbability(): number {
+    const satGap = Math.max(0, CONFIG.LEAVE_SATISFACTION_THRESHOLD - this.satisfaction);
+    const satStress = Math.min(1, satGap / Math.max(1, CONFIG.LEAVE_SATISFACTION_THRESHOLD));
+    const tenureStress = Math.min(1, Math.max(0, (this.turnsInSector - 5) / 8));
+    const incomeStress = Math.min(1, this.lowIncomeTurns / 8);
+    const healthStress = this.health < 35 ? (35 - this.health) / 35 : 0;
 
-    if (sector === 'food') turns += 0.45 * weights.survival;
-    if (sector === 'services') turns += 0.35 * weights.happiness;
-    if (this.health < 45) turns += 0.6;
+    const p = CONFIG.LEAVE_BASE_PROBABILITY
+      + satStress * 0.26
+      + tenureStress * 0.08
+      + incomeStress * 0.05
+      + healthStress * 0.04;
 
-    return Math.max(1, Math.min(4.2, turns));
+    return Math.max(0, Math.min(CONFIG.LEAVE_MAX_PROBABILITY, p));
   }
 
-  private getCashReserveTarget(): number {
-    const weights = this.goalWeights;
-    return (
-      CONFIG.GOAL_EMERGENCY_CASH +
-      weights.survival * CONFIG.GOAL_RESERVE_SURVIVAL_WEIGHT +
-      weights.wealth * CONFIG.GOAL_RESERVE_WEALTH_WEIGHT
-    );
-  }
+  get outputThisTurn(): number { return this._outputThisTurn; }
 
-  private withdrawFromSavings(amount: number): number {
-    const withdrawal = Math.max(0, Math.min(this.savings, amount));
-    if (withdrawal <= 0) return 0;
-    this.savings -= withdrawal;
-    this.money += withdrawal;
-    return withdrawal;
-  }
+  // --- Context builder ---
 
-  private getSectorPriority(sector: SectorType): number {
-    const weights = this.goalWeights;
-    const healthPressure = this.health < 50 ? 0.45 : 0;
-    const satPressure = this.satisfaction < 45 ? 0.35 : 0;
-
-    switch (sector) {
-      case 'food':
-        return 1 + weights.survival * 1.0 + healthPressure;
-      case 'goods':
-        return 0.85 + weights.wealth * 0.7;
-      case 'services':
-        return 0.8 + weights.happiness * 0.95 + satPressure;
-    }
-  }
-
-  private getMarshallianBudgetShares(
-    demandModifiers?: Partial<Record<SectorType, number>>,
-    allowedSectors: SectorType[] = SECTORS,
-  ): Record<SectorType, number> {
-    const allowed = new Set<SectorType>(allowedSectors.length > 0 ? allowedSectors : SECTORS);
-    const calibration = this.getEconomicCalibration();
-    const raw: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
-    for (const sector of SECTORS) {
-      if (!allowed.has(sector)) {
-        raw[sector] = 0;
-        continue;
-      }
-      const priority = this.getSectorPriority(sector);
-      const demandWeight = Math.max(calibration.lesMinDemandWeight, demandModifiers?.[sector] ?? 1);
-      raw[sector] = Math.max(0.05, priority * demandWeight);
-    }
-
-    const sum = raw.food + raw.goods + raw.services;
-    if (sum <= 0) return { food: 1 / 3, goods: 1 / 3, services: 1 / 3 };
-
+  private buildContext(): AgentContext {
     return {
-      food: raw.food / sum,
-      goods: raw.goods / sum,
-      services: raw.services / sum,
+      sector: this.sector,
+      money: this.money,
+      savings: this.savings,
+      inventory: { ...this.inventory },
+      health: this.health,
+      satisfaction: this.satisfaction,
+      effectiveProductivity: this.effectiveProductivity,
+      productivity: this.productivity,
+      alive: this.alive,
+      lowIncomeTurns: this.lowIncomeTurns,
+      turnsInSector: this.turnsInSector,
+      age: this.age,
+      ageGroup: this.ageGroup,
+      goalType: this.goalType,
+      intelligence: this.intelligence,
+      totalSwitches: this.totalSwitches,
+      switchHistory: [...this.switchHistory],
+      desperation: this.desperation,
+      luckFactor: this.luckFactor,
+      incomeThisTurn: this._incomeThisTurn,
+      spentThisTurn: this._spentThisTurn,
+      intelligenceDecisionFactor: this.intelligenceDecisionFactor,
+      decisionNoiseAmplitude: this.decisionNoiseAmplitude,
+      goalWeights: this.goalWeights,
+      calibration: this.getEconomicCalibration(),
     };
   }
 
-  private getSectorHappinessValue(sector: SectorType): number {
-    switch (sector) {
-      case 'food': return 0.58;
-      case 'goods': return 0.7;
-      case 'services': return 1.0;
-    }
-  }
-
-  private getSectorSurvivalValue(sector: SectorType): number {
-    switch (sector) {
-      case 'food': return 1.0;
-      case 'goods': return 0.52;
-      case 'services': return 0.6;
-    }
-  }
+  // --- Delegating methods ---
 
   rollTurnLuck(rng: RNG): void {
     this._outputThisTurn = 0;
@@ -283,29 +215,17 @@ export class Agent {
   }
 
   produce(subsidyMultiplier: number, publicWorksBoost: number, laborScale: number = 1): void {
-    const baseOutput = CONFIG.BASE_PRODUCTIVITY[this.sector];
-    const output = baseOutput
-      * this.effectiveProductivity
-      * subsidyMultiplier
-      * (1 + publicWorksBoost)
-      * this.luckFactor
-      * laborScale;
-    this._outputThisTurn += Math.max(0, output);
-    this.inventory[this.sector] += Math.max(0, output);
+    const output = computeProductionOutput(
+      this.sector, this.effectiveProductivity, subsidyMultiplier, publicWorksBoost, this.luckFactor, laborScale,
+    );
+    this._outputThisTurn += output;
+    this.inventory[this.sector] += output;
   }
 
   postSellOrders(market: Market): void {
-    const sector = this.sector;
-    const available = this.inventory[sector];
-    if (available <= 0) return;
-
-    const keepQty = this.getNeedForSector(sector) * this.getTargetBufferTurns(sector);
-    const sellQty = Math.max(0, available - keepQty);
-    if (sellQty <= 0) return;
-
-    const minPrice = market.getPrice(sector) * (CONFIG.SELL_PRICE_DISCOUNT + this.goalWeights.wealth * 0.05);
-    const order: SellOrder = { agentId: this.id, sector, quantity: sellQty, minPrice };
-    market.addSellOrder(order);
+    const ctx = this.buildContext();
+    const order = computeSellOrder(ctx, this.id, market.getPrice(this.sector));
+    if (order) market.addSellOrder(order);
   }
 
   postBuyOrders(
@@ -315,68 +235,23 @@ export class Agent {
   ): void {
     this._incomeThisTurn = 0;
     this._spentThisTurn = 0;
-    const allowed = allowedSectors.length > 0 ? allowedSectors : SECTORS;
-    const allowedSet = new Set<SectorType>(allowed);
 
-    const reserve = this.getCashReserveTarget();
+    const reserve = computeCashReserveTarget(this.buildContext());
     if (this.money < reserve && this.savings > 0) {
-      this.withdrawFromSavings(reserve - this.money);
+      const withdrawal = Math.max(0, Math.min(this.savings, reserve - this.money));
+      this.savings -= withdrawal;
+      this.money += withdrawal;
     }
-    let budgetPool = Math.max(0, this.money - reserve);
-    if (budgetPool <= 0.01) return;
 
-    const calibration = this.getEconomicCalibration();
-    const budgetShares = this.getMarshallianBudgetShares(demandModifiers, allowed);
-    const requiredNow: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
-    const targetGap: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
+    const ctx = this.buildContext();
     const marketPrices: Record<SectorType, number> = { food: 0, goods: 0, services: 0 };
-
     for (const sector of SECTORS) {
       marketPrices[sector] = market.getPrice(sector);
-      if (!allowedSet.has(sector)) {
-        requiredNow[sector] = 0;
-        targetGap[sector] = 0;
-        continue;
-      }
-      const demandMult = demandModifiers?.[sector] ?? 1;
-      const need = this.getNeedForSector(sector, demandMult);
-      const targetStock = need * this.getTargetBufferTurns(sector);
-      requiredNow[sector] = Math.max(0, need * calibration.lesSubsistenceMultiplier - this.inventory[sector]);
-      targetGap[sector] = Math.max(0, targetStock - this.inventory[sector]);
     }
 
-    const subsistenceCost = allowed.reduce(
-      (sum, sector) => sum + requiredNow[sector] * Math.max(0.01, marketPrices[sector]),
-      0,
-    );
-    const supernumeraryBudget = Math.max(0, budgetPool - subsistenceCost);
-
-    const candidateSectors = [...allowed].sort((a, b) => this.getSectorPriority(b) - this.getSectorPriority(a));
-    for (const sector of candidateSectors) {
-      const maxDesired = targetGap[sector];
-      if (maxDesired <= 0.01) continue;
-
-      const price = Math.max(0.01, marketPrices[sector]);
-      // Stone-Geary / LES demand: q_i = b_i + alpha_i * (m - p*b) / p_i
-      const desiredQty = requiredNow[sector] + budgetShares[sector] * (supernumeraryBudget / price);
-      let quantity = Math.min(maxDesired, desiredQty);
-
-      if (quantity <= 0.01) continue;
-
-      const priority = this.getSectorPriority(sector);
-      const premiumMultiplier =
-        CONFIG.BUY_PRICE_PREMIUM +
-        this.desperation * (CONFIG.MAX_DESPERATION_PREMIUM - CONFIG.BUY_PRICE_PREMIUM) +
-        (priority - 1) * 0.22;
-      const maxPrice = price * Math.max(1.02, premiumMultiplier);
-      const affordableQty = budgetPool / Math.max(0.01, maxPrice);
-      quantity = Math.min(quantity, affordableQty);
-
-      if (quantity > 0.01) {
-        const order: BuyOrder = { agentId: this.id, sector, quantity, maxPrice };
-        market.addBuyOrder(order);
-        budgetPool = Math.max(0, budgetPool - quantity * maxPrice);
-      }
+    const orders = computeBuyOrders(ctx, this.id, marketPrices, demandModifiers, allowedSectors);
+    for (const order of orders) {
+      market.addBuyOrder(order);
     }
   }
 
@@ -402,39 +277,25 @@ export class Agent {
     demandMultipliers?: Partial<Record<SectorType, number>>,
     allowedSectors: SectorType[] = SECTORS,
   ): { unmetNeeds: SectorType[]; healthDelta: number; satisfactionDelta: number } {
-    const unmetNeeds: SectorType[] = [];
-    const prevHealth = this.health;
-    const prevSatisfaction = this.satisfaction;
-    const allowed = new Set<SectorType>(allowedSectors.length > 0 ? allowedSectors : SECTORS);
+    const ctx = this.buildContext();
+    const result = computeConsumption(ctx, demandMultipliers, allowedSectors);
 
     for (const sector of SECTORS) {
-      if (!allowed.has(sector)) continue;
-      const required = this.getNeedForSector(sector, demandMultipliers?.[sector] ?? 1);
-      if (this.inventory[sector] >= required) {
-        this.inventory[sector] -= required;
-      } else {
-        this.inventory[sector] = 0;
-        unmetNeeds.push(sector);
+      if (result.inventoryConsumed[sector] > 0) {
+        if (ctx.inventory[sector] >= result.inventoryConsumed[sector]) {
+          this.inventory[sector] -= result.inventoryConsumed[sector];
+        } else {
+          this.inventory[sector] = 0;
+        }
       }
     }
 
-    if (unmetNeeds.length === 0) {
-      this.health = Math.min(100, this.health + CONFIG.HEALTH_RECOVERY_ALL_MET);
-      this.satisfaction = Math.min(100, this.satisfaction + CONFIG.SATISFACTION_RECOVERY_ALL_MET);
-    } else if (unmetNeeds.length < 3) {
-      this.health = Math.min(100, this.health + CONFIG.HEALTH_RECOVERY_PARTIAL - CONFIG.HEALTH_DECAY_PER_UNMET_NEED * unmetNeeds.length);
-      this.satisfaction -= CONFIG.SATISFACTION_DECAY_PER_UNMET_NEED * unmetNeeds.length;
-    } else {
-      this.health -= CONFIG.HEALTH_DECAY_PER_UNMET_NEED * unmetNeeds.length;
-      this.satisfaction -= CONFIG.SATISFACTION_DECAY_PER_UNMET_NEED * unmetNeeds.length;
-    }
-
-    this.health = Math.max(0, Math.min(100, this.health));
-    this.satisfaction = Math.max(0, Math.min(100, this.satisfaction));
+    this.health = result.newHealth;
+    this.satisfaction = result.newSatisfaction;
     return {
-      unmetNeeds,
-      healthDelta: this.health - prevHealth,
-      satisfactionDelta: this.satisfaction - prevSatisfaction,
+      unmetNeeds: result.unmetNeeds,
+      healthDelta: result.healthDelta,
+      satisfactionDelta: result.satisfactionDelta,
     };
   }
 
@@ -446,113 +307,16 @@ export class Agent {
     }
   }
 
-  private estimateSectorUtility(
-    sector: SectorType,
-    marketPrices: Record<SectorType, number>,
-    maxIncomePotential: number,
-  ): number {
-    const weights = this.goalWeights;
-    const incomePotential = marketPrices[sector] * CONFIG.BASE_PRODUCTIVITY[sector] * this.effectiveProductivity;
-    const incomeScore = incomePotential / Math.max(0.01, maxIncomePotential);
-
-    const survivalScore = this.getSectorSurvivalValue(sector);
-    const happinessScore = this.getSectorHappinessValue(sector);
-    const price = marketPrices[sector];
-    const marketMean = (marketPrices.food + marketPrices.goods + marketPrices.services) / 3;
-    const stabilityScore = Math.max(0, 1 - Math.abs(price - marketMean) / Math.max(1, marketMean * 1.8));
-
-    return (
-      weights.wealth * incomeScore +
-      weights.survival * survivalScore +
-      weights.happiness * happinessScore +
-      weights.stability * stabilityScore
-    );
-  }
-
   evaluateJob(
     marketPrices: Record<SectorType, number>,
     rng: RNG,
     allowedSectors: SectorType[] = SECTORS,
   ): SectorType | null {
-    const allowed = allowedSectors.length > 0 ? allowedSectors : SECTORS;
-    const isAllowed = (sector: SectorType) => allowed.includes(sector);
-    const mustLeaveCurrent = !isAllowed(this.sector);
-
     this.turnsInSector++;
-    if (this.turnsInSector < 4 && !mustLeaveCurrent) return null;
-
-    // Early exit: can't afford to switch and not yet underperforming
-    if (!mustLeaveCurrent && this.money < CONFIG.JOB_SWITCH_COST && this.lowIncomeTurns === 0) return null;
-
-    const maxIncomePotential = Math.max(
-      ...allowed.map(s => marketPrices[s] * CONFIG.BASE_PRODUCTIVITY[s] * this.effectiveProductivity),
-      0.01,
-    );
-
-    let bestSector: SectorType = allowed[0] ?? this.sector;
-    let bestEstimatedUtility = Number.NEGATIVE_INFINITY;
-    let bestBaseUtility = Number.NEGATIVE_INFINITY;
-    const currentBaseUtility = isAllowed(this.sector)
-      ? this.estimateSectorUtility(this.sector, marketPrices, maxIncomePotential)
-      : Number.NEGATIVE_INFINITY;
-
-    for (const sector of allowed) {
-      const baseUtility = this.estimateSectorUtility(sector, marketPrices, maxIncomePotential);
-
-      const noise = (rng.next() * 2 - 1) * this.decisionNoiseAmplitude;
-      const estimated = baseUtility + noise;
-      if (estimated > bestEstimatedUtility) {
-        bestEstimatedUtility = estimated;
-        bestBaseUtility = baseUtility;
-        bestSector = sector;
-      }
-    }
-
-    if (mustLeaveCurrent) {
-      if (this.money >= CONFIG.JOB_SWITCH_COST) {
-        return bestSector;
-      }
-      this.lowIncomeTurns = Math.min(this.lowIncomeTurns + 1, 999);
-      return null;
-    }
-
-    const currentUtility = currentBaseUtility + this.goalWeights.stability * 0.06;
-    if (bestSector === this.sector) {
-      this.lowIncomeTurns = Math.max(0, this.lowIncomeTurns - 1);
-      return null;
-    }
-
-    const utilityGain = bestBaseUtility - currentUtility;
-    const baseMargin =
-      CONFIG.INTELLIGENCE_SWITCH_MARGIN_BASE +
-      (1 - this.intelligenceDecisionFactor) * 0.16 +
-      this.totalSwitches * 0.02 -
-      this.goalWeights.wealth * 0.03;
-    const requiredMargin = Math.max(0.02, baseMargin);
-
-    if (utilityGain > requiredMargin) {
-      this.lowIncomeTurns++;
-    } else {
-      this.lowIncomeTurns = Math.max(0, this.lowIncomeTurns - 1);
-    }
-
-    // Hysteresis: returning to a previously-held sector requires extra patience
-    const returningToOld = this.switchHistory.includes(bestSector);
-    const returnPenalty = returningToOld ? CONFIG.JOB_SWITCH_RETURN_PENALTY : 0;
-    const thresholdReduction = Math.round(this.intelligenceDecisionFactor * CONFIG.INTELLIGENCE_SWITCH_THRESHOLD_BONUS);
-    // Fatigue: each past switch makes future switches harder, IQ offsets part of it.
-    const effectiveThreshold = Math.max(
-      2,
-      CONFIG.JOB_SWITCH_THRESHOLD_TURNS + returnPenalty + this.totalSwitches - thresholdReduction,
-    );
-
-    if (
-      this.lowIncomeTurns >= effectiveThreshold &&
-      this.money >= CONFIG.JOB_SWITCH_COST
-    ) {
-      return bestSector;
-    }
-    return null;
+    const ctx = this.buildContext();
+    const result = evaluateJobSwitch(ctx, marketPrices, rng, allowedSectors);
+    this.lowIncomeTurns = result.newLowIncomeTurns;
+    return result.switchTo;
   }
 
   switchJob(newSector: SectorType): void {
@@ -582,38 +346,27 @@ export class Agent {
 
   runHouseholdBanking(policyRateAnnual: number = CONFIG.MONETARY_POLICY_RATE_DEFAULT): number {
     const prevSatisfaction = this.satisfaction;
+    const ctx = this.buildContext();
+    const result = computeHouseholdBanking(ctx, policyRateAnnual);
 
-    const reserve = this.getCashReserveTarget();
-    const withdrawFloor = reserve * CONFIG.BANK_WITHDRAW_TRIGGER_RATIO;
-    if (this.money < withdrawFloor && this.savings > 0) {
-      this.withdrawFromSavings(withdrawFloor - this.money);
+    if (result.withdrawal > 0) {
+      this.savings -= result.withdrawal;
+      this.money += result.withdrawal;
+    }
+    if (result.deposit > 0) {
+      this.money -= result.deposit;
+      this.savings += result.deposit;
+    }
+    if (result.interest > 0) {
+      this.savings += result.interest;
+      this.money += result.interest;
+      this._incomeThisTurn += result.interest;
     }
 
-    const excessCash = Math.max(0, this.money - reserve);
-    if (excessCash > 0.01) {
-      const deposit = excessCash * CONFIG.BANK_DEPOSIT_RATE;
-      this.money -= deposit;
-      this.savings += deposit;
-    }
+    this.lastNetIncome = this._incomeThisTurn - this._spentThisTurn;
 
-    if (this.savings > 0.01) {
-      const policyPassThrough = Math.max(0, policyRateAnnual / 12) + CONFIG.BANK_INTEREST_SPREAD_PER_TURN;
-      const effectiveRate = Math.max(CONFIG.BANK_INTEREST_RATE_PER_TURN, policyPassThrough);
-      const interest = this.savings * effectiveRate;
-      this.savings += interest;
-      this.money += interest;
-      this._incomeThisTurn += interest;
-    }
-
-    const netIncome = this._incomeThisTurn - this._spentThisTurn;
-    this.lastNetIncome = netIncome;
-
-    const incomeGain = Math.max(0, Math.min(1, netIncome / CONFIG.BANK_SAT_INCOME_NORMALIZER));
-    const securityGoal = Math.max(1, reserve * 2);
-    const securityGain = Math.max(0, Math.min(1, this.savings / securityGoal));
-    const satBoost = incomeGain * CONFIG.BANK_SAT_INCOME_MAX + securityGain * CONFIG.BANK_SAT_SECURITY_MAX;
-    if (satBoost > 0) {
-      this.satisfaction = Math.min(100, this.satisfaction + satBoost);
+    if (result.satisfactionDelta > 0) {
+      this.satisfaction = Math.min(100, this.satisfaction + result.satisfactionDelta);
     }
 
     return this.satisfaction - prevSatisfaction;
@@ -643,38 +396,6 @@ export class Agent {
     if (this.lifeEvents.length > 40) {
       this.lifeEvents.shift();
     }
-  }
-
-  get isOld(): boolean {
-    return this.age >= this.maxAge;
-  }
-
-  get isDead(): boolean {
-    return this.health <= CONFIG.DEATH_HEALTH_THRESHOLD;
-  }
-
-  get shouldLeave(): boolean {
-    return this.satisfaction <= CONFIG.LEAVE_SATISFACTION_THRESHOLD && this.turnsInSector > 5;
-  }
-
-  get leaveProbability(): number {
-    const satGap = Math.max(0, CONFIG.LEAVE_SATISFACTION_THRESHOLD - this.satisfaction);
-    const satStress = Math.min(1, satGap / Math.max(1, CONFIG.LEAVE_SATISFACTION_THRESHOLD));
-    const tenureStress = Math.min(1, Math.max(0, (this.turnsInSector - 5) / 8));
-    const incomeStress = Math.min(1, this.lowIncomeTurns / 8);
-    const healthStress = this.health < 35 ? (35 - this.health) / 35 : 0;
-
-    const p = CONFIG.LEAVE_BASE_PROBABILITY
-      + satStress * 0.26
-      + tenureStress * 0.08
-      + incomeStress * 0.05
-      + healthStress * 0.04;
-
-    return Math.max(0, Math.min(CONFIG.LEAVE_MAX_PROBABILITY, p));
-  }
-
-  get outputThisTurn(): number {
-    return this._outputThisTurn;
   }
 
   toState(): AgentState {

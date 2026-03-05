@@ -26,6 +26,22 @@
   color: #8892b0;
 }
 
+.localeToggle {
+  background: rgba(100, 255, 218, 0.08);
+  border: 1px solid rgba(100, 255, 218, 0.25);
+  color: #64ffda;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.localeToggle:hover {
+  background: rgba(100, 255, 218, 0.16);
+  border-color: rgba(100, 255, 218, 0.45);
+}
+
 .content {
   padding: 16px clamp(12px, 3vw, 24px);
   max-width: 1440px;

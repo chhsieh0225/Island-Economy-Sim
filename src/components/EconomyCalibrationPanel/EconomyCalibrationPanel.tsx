@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import {
   ECONOMIC_CALIBRATION_REFERENCES,
   getEconomicCalibrationProfile,
@@ -16,7 +16,7 @@ function fmt(value: number, digits: number = 2): string {
   return value.toFixed(digits);
 }
 
-export function EconomyCalibrationPanel({ mode, onChangeMode }: Props) {
+export const EconomyCalibrationPanel = memo(function EconomyCalibrationPanel({ mode, onChangeMode }: Props) {
   const [expanded, setExpanded] = useState(false);
   const current = getEconomicCalibrationProfile(mode);
   const profiles = getEconomicCalibrationProfiles();
@@ -100,4 +100,4 @@ export function EconomyCalibrationPanel({ mode, onChangeMode }: Props) {
       )}
     </div>
   );
-}
+});

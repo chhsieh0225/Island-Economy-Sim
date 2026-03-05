@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { CONFIG } from '../../config';
 import type {
   ActiveRandomEvent,
@@ -176,7 +176,7 @@ function computeForecast(
   };
 }
 
-export function PolicyPanel({
+export const PolicyPanel = memo(function PolicyPanel({
   turn,
   government,
   statistics,
@@ -587,4 +587,4 @@ export function PolicyPanel({
       )}
     </div>
   );
-}
+});

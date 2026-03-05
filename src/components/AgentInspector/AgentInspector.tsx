@@ -1,5 +1,6 @@
 import { LineChart, Line, ResponsiveContainer, YAxis } from 'recharts';
 import type { AgentState, SectorType } from '../../types';
+import { buildAgentDialogue } from '../../data/agentDialogue';
 import styles from './AgentInspector.module.css';
 
 interface Props {
@@ -52,9 +53,20 @@ export function AgentInspector({ agent, onClose }: Props) {
     : agent.causeOfDeath === 'left' ? '已離開小島'
     : '此人已離開或死亡';
 
+  const dialogue = buildAgentDialogue({
+    sector: agent.sector,
+    goalType: agent.goalType,
+    age: agent.age,
+    money: agent.money,
+    health: agent.health,
+    satisfaction: agent.satisfaction,
+    alive: agent.alive,
+    savings: agent.savings,
+  });
+
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={e => e.stopPropagation()}>
+      <div className={styles.modal} role="dialog" aria-modal="true" aria-label={agent.name} onClick={e => e.stopPropagation()}>
         <div className={styles.header}>
           <div>
             <span className={styles.genderIcon}>{genderIcon}</span>
@@ -64,6 +76,14 @@ export function AgentInspector({ agent, onClose }: Props) {
             </span>
           </div>
           <button className={styles.closeBtn} onClick={onClose}>✕</button>
+        </div>
+
+        <div className={styles.dialogueBubble}>
+          <span className={styles.moodEmoji}>{dialogue.moodEmoji}</span>
+          <div className={styles.dialogueContent}>
+            <div className={styles.speech}>「{dialogue.speech}」</div>
+            <div className={styles.thought}>{dialogue.thought}</div>
+          </div>
         </div>
 
         <div className={styles.lifeBar}>

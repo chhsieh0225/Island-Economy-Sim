@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { describe, it, expect } from 'vitest';
 
 import { CONFIG } from '../../src/config';
 import { GameEngine } from '../../src/engine/GameEngine';
@@ -28,78 +27,80 @@ function totalBirthsAndDeaths(engine: GameEngine): { births: number; deaths: num
   );
 }
 
-test('baseline seed regression snapshot remains deterministic at turn 18', () => {
-  const engine = new GameEngine(20260311, 'baseline');
-  advanceToTurn(engine, 18);
+describe('deterministicRegression', () => {
+  it('baseline seed regression snapshot remains deterministic at turn 18', () => {
+    const engine = new GameEngine(20260311, 'baseline');
+    advanceToTurn(engine, 18);
 
-  const state = engine.getState();
-  const latest = state.statistics[state.statistics.length - 1];
-  const totals = totalBirthsAndDeaths(engine);
+    const state = engine.getState();
+    const latest = state.statistics[state.statistics.length - 1];
+    const totals = totalBirthsAndDeaths(engine);
 
-  const signature = [
-    state.turn,
-    state.economyStage,
-    latest.population,
-    latest.avgSatisfaction.toFixed(1),
-    latest.avgHealth.toFixed(1),
-    latest.giniCoefficient.toFixed(3),
-    latest.government.treasury.toFixed(2),
-    totals.births,
-    totals.deaths,
-  ].join('|');
+    const signature = [
+      state.turn,
+      state.economyStage,
+      latest.population,
+      latest.avgSatisfaction.toFixed(1),
+      latest.avgHealth.toFixed(1),
+      latest.giniCoefficient.toFixed(3),
+      latest.government.treasury.toFixed(2),
+      totals.births,
+      totals.deaths,
+    ].join('|');
 
-  assert.equal(signature, '18|industrial|101|97.0|98.9|0.044|34.56|1|0');
-});
+    expect(signature).toBe('18|industrial|101|91.4|96.8|0.037|2.47|1|0');
+  });
 
-test('progressive economy unlocks industrial stage under baseline seed', () => {
-  const engine = new GameEngine(20260311, 'baseline');
-  advanceToTurn(engine, 20);
-  assert.equal(engine.economyStage === 'industrial' || engine.economyStage === 'service', true);
-});
+  it('progressive economy unlocks industrial stage under baseline seed', () => {
+    const engine = new GameEngine(20260311, 'baseline');
+    advanceToTurn(engine, 20);
+    expect(engine.economyStage === 'industrial' || engine.economyStage === 'service').toBe(true);
+  });
 
-test('policy replay cashflow is internally consistent', () => {
-  const engine = new GameEngine(20260311, 'baseline');
-  advanceToTurn(engine, 24);
+  it('policy replay cashflow is internally consistent', () => {
+    const engine = new GameEngine(20260311, 'baseline');
+    advanceToTurn(engine, 24);
 
-  const history = engine.statistics.history;
-  assert.equal(history.length >= 24, true);
+    const history = engine.statistics.history;
+    expect(history.length >= 24).toBe(true);
 
-  for (const snap of history) {
-    const replay = snap.causalReplay.policy;
-    const expectedTreasuryDelta = replay.taxCollected
-      - replay.welfarePaid
-      - replay.publicWorksCost
-      - replay.liquidityInjected;
-    assert.equal(Math.abs(replay.treasuryDelta - expectedTreasuryDelta) < 0.02, true);
-  }
-});
+    for (const snap of history) {
+      const replay = snap.causalReplay.policy;
+      const expectedTreasuryDelta = replay.taxCollected
+        - replay.welfarePaid
+        - replay.publicWorksCost
+        - replay.liquidityInjected;
+      expect(Math.abs(replay.treasuryDelta - expectedTreasuryDelta) < 0.02).toBe(true);
+    }
+  });
 
-test('stage need multipliers ramp gradually after unlock', () => {
-  const engine = new GameEngine(20260311, 'baseline');
-  const internals = engine as unknown as {
-    turn: number;
-    economyStage: EconomyStage;
-    stageTransitionFrom: EconomyStage | null;
-    stageTransitionStartTurn: number | null;
-    getCurrentNeedMultipliers: () => Record<SectorType, number>;
-  };
+  it('stage need multipliers ramp gradually after unlock', () => {
+    const engine = new GameEngine(20260311, 'baseline');
+    const internals = engine as unknown as {
+      turn: number;
+      economyStage: EconomyStage;
+      stageTransitionFrom: EconomyStage | null;
+      stageTransitionStartTurn: number | null;
+      getCurrentNeedMultipliers: () => Record<SectorType, number>;
+    };
 
-  internals.turn = 30;
-  internals.economyStage = 'industrial';
-  internals.stageTransitionFrom = 'agriculture';
-  internals.stageTransitionStartTurn = 31;
+    internals.turn = 30;
+    internals.economyStage = 'industrial';
+    internals.stageTransitionFrom = 'agriculture';
+    internals.stageTransitionStartTurn = 31;
 
-  const start = internals.getCurrentNeedMultipliers();
-  assert.equal(Math.abs(start.goods - CONFIG.STAGE_NEED_MULTIPLIERS.agriculture.goods) < 1e-9, true);
-  assert.equal(Math.abs(start.services - CONFIG.STAGE_NEED_MULTIPLIERS.agriculture.services) < 1e-9, true);
+    const start = internals.getCurrentNeedMultipliers();
+    expect(Math.abs(start.goods - CONFIG.STAGE_NEED_MULTIPLIERS.agriculture.goods) < 1e-9).toBe(true);
+    expect(Math.abs(start.services - CONFIG.STAGE_NEED_MULTIPLIERS.agriculture.services) < 1e-9).toBe(true);
 
-  internals.turn = 31 + Math.floor(CONFIG.STAGE_TRANSITION_RAMP_TURNS.industrial / 2);
-  const mid = internals.getCurrentNeedMultipliers();
-  assert.equal(mid.goods > start.goods && mid.goods < CONFIG.STAGE_NEED_MULTIPLIERS.industrial.goods, true);
-  assert.equal(mid.services > start.services && mid.services < CONFIG.STAGE_NEED_MULTIPLIERS.industrial.services, true);
+    internals.turn = 31 + Math.floor(CONFIG.STAGE_TRANSITION_RAMP_TURNS.industrial / 2);
+    const mid = internals.getCurrentNeedMultipliers();
+    expect(mid.goods > start.goods && mid.goods < CONFIG.STAGE_NEED_MULTIPLIERS.industrial.goods).toBe(true);
+    expect(mid.services > start.services && mid.services < CONFIG.STAGE_NEED_MULTIPLIERS.industrial.services).toBe(true);
 
-  internals.turn = 31 + CONFIG.STAGE_TRANSITION_RAMP_TURNS.industrial;
-  const end = internals.getCurrentNeedMultipliers();
-  assert.equal(Math.abs(end.goods - CONFIG.STAGE_NEED_MULTIPLIERS.industrial.goods) < 1e-9, true);
-  assert.equal(Math.abs(end.services - CONFIG.STAGE_NEED_MULTIPLIERS.industrial.services) < 1e-9, true);
+    internals.turn = 31 + CONFIG.STAGE_TRANSITION_RAMP_TURNS.industrial;
+    const end = internals.getCurrentNeedMultipliers();
+    expect(Math.abs(end.goods - CONFIG.STAGE_NEED_MULTIPLIERS.industrial.goods) < 1e-9).toBe(true);
+    expect(Math.abs(end.services - CONFIG.STAGE_NEED_MULTIPLIERS.industrial.services) < 1e-9).toBe(true);
+  });
 });

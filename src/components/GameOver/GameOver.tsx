@@ -42,7 +42,7 @@ export function GameOver({ gameOver, onRestart }: Props) {
 
   return (
     <div className={styles.overlay}>
-      <div className={styles.modal}>
+      <div className={styles.modal} role="dialog" aria-modal="true">
         <h2 className={`${styles.title} ${isVictory ? styles.victory : ''}`}>
           {REASON_LABELS[reason] ?? reason}
         </h2>

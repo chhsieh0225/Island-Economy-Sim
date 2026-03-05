@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { describe, it, expect } from 'vitest';
 
 import type { PolicyTimelineEntry, TurnSnapshot } from '../../src/types';
 import { buildPolicyExperimentCards } from '../../src/engine/modules/policyExperimentModule';
@@ -76,47 +75,49 @@ function timelineEntry(overrides?: Partial<PolicyTimelineEntry>): PolicyTimeline
   };
 }
 
-test('policy experiment module: returns complete card after full observation window', () => {
-  const history: TurnSnapshot[] = [
-    snapshot(4, { avgSatisfaction: 55, gdp: 1000, population: 100, government: { ...snapshot(0).government, treasury: 100 } }),
-    snapshot(5, { avgSatisfaction: 57, gdp: 1070, population: 101, government: { ...snapshot(0).government, treasury: 106 } }),
-    snapshot(6, { avgSatisfaction: 60, gdp: 1140, population: 102, government: { ...snapshot(0).government, treasury: 112 } }),
-    snapshot(7, { avgSatisfaction: 62, gdp: 1200, population: 103, government: { ...snapshot(0).government, treasury: 118 } }),
-  ];
-  const cards = buildPolicyExperimentCards([timelineEntry()], history, { observationTurns: 3 });
+describe('policyExperimentModule', () => {
+  it('returns complete card after full observation window', () => {
+    const history: TurnSnapshot[] = [
+      snapshot(4, { avgSatisfaction: 55, gdp: 1000, population: 100, government: { ...snapshot(0).government, treasury: 100 } }),
+      snapshot(5, { avgSatisfaction: 57, gdp: 1070, population: 101, government: { ...snapshot(0).government, treasury: 106 } }),
+      snapshot(6, { avgSatisfaction: 60, gdp: 1140, population: 102, government: { ...snapshot(0).government, treasury: 112 } }),
+      snapshot(7, { avgSatisfaction: 62, gdp: 1200, population: 103, government: { ...snapshot(0).government, treasury: 118 } }),
+    ];
+    const cards = buildPolicyExperimentCards([timelineEntry()], history, { observationTurns: 3 });
 
-  assert.equal(cards.length, 1);
-  assert.equal(cards[0].status, 'complete');
-  assert.equal(cards[0].observedTurn, 7);
-  assert.notEqual(cards[0].metrics, null);
-  if (!cards[0].metrics) return;
-  assert.equal(cards[0].metrics.satisfactionDelta, 7);
-  assert.equal(cards[0].metrics.treasuryDelta, 18);
-  assert.equal(cards[0].metrics.gdpDeltaPercent, 20);
-  assert.equal(cards[0].metrics.populationDelta, 3);
-});
+    expect(cards.length).toBe(1);
+    expect(cards[0].status).toBe('complete');
+    expect(cards[0].observedTurn).toBe(7);
+    expect(cards[0].metrics).not.toBeNull();
+    if (!cards[0].metrics) return;
+    expect(cards[0].metrics.satisfactionDelta).toBe(7);
+    expect(cards[0].metrics.treasuryDelta).toBe(18);
+    expect(cards[0].metrics.gdpDeltaPercent).toBe(20);
+    expect(cards[0].metrics.populationDelta).toBe(3);
+  });
 
-test('policy experiment module: pending policy stays pending before apply turn', () => {
-  const history: TurnSnapshot[] = [snapshot(3), snapshot(4)];
-  const cards = buildPolicyExperimentCards(
-    [timelineEntry({ status: 'pending', requestedTurn: 4, applyTurn: 5 })],
-    history,
-    { observationTurns: 3 },
-  );
+  it('pending policy stays pending before apply turn', () => {
+    const history: TurnSnapshot[] = [snapshot(3), snapshot(4)];
+    const cards = buildPolicyExperimentCards(
+      [timelineEntry({ status: 'pending', requestedTurn: 4, applyTurn: 5 })],
+      history,
+      { observationTurns: 3 },
+    );
 
-  assert.equal(cards[0].status, 'pending');
-  assert.equal(cards[0].metrics, null);
-});
+    expect(cards[0].status).toBe('pending');
+    expect(cards[0].metrics).toBeNull();
+  });
 
-test('policy experiment module: applied policy is collecting when window not complete', () => {
-  const history: TurnSnapshot[] = [
-    snapshot(4, { avgSatisfaction: 55, gdp: 1000, government: { ...snapshot(0).government, treasury: 100 } }),
-    snapshot(5, { avgSatisfaction: 58, gdp: 1070, government: { ...snapshot(0).government, treasury: 106 } }),
-    snapshot(6, { avgSatisfaction: 59, gdp: 1100, government: { ...snapshot(0).government, treasury: 110 } }),
-  ];
-  const cards = buildPolicyExperimentCards([timelineEntry()], history, { observationTurns: 3 });
+  it('applied policy is collecting when window not complete', () => {
+    const history: TurnSnapshot[] = [
+      snapshot(4, { avgSatisfaction: 55, gdp: 1000, government: { ...snapshot(0).government, treasury: 100 } }),
+      snapshot(5, { avgSatisfaction: 58, gdp: 1070, government: { ...snapshot(0).government, treasury: 106 } }),
+      snapshot(6, { avgSatisfaction: 59, gdp: 1100, government: { ...snapshot(0).government, treasury: 110 } }),
+    ];
+    const cards = buildPolicyExperimentCards([timelineEntry()], history, { observationTurns: 3 });
 
-  assert.equal(cards[0].status, 'collecting');
-  assert.equal(cards[0].observedTurn, 6);
-  assert.notEqual(cards[0].metrics, null);
+    expect(cards[0].status).toBe('collecting');
+    expect(cards[0].observedTurn).toBe(6);
+    expect(cards[0].metrics).not.toBeNull();
+  });
 });

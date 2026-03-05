@@ -377,6 +377,16 @@ export interface RunSummary {
   score: number;
 }
 
+export type InfrastructureType = 'well' | 'workshop' | 'clinic' | 'school' | 'port';
+
+export interface Infrastructure {
+  id: string;
+  type: InfrastructureType;
+  builtTurn: number;
+  /** Turns remaining until operational (0 = active) */
+  buildTurnsLeft: number;
+}
+
 export interface GameState {
   turn: number;
   agents: AgentState[];
@@ -391,6 +401,7 @@ export interface GameState {
   pendingDecision: PendingDecision | null;
   pendingPolicies: PendingPolicyChange[];
   policyTimeline: PolicyTimelineEntry[];
+  infrastructure: Infrastructure[];
   rngState: number;
   seed: number;
   scenarioId: ScenarioId;

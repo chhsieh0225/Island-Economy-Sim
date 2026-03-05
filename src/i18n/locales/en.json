@@ -117,5 +117,12 @@
   "tutorial.next": "Next Lesson",
   "tutorial.complete": "Lesson Complete",
   "tutorial.exit": "Exit Tutorial",
-  "tutorial.backToMenu": "Back to Menu"
+  "tutorial.backToMenu": "Back to Menu",
+
+  "turnSummary.births": "Births",
+  "turnSummary.deaths": "Deaths",
+  "turnSummary.events": "Events",
+  "turnSummary.noEvents": "No special events this turn",
+  "turnSummary.expand": "Expand",
+  "turnSummary.collapse": "Collapse"
 }

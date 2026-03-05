@@ -44,6 +44,7 @@
 
 .content {
   padding: 16px clamp(12px, 3vw, 24px);
+  padding-bottom: 130px; /* space for sticky bottom bar */
   max-width: 1440px;
   margin: 0 auto;
 }

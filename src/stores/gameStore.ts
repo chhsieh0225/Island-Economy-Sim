@@ -20,6 +20,7 @@ import type { EconomicCalibrationProfileId } from '../engine/economicCalibration
 import { playSound } from '../audio/audioManager';
 import { checkNarrativeTriggers, type NarrativeContext } from '../data/narrative';
 import { useUiStore } from './uiStore';
+import { useTurnDiffStore } from './turnDiffStore';
 
 export type AutoPlaySpeed = 'slow' | 'medium' | 'fast' | null;
 
@@ -195,11 +196,13 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   hasSavedGame: hasSave(),
 
   advanceTurn: () => {
+    useTurnDiffStore.getState().captureBefore(get().gameState);
     engine.advanceTurn();
     const milestones = engine.newMilestones;
     useNotificationStore.getState().pushMilestoneToasts(milestones);
     if (milestones.length > 0) playSound('milestone');
     const gameState = syncState(get().gameState);
+    useTurnDiffStore.getState().captureAfter(gameState, false);
     set({ gameState });
     playSound('turn_advance');
     checkAndShowNarrative(gameState);
@@ -289,6 +292,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     firedNarrativeIds = new Set<string>();
     clearTileCache();
     initLearningTracking(engine.getState());
+    useTurnDiffStore.getState().clear();
     set({ gameState: syncState() });
   },
 
@@ -299,9 +303,11 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     set({ autoPlaySpeed: speed });
     const ms = CONFIG.AUTO_PLAY_SPEEDS[speed];
     autoPlayInterval = window.setInterval(() => {
+      useTurnDiffStore.getState().captureBefore(get().gameState);
       engine.advanceTurn();
       useNotificationStore.getState().pushMilestoneToasts(engine.newMilestones);
       const gameState = syncState(get().gameState);
+      useTurnDiffStore.getState().captureAfter(gameState, true);
       set({ gameState });
       checkAndShowNarrative(gameState);
       autoSaveIfNeeded();

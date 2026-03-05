@@ -117,5 +117,12 @@
   "tutorial.next": "下一課",
   "tutorial.complete": "課程完成",
   "tutorial.exit": "離開教學",
-  "tutorial.backToMenu": "回主選單"
+  "tutorial.backToMenu": "回主選單",
+
+  "turnSummary.births": "出生",
+  "turnSummary.deaths": "死亡",
+  "turnSummary.events": "事件",
+  "turnSummary.noEvents": "本回合無特殊事件",
+  "turnSummary.expand": "展開",
+  "turnSummary.collapse": "收合"
 }

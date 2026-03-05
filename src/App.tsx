@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useState, useEffect } from 'react';
+import { lazy, Suspense, useCallback, useState, useEffect, useRef } from 'react';
 import { useGameStore } from './stores/gameStore';
 import { useUiStore } from './stores/uiStore';
 import { useNotificationStore } from './stores/notificationStore';
@@ -19,6 +19,7 @@ import { MapFeaturePanel } from './components/MapFeaturePanel/MapFeaturePanel';
 import { SandboxPanel } from './components/SandboxPanel/SandboxPanel';
 import { InfrastructurePanel } from './components/InfrastructurePanel/InfrastructurePanel';
 import { CompetitionPanel } from './components/CompetitionPanel/CompetitionPanel';
+import { StickyControlBar } from './components/StickyControlBar/StickyControlBar';
 import { StartScreen } from './components/StartScreen/StartScreen';
 import { TutorialPanel } from './components/TutorialPanel/TutorialPanel';
 import { TutorialModal } from './components/TutorialModal/TutorialModal';
@@ -128,6 +129,20 @@ function App() {
   const { locale, setLocale, t } = useI18n();
 
   const [sandboxEnabled, setSandboxEnabled] = useState(false);
+
+  // ─── IntersectionObserver: track whether inline ControlBar is visible ──
+  const inlineControlBarRef = useRef<HTMLDivElement>(null);
+  const [inlineBarVisible, setInlineBarVisible] = useState(true);
+  useEffect(() => {
+    const el = inlineControlBarRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setInlineBarVisible(entry.isIntersecting),
+      { threshold: 0.3 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [appMode]);
 
   // ─── Tutorial objective checking ─────────────────────────────────────
   useEffect(() => {
@@ -275,18 +290,22 @@ function App() {
       </div>
 
       <div className={styles.content}>
-        <Dashboard state={gameState} />
+        <div id="dashboard-anchor">
+          <Dashboard state={gameState} />
+        </div>
 
-        <ControlBar
-          autoPlaySpeed={autoPlaySpeed}
-          isGameOver={isTutorial ? false : gameState.gameOver !== null}
-          hasPendingDecision={isTutorial ? false : gameState.pendingDecision !== null}
-          onAdvanceTurn={advanceTurn}
-          onStartAutoPlay={startAutoPlay}
-          onStopAutoPlay={stopAutoPlay}
-          onReset={reset}
-          onEndGame={endGame}
-        />
+        <div ref={inlineControlBarRef}>
+          <ControlBar
+            autoPlaySpeed={autoPlaySpeed}
+            isGameOver={isTutorial ? false : gameState.gameOver !== null}
+            hasPendingDecision={isTutorial ? false : gameState.pendingDecision !== null}
+            onAdvanceTurn={advanceTurn}
+            onStartAutoPlay={startAutoPlay}
+            onStopAutoPlay={stopAutoPlay}
+            onReset={reset}
+            onEndGame={endGame}
+          />
+        </div>
 
         <IslandMap
           agents={gameState.agents}
@@ -486,6 +505,19 @@ function App() {
           </div>
         </div>
       </div>
+
+      <StickyControlBar
+        gameState={gameState}
+        autoPlaySpeed={autoPlaySpeed}
+        isGameOver={isTutorial ? false : gameState.gameOver !== null}
+        hasPendingDecision={isTutorial ? false : gameState.pendingDecision !== null}
+        onAdvanceTurn={advanceTurn}
+        onStartAutoPlay={startAutoPlay}
+        onStopAutoPlay={stopAutoPlay}
+        onReset={reset}
+        onEndGame={endGame}
+        inlineControlBarVisible={inlineBarVisible}
+      />
 
       {selectedAgent && (
         <ErrorBoundary fallbackLabel="居民面板發生錯誤">

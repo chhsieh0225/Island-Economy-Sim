@@ -21,7 +21,7 @@ import { playSound } from '../audio/audioManager';
 import { checkNarrativeTriggers, type NarrativeContext } from '../data/narrative';
 import { useUiStore } from './uiStore';
 import { useTurnDiffStore } from './turnDiffStore';
-import { useStreakStore } from './streakStore';
+import { useStreakStore, type StreakMilestone } from './streakStore';
 
 export type AutoPlaySpeed = 'slow' | 'medium' | 'fast' | null;
 
@@ -140,6 +140,33 @@ function checkAndShowNarrative(state: GameState): void {
   }
 }
 
+function pushStreakMilestoneToast(milestone: StreakMilestone): void {
+  const isPositive = milestone.type === 'positive';
+  const emoji = isPositive ? '🔥' : '❄️';
+  const label = isPositive ? '成長連勝' : '衰退連跌';
+  const title = `${emoji} ${milestone.count} 回合${label}！`;
+  const messages: Record<number, [string, string]> = {
+    3:  ['經濟穩健成長中，持續保持！', '連續衰退中，考慮調整政策。'],
+    5:  ['小島欣欣向榮，施政有方！', '經濟持續惡化，需要果斷介入。'],
+    10: ['十連勝！你是天才島主 🏝️', '十連跌⋯島民怨聲載道。'],
+    15: ['勢不可擋！經濟奇蹟！✨', '長期低迷，考慮大幅改革。'],
+    20: ['傳奇島主！二十連勝！🎖️', '二十連跌⋯這座島還有救嗎？'],
+    30: ['史詩級治理！三十連勝！👑', '三十連跌⋯歷史的教訓。'],
+    50: ['不可思議！五十連勝！🌟', '五十連跌⋯令人心碎。'],
+  };
+  const [posMsg, negMsg] = messages[milestone.count] ?? ['持續穩定！', '持續低迷。'];
+  const message = isPositive ? posMsg : negMsg;
+
+  useNotificationStore.getState().pushMilestoneToasts([{
+    id: `streak-${milestone.type}-${milestone.count}`,
+    turn: engine.turn,
+    kind: 'wealth',
+    title,
+    description: message,
+  }]);
+  playSound(isPositive ? 'milestone' : 'event_critical');
+}
+
 function logPolicy(action: PolicyAction): void {
   policyLog.push({ turn: engine.turn, action });
 }
@@ -207,7 +234,10 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const turnDiffState = useTurnDiffStore.getState();
     turnDiffState.captureAfter(gameState, false);
     const currentDiff = turnDiffState.currentDiff;
-    if (currentDiff) useStreakStore.getState().recordTurnDeltas(currentDiff.deltas);
+    if (currentDiff) {
+      const milestone = useStreakStore.getState().recordTurnDeltas(currentDiff.deltas);
+      if (milestone) pushStreakMilestoneToast(milestone);
+    }
     set({ gameState });
     playSound('turn_advance');
     checkAndShowNarrative(gameState);
@@ -316,7 +346,10 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       const autoTurnDiffState = useTurnDiffStore.getState();
       autoTurnDiffState.captureAfter(gameState, true);
       const autoDiff = autoTurnDiffState.currentDiff;
-      if (autoDiff) useStreakStore.getState().recordTurnDeltas(autoDiff.deltas);
+      if (autoDiff) {
+        const milestone = useStreakStore.getState().recordTurnDeltas(autoDiff.deltas);
+        if (milestone) pushStreakMilestoneToast(milestone);
+      }
       set({ gameState });
       checkAndShowNarrative(gameState);
       autoSaveIfNeeded();

@@ -141,4 +141,48 @@ describe('streakStore', () => {
     useStreakStore.getState().recordTurnDeltas(makeDelta({ gdp: 0, population: 0, avgSatisfaction: 0 }));
     expect(useStreakStore.getState().type).toBe('positive');
   });
+
+  // ── Milestone return value tests ──
+
+  it('returns null when count does not hit a threshold', () => {
+    const result = useStreakStore.getState().recordTurnDeltas(POSITIVE_DELTA);
+    expect(result).toBeNull(); // count=1, not a threshold
+  });
+
+  it('returns milestone at count=3', () => {
+    const { recordTurnDeltas } = useStreakStore.getState();
+    recordTurnDeltas(POSITIVE_DELTA); // 1
+    recordTurnDeltas(POSITIVE_DELTA); // 2
+    const m = recordTurnDeltas(POSITIVE_DELTA); // 3
+    expect(m).toEqual({ type: 'positive', count: 3 });
+  });
+
+  it('returns milestone at count=5', () => {
+    const { recordTurnDeltas } = useStreakStore.getState();
+    for (let i = 0; i < 4; i++) recordTurnDeltas(POSITIVE_DELTA);
+    const m = recordTurnDeltas(POSITIVE_DELTA); // 5
+    expect(m).toEqual({ type: 'positive', count: 5 });
+  });
+
+  it('returns milestone for negative streak at count=3', () => {
+    const { recordTurnDeltas } = useStreakStore.getState();
+    recordTurnDeltas(NEGATIVE_DELTA);
+    recordTurnDeltas(NEGATIVE_DELTA);
+    const m = recordTurnDeltas(NEGATIVE_DELTA);
+    expect(m).toEqual({ type: 'negative', count: 3 });
+  });
+
+  it('returns null on mixed turn', () => {
+    const result = useStreakStore.getState().recordTurnDeltas(MIXED_DELTA);
+    expect(result).toBeNull();
+  });
+
+  it('returns null at non-threshold counts (e.g. 4)', () => {
+    const { recordTurnDeltas } = useStreakStore.getState();
+    recordTurnDeltas(POSITIVE_DELTA); // 1
+    recordTurnDeltas(POSITIVE_DELTA); // 2
+    recordTurnDeltas(POSITIVE_DELTA); // 3 → milestone
+    const m = recordTurnDeltas(POSITIVE_DELTA); // 4 → not a threshold
+    expect(m).toBeNull();
+  });
 });

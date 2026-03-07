@@ -239,6 +239,9 @@ export class GameEngine {
     for (const agent of pipeline.endAliveAgents) {
       agent.recordIncome();
     }
+    const govSpending = pipeline.governmentSummary.welfareSpent
+      + pipeline.governmentSummary.publicWorksSpent
+      + pipeline.governmentSummary.liquidityInjected;
     const snapshot = this.statistics.recordTurn(
       this.turn,
       this.agents,
@@ -246,6 +249,8 @@ export class GameEngine {
       this.government,
       pipeline.demographics,
       causalReplay,
+      govSpending,
+      pipeline.consumptionSummary.selfConsumptionValue,
     );
     this.phaseMilestones();
 
@@ -356,6 +361,7 @@ export class GameEngine {
     return runConsumptionPhase(
       agents,
       this.activeRandomEvents,
+      this.market.prices,
       demandMultipliers,
       this.getUnlockedSectors(),
     );
@@ -683,7 +689,7 @@ export class GameEngine {
 
   private queuePolicy(change: {
     type: PendingPolicyType;
-    value: number | boolean;
+    value: number | boolean | string;
     sector?: SectorType;
     summary: string;
     sideEffects: string[];
@@ -765,6 +771,19 @@ export class GameEngine {
       services: '服務業',
     };
     return labels[sector];
+  }
+
+  setTaxMode(mode: 'flat' | 'progressive'): void {
+    const existing = this.pendingPolicies.find(p => p.type === 'taxMode');
+    if (existing && existing.value === mode) return;
+    if (!existing && this.government.taxMode === mode) return;
+
+    this.queuePolicy({
+      type: 'taxMode',
+      value: mode,
+      summary: `稅制切換為${mode === 'progressive' ? '累進稅' : '統一稅'}`,
+      sideEffects: getPolicySideEffectsModule('taxMode', mode),
+    });
   }
 
   setTaxRate(rate: number): void {

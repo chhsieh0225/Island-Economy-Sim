@@ -174,6 +174,7 @@ export class Agent {
   }
 
   get outputThisTurn(): number { return this._outputThisTurn; }
+  get incomeThisTurn(): number { return this._incomeThisTurn; }
 
   // --- Context builder ---
 

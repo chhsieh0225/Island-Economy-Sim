@@ -1,31 +1,19 @@
 .container {
   position: relative;
   background: #062a4a;
-  border-radius: 8px;
   overflow: hidden;
-  margin-bottom: 16px;
   contain: layout paint;
+  width: 100%;
+  height: 100%;
 }
 
 .canvas {
   display: block;
   width: 100%;
-  height: clamp(260px, 44vw, 420px);
+  height: 100%;
   cursor: default;
   transform: translateZ(0);
   backface-visibility: hidden;
-}
-
-.title {
-  position: absolute;
-  top: 8px;
-  left: 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(204, 214, 246, 0.5);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  pointer-events: none;
 }
 
 .perfDebug {
@@ -41,39 +29,4 @@
   line-height: 1.25;
   pointer-events: none;
   font-variant-numeric: tabular-nums;
-}
-
-@media (max-width: 980px) {
-  .canvas {
-    height: min(54vw, 420px);
-    min-height: 260px;
-  }
-}
-
-@media (max-width: 640px) {
-  .canvas {
-    height: min(66vw, 340px);
-    min-height: 220px;
-  }
-
-  .title {
-    top: 6px;
-    left: 8px;
-    font-size: 11px;
-    letter-spacing: 0.35px;
-  }
-}
-
-@media (max-width: 480px) {
-  .canvas {
-    height: min(75vw, 300px);
-    min-height: 200px;
-  }
-
-  .perfDebug {
-    font-size: 9px;
-    padding: 4px 6px;
-    right: 6px;
-    bottom: 6px;
-  }
 }

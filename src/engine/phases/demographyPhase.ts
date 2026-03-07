@@ -112,8 +112,23 @@ export function runLifeDeathPhase({
 
   const capacityFactor = Math.max(0, 1 - aliveCount / CONFIG.BIRTH_CAPACITY_FACTOR);
   const reproRatio = reproductiveAdults.length / Math.max(1, aliveCount);
+
+  // Economic fertility modifier: satisfaction influences birth willingness
+  // sat >= neutral → up to MAX_MULT; sat << neutral → down to MIN_MULT
+  const avgSat = aliveCount > 0
+    ? aliveAgents.reduce((s, a) => s + a.satisfaction, 0) / aliveCount
+    : CONFIG.BIRTH_SATISFACTION_NEUTRAL;
+  const satDelta = avgSat - CONFIG.BIRTH_SATISFACTION_NEUTRAL;
+  const satRange = satDelta >= 0
+    ? (100 - CONFIG.BIRTH_SATISFACTION_NEUTRAL)
+    : CONFIG.BIRTH_SATISFACTION_NEUTRAL;
+  const satNorm = satRange > 0 ? satDelta / satRange : 0; // −1 … +1
+  const satMult = satNorm >= 0
+    ? 1 + satNorm * (CONFIG.BIRTH_SATISFACTION_MAX_MULT - 1)
+    : 1 + satNorm * (1 - CONFIG.BIRTH_SATISFACTION_MIN_MULT);
+
   const birthProb = Math.min(1, Math.max(0,
-    CONFIG.BIRTH_BASE_PROBABILITY * reproRatio * capacityFactor
+    CONFIG.BIRTH_BASE_PROBABILITY * reproRatio * capacityFactor * satMult
   ));
 
   let births = 0;

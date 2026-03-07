@@ -108,6 +108,12 @@ export const CONFIG = {
   // Demographics
   BIRTH_BASE_PROBABILITY: 0.08,
   BIRTH_CAPACITY_FACTOR: 200,
+  /** Average satisfaction that gives a 1× fertility multiplier; below → penalty, above → bonus */
+  BIRTH_SATISFACTION_NEUTRAL: 50,
+  /** Max fertility multiplier from high satisfaction (e.g. 1.3 = +30%) */
+  BIRTH_SATISFACTION_MAX_MULT: 1.3,
+  /** Min fertility multiplier from very low satisfaction (e.g. 0.4 = −60%) */
+  BIRTH_SATISFACTION_MIN_MULT: 0.4,
   BIRTH_MIN_REPRO_AGE: 216,  // 18 years — minimum reproductive age
   BIRTH_MAX_REPRO_AGE: 528,  // 44 years — maximum reproductive age
   BIRTH_MAX_PER_TURN: 5,

@@ -69,6 +69,7 @@ interface GameStoreState {
   advanceTurn: () => void;
   chooseDecision: (choiceId: string) => void;
   setTaxRate: (rate: number) => void;
+  setTaxMode: (mode: 'flat' | 'progressive') => void;
   setSubsidy: (sector: SectorType, amount: number) => void;
   setWelfare: (enabled: boolean) => void;
   setPublicWorks: (active: boolean) => void;
@@ -188,6 +189,7 @@ function stopAutoPlayInternal(set: (partial: Partial<GameStoreState>) => void): 
 function applyPolicyAction(eng: GameEngine, action: PolicyAction): void {
   switch (action.type) {
     case 'taxRate': eng.setTaxRate(action.value); break;
+    case 'taxMode': eng.setTaxMode(action.mode); break;
     case 'subsidy': eng.setSubsidy(action.sector as SectorType, action.value); break;
     case 'welfare': eng.setWelfare(action.enabled); break;
     case 'publicWorks': eng.setPublicWorks(action.active); break;
@@ -261,6 +263,15 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     logPolicy({ type: 'taxRate', value: rate });
     playSound('policy_set');
     useNotificationStore.getState().pushPolicyToast(`稅率已調整至 ${(rate * 100).toFixed(0)}% — 下回合生效`);
+    set({ gameState: syncState(get().gameState) });
+  },
+
+  setTaxMode: (mode) => {
+    engine.setTaxMode(mode);
+    logPolicy({ type: 'taxMode', mode });
+    playSound('policy_set');
+    const label = mode === 'progressive' ? '累進稅' : '統一稅';
+    useNotificationStore.getState().pushPolicyToast(`稅制切換為${label} — 下回合生效`);
     set({ gameState: syncState(get().gameState) });
   },
 

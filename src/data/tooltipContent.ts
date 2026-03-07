@@ -44,6 +44,10 @@ export const POLICY_TOOLTIPS = {
     content: '稅率越高，國庫收入越多，但居民滿意度和消費力下降。',
     detail: 'Higher tax = more revenue but lower satisfaction and spending.',
   },
+  taxMode: {
+    content: '統一稅：所有人相同稅率。累進稅：低收入 ×0.5、中間 ×1.0、高收入 ×1.5，有助降低不平等。',
+    detail: 'Flat: same rate for all. Progressive: bottom 40% pay half, top 20% pay 1.5×. Reduces inequality.',
+  },
   subsidyFood: {
     content: '食物補貼提升農業產量，有助穩定食物供應。',
     detail: 'Boosts food sector productivity.',

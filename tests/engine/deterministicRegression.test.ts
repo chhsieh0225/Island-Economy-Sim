@@ -48,7 +48,7 @@ describe('deterministicRegression', () => {
       totals.deaths,
     ].join('|');
 
-    expect(signature).toBe('18|industrial|101|91.4|96.8|0.037|2.47|1|0');
+    expect(signature).toBe('18|industrial|102|88.5|96.8|0.040|1.84|2|0');
   });
 
   it('progressive economy unlocks industrial stage under baseline seed', () => {

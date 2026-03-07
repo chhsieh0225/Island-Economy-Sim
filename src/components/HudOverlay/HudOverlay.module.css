@@ -1,0 +1,163 @@
+.hud {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(10, 25, 47, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(100, 255, 218, 0.15);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+  color: #ccd6f6;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+  user-select: none;
+  transition: border-color 0.2s;
+}
+
+.pill:hover {
+  border-color: rgba(100, 255, 218, 0.35);
+}
+
+.pillLabel {
+  font-weight: 600;
+  color: #8892b0;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.pillValue {
+  font-weight: 700;
+  color: #e6f1ff;
+}
+
+.delta {
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 2px;
+}
+
+.deltaUp {
+  color: #4caf50;
+}
+
+.deltaDown {
+  color: #f44336;
+}
+
+.deltaGiniUp {
+  color: #f44336;
+}
+
+.deltaGiniDown {
+  color: #4caf50;
+}
+
+.streakBadge {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(10, 25, 47, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  user-select: none;
+}
+
+.streakPositive {
+  color: #ff9800;
+  border-color: rgba(255, 152, 0, 0.35);
+}
+
+.streakNegative {
+  color: #42a5f5;
+  border-color: rgba(66, 165, 245, 0.35);
+}
+
+.dramaticPill {
+  animation: dramaticPulse 1.5s ease-in-out 2;
+}
+
+@keyframes dramaticPulse {
+  0%, 100% { border-color: rgba(100, 255, 218, 0.15); }
+  50% { border-color: rgba(244, 67, 54, 0.7); box-shadow: 0 0 8px rgba(244, 67, 54, 0.3); }
+}
+
+/* ── Summary flash ── */
+.summaryRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.summaryEvent {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(10, 25, 47, 0.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(100, 255, 218, 0.12);
+  color: #ccd6f6;
+}
+
+.toggleSummary {
+  background: rgba(10, 25, 47, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(100, 255, 218, 0.2);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 11px;
+  color: #8892b0;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.toggleSummary:hover {
+  border-color: rgba(100, 255, 218, 0.4);
+  color: #ccd6f6;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .hud {
+    top: 8px;
+    left: 8px;
+    right: 56px;
+    gap: 4px;
+  }
+
+  .pill {
+    padding: 4px 7px;
+    font-size: 11px;
+    border-radius: 6px;
+  }
+
+  .pillLabel {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 400px) {
+  .pill {
+    padding: 3px 6px;
+    font-size: 10px;
+  }
+}

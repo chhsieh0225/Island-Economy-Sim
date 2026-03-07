@@ -33,6 +33,9 @@ export function applyPendingPoliciesPhase({
       case 'tax':
         government.setTaxRate(policy.value as number);
         break;
+      case 'taxMode':
+        government.setTaxMode(policy.value as 'flat' | 'progressive');
+        break;
       case 'subsidy':
         if (policy.sector) {
           government.setSubsidy(policy.sector, policy.value as number);

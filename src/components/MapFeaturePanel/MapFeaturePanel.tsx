@@ -2,6 +2,7 @@ import { memo } from 'react';
 import type { GameState } from '../../types';
 import { getResidentialBlockCount } from '../IslandMap/agentAnimator';
 import type { MapFeatureType } from '../../stores/uiStore';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './MapFeaturePanel.module.css';
 
 interface Props {
@@ -30,27 +31,6 @@ function stageAllowsSector(
   return stage === 'service';
 }
 
-function sectorTitle(sector: 'food' | 'goods' | 'services'): string {
-  if (sector === 'food') return '🌾 農地生產面板';
-  if (sector === 'goods') return '🏭 工坊生產面板';
-  return '🏢 服務業面板';
-}
-
-function sectorSubtitle(sector: 'food' | 'goods' | 'services', unlocked: boolean): string {
-  if (!unlocked) {
-    return '該產業在目前發展階段尚未完全解鎖，先專注基礎供需。';
-  }
-  if (sector === 'food') return '基礎民生由農地穩定供應，缺口會快速打擊民心。';
-  if (sector === 'goods') return '商品業支撐中間財與就業，供應不足會抑制成長。';
-  return '服務業直接連動生活品質與滿意度，成熟後影響更大。';
-}
-
-function sectorLabel(sector: 'food' | 'goods' | 'services'): string {
-  if (sector === 'food') return '食物';
-  if (sector === 'goods') return '商品';
-  return '服務';
-}
-
 export const MapFeaturePanel = memo(function MapFeaturePanel({
   feature,
   state,
@@ -59,6 +39,8 @@ export const MapFeaturePanel = memo(function MapFeaturePanel({
   onJumpToMarket,
   onJumpToRoster,
 }: Props) {
+  const { t } = useI18n();
+
   if (!feature) return null;
 
   const alive = state.agents.filter(a => a.alive);
@@ -75,34 +57,34 @@ export const MapFeaturePanel = memo(function MapFeaturePanel({
   const detail: FeatureDetail = (() => {
     if (feature === 'bank') {
       return {
-        title: '🏦 銀行政策與存款',
-        subtitle: '影響家戶安全感、流動性與消費動能。',
+        title: t('map.bank.title'),
+        subtitle: t('map.bank.subtitle'),
         metrics: [
-          { label: '總存款', value: `$${totalSavings.toFixed(0)}` },
-          { label: '人均存款', value: `$${avgSavings.toFixed(1)}` },
-          { label: '存款家戶', value: `${savingsHouseholds}/${population}` },
-          { label: '政策利率', value: `${(state.government.policyRate * 100).toFixed(2)}%` },
-          { label: '流動性支持', value: state.government.liquiditySupportActive ? '啟用' : '停用' },
-          { label: '國庫水位', value: `$${state.government.treasury.toFixed(0)}` },
+          { label: t('map.bank.totalSavings'), value: `$${totalSavings.toFixed(0)}` },
+          { label: t('map.bank.perCapitaSavings'), value: `$${avgSavings.toFixed(1)}` },
+          { label: t('map.bank.savingsHouseholds'), value: `${savingsHouseholds}/${population}` },
+          { label: t('policy.policyRate'), value: `${(state.government.policyRate * 100).toFixed(2)}%` },
+          { label: t('policy.liquiditySupport'), value: state.government.liquiditySupportActive ? t('policy.enabled') : t('policy.disabled') },
+          { label: t('map.bank.treasuryLevel'), value: `$${state.government.treasury.toFixed(0)}` },
         ],
-        actionLabel: '前往政策面板',
+        actionLabel: t('map.goToPolicy'),
         onAction: onJumpToPolicy,
       };
     }
 
     if (feature === 'residential') {
       return {
-        title: '🏘️ 住宅區概況',
-        subtitle: '人口成長會擴張住宅區塊，反映聚落演進。',
+        title: t('map.residential.title'),
+        subtitle: t('map.residential.subtitle'),
         metrics: [
-          { label: '住宅區塊', value: `${residentialBlocks} 區` },
-          { label: '平均每區', value: `${(population / Math.max(1, residentialBlocks)).toFixed(1)} 人` },
-          { label: '年齡層', value: `${youthCount}/${adultCount}/${seniorCount}` },
-          { label: '低滿意居民', value: `${lowSatCount} 人`, tone: lowSatCount > population * 0.25 ? 'warn' : 'neutral' },
-          { label: '平均滿意度', value: `${(population > 0 ? alive.reduce((s, a) => s + a.satisfaction, 0) / population : 0).toFixed(1)}%` },
-          { label: '平均健康', value: `${(population > 0 ? alive.reduce((s, a) => s + a.health, 0) / population : 0).toFixed(1)}%` },
+          { label: t('map.residential.blocks'), value: `${residentialBlocks} ${t('map.unit.blocks')}` },
+          { label: t('map.residential.perBlock'), value: `${(population / Math.max(1, residentialBlocks)).toFixed(1)} ${t('map.unit.persons')}` },
+          { label: t('dashboard.ageLayers'), value: `${youthCount}/${adultCount}/${seniorCount}` },
+          { label: t('map.residential.lowSat'), value: `${lowSatCount} ${t('map.unit.persons')}`, tone: lowSatCount > population * 0.25 ? 'warn' : 'neutral' },
+          { label: t('map.residential.avgSat'), value: `${(population > 0 ? alive.reduce((s, a) => s + a.satisfaction, 0) / population : 0).toFixed(1)}%` },
+          { label: t('map.residential.avgHealth'), value: `${(population > 0 ? alive.reduce((s, a) => s + a.health, 0) / population : 0).toFixed(1)}%` },
         ],
-        actionLabel: '前往居民名冊',
+        actionLabel: t('map.goToRoster'),
         onAction: onJumpToRoster,
       };
     }
@@ -116,25 +98,29 @@ export const MapFeaturePanel = memo(function MapFeaturePanel({
     const demand = state.market.demand[sector];
     const coverage = demand > 0.01 ? supply / demand : 1;
     const suitabilityPct = ((state.terrain.sectorSuitability[sector] - 1) * 100).toFixed(0);
-    const sectorName = sectorLabel(sector);
+    const sectorName = t(`sector.${sector}`);
+    const titleKey = sector === 'food' ? 'map.sector.farm.title'
+      : sector === 'goods' ? 'map.sector.goods.title'
+        : 'map.sector.services.title';
+    const subtitleKey = !unlocked ? 'map.sector.subtitle.locked' : `map.sector.subtitle.${sector}`;
 
     return {
-      title: sectorTitle(sector),
-      subtitle: sectorSubtitle(sector, unlocked),
+      title: t(titleKey),
+      subtitle: t(subtitleKey),
       metrics: [
-        { label: '產業狀態', value: unlocked ? '已開放' : '未開放', tone: unlocked ? 'good' : 'warn' },
-        { label: `${sectorName}供給`, value: supply.toFixed(1) },
-        { label: `${sectorName}需求`, value: demand.toFixed(1) },
+        { label: t('map.sector.status'), value: unlocked ? t('map.sector.unlocked') : t('map.sector.locked'), tone: unlocked ? 'good' : 'warn' },
+        { label: `${sectorName} ${t('map.sector.supply')}`, value: supply.toFixed(1) },
+        { label: `${sectorName} ${t('map.sector.demand')}`, value: demand.toFixed(1) },
         {
-          label: '供需覆蓋率',
+          label: t('map.sector.coverage'),
           value: `${(coverage * 100).toFixed(0)}%`,
           tone: !unlocked ? 'neutral' : coverage >= 1 ? 'good' : 'warn',
         },
-        { label: `${sectorName}從業人口`, value: `${workers} 人` },
-        { label: `${sectorName}價格`, value: `$${state.market.prices[sector].toFixed(2)}` },
-        { label: '地貌適性', value: `${suitabilityPct.startsWith('-') ? '' : '+'}${suitabilityPct}%` },
+        { label: `${sectorName} ${t('map.sector.workers')}`, value: `${workers} ${t('map.unit.persons')}` },
+        { label: `${sectorName} ${t('map.sector.price')}`, value: `$${state.market.prices[sector].toFixed(2)}` },
+        { label: t('map.sector.suitability'), value: `${suitabilityPct.startsWith('-') ? '' : '+'}${suitabilityPct}%` },
       ],
-      actionLabel: '前往市場面板',
+      actionLabel: t('map.goToMarket'),
       onAction: onJumpToMarket,
     };
   })();
@@ -146,8 +132,8 @@ export const MapFeaturePanel = memo(function MapFeaturePanel({
           <div className={styles.title}>{detail.title}</div>
           <div className={styles.subtitle}>{detail.subtitle}</div>
         </div>
-        <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="關閉地圖細節面板">
-          關閉
+        <button type="button" className={styles.closeBtn} onClick={onClose} aria-label={t('map.closePanel')}>
+          {t('common.close')}
         </button>
       </div>
 

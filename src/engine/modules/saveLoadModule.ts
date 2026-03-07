@@ -22,6 +22,7 @@ export interface PolicyLogEntry {
 
 export type PolicyAction =
   | { type: 'taxRate'; value: number }
+  | { type: 'taxMode'; mode: 'flat' | 'progressive' }
   | { type: 'subsidy'; sector: string; value: number }
   | { type: 'welfare'; enabled: boolean }
   | { type: 'publicWorks'; active: boolean }

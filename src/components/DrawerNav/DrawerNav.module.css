@@ -1,0 +1,89 @@
+.nav {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid rgba(100, 255, 218, 0.15);
+  background: rgba(10, 25, 47, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #8892b0;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+  line-height: 1;
+}
+
+.btn:hover {
+  border-color: rgba(100, 255, 218, 0.4);
+  color: #ccd6f6;
+  background: rgba(16, 37, 63, 0.9);
+  transform: scale(1.06);
+}
+
+.btnActive {
+  border-color: #64ffda;
+  color: #64ffda;
+  background: rgba(16, 37, 63, 0.95);
+  box-shadow: 0 0 12px rgba(100, 255, 218, 0.2);
+}
+
+.tooltip {
+  position: absolute;
+  right: 52px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(10, 25, 47, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(100, 255, 218, 0.2);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #ccd6f6;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.btn:hover .tooltip {
+  opacity: 1;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .nav {
+    right: 4px;
+    gap: 4px;
+  }
+
+  .btn {
+    width: 38px;
+    height: 38px;
+    font-size: 16px;
+    border-radius: 8px;
+  }
+}
+
+@media (max-width: 400px) {
+  .btn {
+    width: 34px;
+    height: 34px;
+    font-size: 14px;
+  }
+}

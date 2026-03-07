@@ -815,7 +815,6 @@ export const IslandMap = memo(function IslandMap({
 
   return (
     <div className={styles.container} ref={containerRef}>
-      <div className={styles.title}>島嶼地圖 Island Map</div>
       <canvas
         ref={canvasRef}
         role="img"

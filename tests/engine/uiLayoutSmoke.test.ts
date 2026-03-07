@@ -12,24 +12,25 @@ describe('uiLayoutSmoke', () => {
     // Game UI lives in GameView.tsx (lazy-loaded from App.tsx)
     const gameViewTsx = readProjectFile('src/GameView.tsx');
 
+    // These panels are lazy-loaded directly in GameView
     const lazyPanels = [
       'MarketPanel',
-      'TerrainPanel',
-      'EventLog',
-      'MilestonePanel',
+      'AgentInspector',
+      'GameOver',
+      'DecisionPanel',
+      'EncyclopediaPanel',
     ] as const;
 
     for (const panel of lazyPanels) {
       expect(gameViewTsx).toMatch(
         new RegExp(`const\\s+${panel}\\s*=\\s*lazy\\(`),
       );
-      expect(gameViewTsx).toMatch(
-        new RegExp(`import\\('\\./components/${panel}/${panel}'\\)`),
-      );
-      expect(gameViewTsx).not.toMatch(
-        new RegExp(`^import\\s+\\{\\s*${panel}\\s*\\}\\s+from\\s+'\\./components/${panel}/${panel}';`, 'm'),
-      );
     }
+
+    // EventLog and MilestonePanel are lazy-loaded inside EventsDrawer
+    const eventsDrawer = readProjectFile('src/components/EventsDrawer/EventsDrawer.tsx');
+    expect(eventsDrawer).toMatch(/const\s+EventLog\s*=\s*lazy\(/);
+    expect(eventsDrawer).toMatch(/const\s+MilestonePanel\s*=\s*lazy\(/);
 
     // GameView itself is lazy-loaded from App.tsx
     const appTsx = readProjectFile('src/App.tsx');
@@ -38,13 +39,19 @@ describe('uiLayoutSmoke', () => {
   });
 
   it('responsive breakpoints and mobile-safe overflow are present', () => {
+    // New map-centered layout uses full-viewport and drawer system
     const appCss = readProjectFile('src/App.module.css');
     const marketCss = readProjectFile('src/components/MarketPanel/MarketPanel.module.css');
 
-    expect(appCss).toMatch(/@media\s*\(max-width:\s*980px\)/);
-    expect(appCss).toMatch(/\.rightTabs\s*\{[^}]*overflow-x:\s*auto;/s);
-    expect(appCss).toMatch(/\.columns\s*\{[^}]*grid-template-columns:\s*1fr;/s);
+    // App layout uses full viewport
+    expect(appCss).toMatch(/\.app\s*\{[^}]*100vw/s);
+    expect(appCss).toMatch(/\.mapLayer\s*\{[^}]*position:\s*absolute/s);
 
+    // Drawer panel has responsive breakpoints
+    const drawerCss = readProjectFile('src/components/DrawerPanel/DrawerPanel.module.css');
+    expect(drawerCss).toMatch(/@media\s*\(max-width:\s*640px\)/);
+
+    // Market table still has mobile-safe overflow
     expect(marketCss).toMatch(/\.tableWrap\s*\{[^}]*overflow-x:\s*auto;/s);
     expect(marketCss).toMatch(/\.table\s*\{[^}]*min-width:\s*620px;/s);
   });

@@ -4,6 +4,7 @@ export type AgeGroup = 'youth' | 'adult' | 'senior';
 export type ScenarioId = 'baseline' | 'inflation' | 'inequality' | 'aging';
 export type AgentGoalType = 'survival' | 'wealth' | 'happiness' | 'balanced';
 export type EconomyStage = 'agriculture' | 'industrial' | 'service';
+export type TaxMode = 'flat' | 'progressive';
 
 export const SECTORS: SectorType[] = ['food', 'goods', 'services'];
 
@@ -68,6 +69,7 @@ export interface MarketState {
 export interface GovernmentState {
   treasury: number;
   taxRate: number;
+  taxMode: TaxMode;
   subsidies: Record<SectorType, number>;
   welfareEnabled: boolean;
   publicWorksActive: boolean;
@@ -203,6 +205,7 @@ export interface ActiveRandomEvent {
 
 export type PendingPolicyType =
   | 'tax'
+  | 'taxMode'
   | 'subsidy'
   | 'welfare'
   | 'publicWorks'
@@ -214,7 +217,7 @@ export interface PendingPolicyChange {
   type: PendingPolicyType;
   requestedTurn: number;
   applyTurn: number;
-  value: number | boolean;
+  value: number | boolean | string;
   sector?: SectorType;
   summary: string;
   sideEffects: string[];
@@ -227,7 +230,7 @@ export interface PolicyTimelineEntry {
   applyTurn: number;
   resolvedTurn?: number;
   status: 'pending' | 'applied';
-  value: number | boolean;
+  value: number | boolean | string;
   sector?: SectorType;
   summary: string;
   sideEffects: string[];

@@ -13,7 +13,7 @@ interface QueuePolicyChangeInput {
   policyTimeline: PolicyTimelineEntry[];
   change: {
     type: PendingPolicyType;
-    value: number | boolean;
+    value: number | boolean | string;
     sector?: SectorType;
     summary: string;
     sideEffects: string[];
@@ -151,8 +151,12 @@ export function markPolicyTimelineApplied({
   return nextTimeline;
 }
 
-export function getPolicySideEffects(type: PendingPolicyType, value: number | boolean): string[] {
+export function getPolicySideEffects(type: PendingPolicyType, value: number | boolean | string): string[] {
   switch (type) {
+    case 'taxMode':
+      return value === 'progressive'
+        ? ['高收入者負擔更多稅賦', '低收入者稅負減輕，有助降低不平等']
+        : ['所有人稅率一致，簡單透明', '高收入者稅負較輕，不平等可能加劇'];
     case 'tax': {
       const numeric = value as number;
       if (numeric >= 0.25) {

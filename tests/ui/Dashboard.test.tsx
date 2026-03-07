@@ -38,6 +38,6 @@ describe('Dashboard component', () => {
     const state = getTestState();
     const { container } = render(<Dashboard state={state} />);
     // Check for objective-related content in the rendered output
-    expect(container.textContent).toMatch(/目標|Objective|Governor/i);
+    expect(container.textContent).toMatch(/目標|Objective|Governor|任務/i);
   });
 });

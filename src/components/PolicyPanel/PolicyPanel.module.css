@@ -84,6 +84,46 @@
   color: #ccd6f6;
 }
 
+.taxModeRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.taxModeLabel {
+  font-size: 12px;
+  color: #8892b0;
+}
+
+.taxModeSwitch {
+  display: flex;
+  gap: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #233554;
+}
+
+.taxModeBtn {
+  font-size: 11px;
+  padding: 3px 10px;
+  background: #1a1a2e;
+  color: #8892b0;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.taxModeBtn:hover {
+  background: #233554;
+}
+
+.taxModeBtnActive {
+  background: #233554;
+  color: #64ffda;
+  font-weight: 600;
+}
+
 .sectionTitle {
   font-size: 12px;
   color: #64ffda;

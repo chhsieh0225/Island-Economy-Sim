@@ -15,11 +15,15 @@ export class Statistics {
     government: Government,
     demographics?: { births: number; deaths: number },
     causalReplay?: TurnCausalReplay,
+    /** Government expenditure this turn (welfare + public works + liquidity) */
+    governmentSpending?: number,
+    /** Value of inventory consumed directly by agents (not via market) */
+    selfConsumptionValue?: number,
   ): TurnSnapshot {
     const alive = agents.filter(a => a.alive);
     const births = demographics?.births ?? 0;
     const deaths = demographics?.deaths ?? 0;
-    const gdp = this.computeGDP(market);
+    const gdp = this.computeGDP(market, governmentSpending ?? 0, selfConsumptionValue ?? 0);
     const population = alive.length;
     const workingAgePopulation = alive.filter(a => a.age >= CONFIG.WORKING_AGE).length;
     const laborForcePool = alive.filter(
@@ -107,11 +111,18 @@ export class Statistics {
     return snapshot;
   }
 
-  private computeGDP(market: Market): number {
-    let gdp = 0;
+  /**
+   * GDP = C_market + C_self + G
+   * C_market = Σ(price × market volume) — goods transacted on the market
+   * C_self   = value of inventory consumed directly by agents (self-consumption)
+   * G        = government expenditure (welfare + public works + liquidity)
+   */
+  private computeGDP(market: Market, governmentSpending: number, selfConsumptionValue: number): number {
+    let marketGDP = 0;
     for (const sector of SECTORS) {
-      gdp += market.prices[sector] * market.volume[sector];
+      marketGDP += market.prices[sector] * market.volume[sector];
     }
+    const gdp = marketGDP + selfConsumptionValue + governmentSpending;
     return Math.round(gdp * 100) / 100;
   }
 

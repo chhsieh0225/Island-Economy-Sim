@@ -20,6 +20,7 @@ import { useCounterfactualStore } from '../../stores/counterfactualStore';
 import type { PolicyAction } from '../../engine/modules/saveLoadModule';
 import type { CounterfactualRequest } from '../../engine/modules/counterfactualModule';
 import { CounterfactualPanel } from '../CounterfactualPanel/CounterfactualPanel';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './PolicyPanel.module.css';
 
 interface Props {
@@ -30,6 +31,7 @@ interface Props {
   pendingPolicies: PendingPolicyChange[];
   policyTimeline: PolicyTimelineEntry[];
   onSetTaxRate: (rate: number) => void;
+  onSetTaxMode: (mode: 'flat' | 'progressive') => void;
   onSetSubsidy: (sector: SectorType, amount: number) => void;
   onSetWelfare: (enabled: boolean) => void;
   onSetPublicWorks: (active: boolean) => void;
@@ -39,32 +41,30 @@ interface Props {
   enabledSections?: Set<string>;
 }
 
-const SECTOR_LABELS: Record<SectorType, string> = {
-  food: '食物補貼 Food',
-  goods: '商品補貼 Goods',
-  services: '服務補貼 Services',
-};
-
 const SUBSIDY_TOOLTIP_KEY: Record<SectorType, keyof typeof POLICY_TOOLTIPS> = {
   food: 'subsidyFood',
   goods: 'subsidyGoods',
   services: 'subsidyServices',
 };
 
-function pendingSummary(policy: PendingPolicyChange): string {
+function pendingSummary(policy: PendingPolicyChange, t: (key: string) => string): string {
+  const on = t('policy.on');
+  const off = t('policy.off');
   switch (policy.type) {
     case 'tax':
-      return `稅率 → ${((policy.value as number) * 100).toFixed(0)}%`;
+      return `${t('policy.taxRate')} → ${((policy.value as number) * 100).toFixed(0)}%`;
+    case 'taxMode':
+      return `${t('policy.taxMode')} → ${(policy.value as string) === 'progressive' ? t('policy.taxMode.progressive') : t('policy.taxMode.flat')}`;
     case 'subsidy':
-      return `${policy.sector} 補貼 → ${(policy.value as number).toFixed(0)}%`;
+      return `${t(`policy.subsidy.${policy.sector}`)} → ${(policy.value as number).toFixed(0)}%`;
     case 'welfare':
-      return `福利 → ${(policy.value as boolean) ? '開' : '關'}`;
+      return `${t('policy.welfare')} → ${(policy.value as boolean) ? on : off}`;
     case 'publicWorks':
-      return `公共建設 → ${(policy.value as boolean) ? '開' : '關'}`;
+      return `${t('policy.publicWorks')} → ${(policy.value as boolean) ? on : off}`;
     case 'policyRate':
-      return `政策利率 → ${((policy.value as number) * 100).toFixed(2)}%`;
+      return `${t('policy.policyRate')} → ${((policy.value as number) * 100).toFixed(2)}%`;
     case 'liquiditySupport':
-      return `流動性支持 → ${(policy.value as boolean) ? '開' : '關'}`;
+      return `${t('policy.liquiditySupport')} → ${(policy.value as boolean) ? on : off}`;
   }
 }
 
@@ -73,27 +73,29 @@ function signed(value: number, digits: number = 1): string {
   return value >= 0 ? `+${fixed}` : fixed;
 }
 
-function statusLabel(status: 'pending' | 'collecting' | 'complete'): string {
+function statusLabel(status: 'pending' | 'collecting' | 'complete', t: (key: string) => string): string {
   switch (status) {
     case 'pending':
-      return '待生效';
+      return t('policy.experiment.pending');
     case 'collecting':
-      return '觀察中';
+      return t('policy.experiment.collecting');
     case 'complete':
-      return '已結算';
+      return t('policy.experiment.complete');
   }
 }
 
-function recommendationActionLabel(action: PolicyRecommendationAction): string {
+function recommendationActionLabel(action: PolicyRecommendationAction, t: (key: string) => string): string {
+  const on = t('policy.enabled');
+  const off = t('policy.disabled');
   switch (action.type) {
     case 'setTaxRate':
-      return `稅率 ${(action.value * 100).toFixed(0)}%`;
+      return `${t('policy.taxRate')} ${(action.value * 100).toFixed(0)}%`;
     case 'setSubsidy':
-      return `${SECTOR_LABELS[action.sector]} ${action.value.toFixed(0)}%`;
+      return `${t(`policy.subsidy.${action.sector}`)} ${action.value.toFixed(0)}%`;
     case 'setWelfare':
-      return `福利 ${action.value ? '啟用' : '停用'}`;
+      return `${t('policy.welfare')} ${action.value ? on : off}`;
     case 'setPublicWorks':
-      return `公共建設 ${action.value ? '啟用' : '停用'}`;
+      return `${t('policy.publicWorks')} ${action.value ? on : off}`;
   }
 }
 
@@ -135,7 +137,6 @@ function computeForecast(
   const latest = stats[stats.length - 1];
   if (!latest || latest.population === 0) return null;
 
-  // Effective tax rate (check if pending tax change)
   const pendingTax = pendingPolicies.find(p => p.type === 'tax');
   const pendingPolicyRate = pendingPolicies.find(p => p.type === 'policyRate');
   const pendingWelfare = pendingPolicies.find(p => p.type === 'welfare');
@@ -152,16 +153,13 @@ function computeForecast(
     ? (pendingPublicWorks.value as boolean)
     : government.publicWorksActive;
 
-  // Estimate taxable income: rough approximation from GDP
   const estimatedTaxableIncome = latest.gdp * 0.4;
   const estimatedTaxRevenue = estimatedTaxableIncome * effectiveTaxRate;
 
-  // Welfare cost
   const welfareRecipients = welfareEnabled ? Math.floor(latest.population * 0.25) : 0;
-  const welfareCost = welfareRecipients * 5; // CONFIG.WELFARE_AMOUNT
+  const welfareCost = welfareRecipients * 5;
 
-  // Public works cost
-  const pwCost = publicWorksEnabled ? 50 : 0; // CONFIG.PUBLIC_WORKS_COST_PER_TURN
+  const pwCost = publicWorksEnabled ? 50 : 0;
   const liquidityEnabled = pendingLiquidity
     ? (pendingLiquidity.value as boolean)
     : government.liquiditySupportActive;
@@ -191,6 +189,7 @@ export const PolicyPanel = memo(function PolicyPanel({
   pendingPolicies,
   policyTimeline,
   onSetTaxRate,
+  onSetTaxMode,
   onSetSubsidy,
   onSetWelfare,
   onSetPublicWorks,
@@ -198,11 +197,12 @@ export const PolicyPanel = memo(function PolicyPanel({
   onSetLiquiditySupport,
   enabledSections,
 }: Props) {
-  // In tutorial mode, only show enabled sections
+  const { t } = useI18n();
   const isTutorial = enabledSections !== undefined;
   const showSection = (section: string): boolean =>
     !isTutorial || enabledSections.has(section);
   const pendingTax = pendingPolicies.find(p => p.type === 'tax');
+  const pendingTaxMode = pendingPolicies.find(p => p.type === 'taxMode');
   const pendingPolicyRate = pendingPolicies.find(p => p.type === 'policyRate');
   const pendingWelfare = pendingPolicies.find(p => p.type === 'welfare');
   const pendingPublicWorks = pendingPolicies.find(p => p.type === 'publicWorks');
@@ -212,6 +212,9 @@ export const PolicyPanel = memo(function PolicyPanel({
     ?? government.subsidies[sector]
   );
 
+  const taxModeDisplay = pendingTaxMode
+    ? pendingTaxMode.value as string
+    : government.taxMode;
   const taxDisplay = (pendingTax ? pendingTax.value as number : government.taxRate) * 100;
   const policyRateDisplay = (pendingPolicyRate ? pendingPolicyRate.value as number : government.policyRate) * 100;
   const welfareDisplay = pendingWelfare ? pendingWelfare.value as boolean : government.welfareEnabled;
@@ -282,7 +285,6 @@ export const PolicyPanel = memo(function PolicyPanel({
 
   const handleWhatIf = useCallback((card: PolicyExperimentCard) => {
     const policyLog = getPolicyLog();
-    // Reconstruct the PolicyAction from card fields
     let omittedAction: PolicyAction;
     switch (card.type) {
       case 'tax':
@@ -303,6 +305,9 @@ export const PolicyPanel = memo(function PolicyPanel({
       case 'liquiditySupport':
         omittedAction = { type: 'liquiditySupport', active: card.value as boolean };
         break;
+      case 'taxMode':
+        omittedAction = { type: 'taxMode', mode: card.value as 'flat' | 'progressive' };
+        break;
       default:
         return;
     }
@@ -322,19 +327,19 @@ export const PolicyPanel = memo(function PolicyPanel({
 
   return (
     <div className={styles.panel}>
-      <div className={styles.title}>政策控制 Policy</div>
+      <div className={styles.title}>{t('policy.title')}</div>
       {!isTutorial && (
-        <div className={styles.delayHint}>政策有 1 回合延遲，右下方可查看待生效清單。</div>
+        <div className={styles.delayHint}>{t('policy.delayHint')}</div>
       )}
       {isTutorial && (
-        <div className={styles.delayHint}>政策有 1 回合延遲。只有本課解鎖的工具可以使用。</div>
+        <div className={styles.delayHint}>{t('policy.delayHintTutorial')}</div>
       )}
 
       {showSection('taxRate') && (
         <div className={styles.control}>
           <div className={styles.controlLabel}>
             <Tooltip content={POLICY_TOOLTIPS.taxRate.content} detail={POLICY_TOOLTIPS.taxRate.detail}>
-              <span>稅率 Tax Rate</span>
+              <span>{t('policy.taxRate')}</span>
             </Tooltip>
             <span className={styles.controlValue}>{taxDisplay.toFixed(0)}%</span>
           </div>
@@ -347,12 +352,31 @@ export const PolicyPanel = memo(function PolicyPanel({
             value={taxDisplay}
             onChange={e => onSetTaxRate(Number(e.target.value) / 100)}
           />
+          <div className={styles.taxModeRow}>
+            <Tooltip content={POLICY_TOOLTIPS.taxMode.content} detail={POLICY_TOOLTIPS.taxMode.detail}>
+              <span className={styles.taxModeLabel}>{t('policy.taxMode')}</span>
+            </Tooltip>
+            <div className={styles.taxModeSwitch}>
+              <button
+                className={`${styles.taxModeBtn} ${taxModeDisplay === 'flat' ? styles.taxModeBtnActive : ''}`}
+                onClick={() => onSetTaxMode('flat')}
+              >
+                {t('policy.taxMode.flat')}
+              </button>
+              <button
+                className={`${styles.taxModeBtn} ${taxModeDisplay === 'progressive' ? styles.taxModeBtnActive : ''}`}
+                onClick={() => onSetTaxMode('progressive')}
+              >
+                {t('policy.taxMode.progressive')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {showSection('subsidy') && (
         <>
-          <div className={styles.sectionTitle}>產業補貼 Subsidies</div>
+          <div className={styles.sectionTitle}>{t('policy.subsidies')}</div>
 
           {(['food', 'goods', 'services'] as const).map(sector => {
             const subsidyDisplay = getSubsidyDisplay(sector);
@@ -362,7 +386,7 @@ export const PolicyPanel = memo(function PolicyPanel({
               <div key={sector} className={styles.control}>
                 <div className={styles.controlLabel}>
                   <Tooltip content={tip.content} detail={tip.detail}>
-                    <span>{SECTOR_LABELS[sector]}</span>
+                    <span>{t(`policy.subsidy.${sector}`)}</span>
                   </Tooltip>
                   <span className={styles.controlValue}>{subsidyDisplay.toFixed(0)}%</span>
                 </div>
@@ -382,7 +406,7 @@ export const PolicyPanel = memo(function PolicyPanel({
       )}
 
       {(showSection('welfare') || showSection('publicWorks')) && (
-        <div className={styles.sectionTitle}>社會政策 Social</div>
+        <div className={styles.sectionTitle}>{t('policy.social')}</div>
       )}
 
       {showSection('welfare') && (
@@ -394,7 +418,7 @@ export const PolicyPanel = memo(function PolicyPanel({
             onChange={e => onSetWelfare(e.target.checked)}
           />
           <Tooltip content={POLICY_TOOLTIPS.welfare.content} detail={POLICY_TOOLTIPS.welfare.detail}>
-            <span className={styles.toggleLabel}>社會福利 Welfare</span>
+            <span className={styles.toggleLabel}>{t('policy.welfare')}</span>
           </Tooltip>
         </label>
       )}
@@ -408,20 +432,20 @@ export const PolicyPanel = memo(function PolicyPanel({
             onChange={e => onSetPublicWorks(e.target.checked)}
           />
           <Tooltip content={POLICY_TOOLTIPS.publicWorks.content} detail={POLICY_TOOLTIPS.publicWorks.detail}>
-            <span className={styles.toggleLabel}>公共建設 Public Works</span>
+            <span className={styles.toggleLabel}>{t('policy.publicWorks')}</span>
           </Tooltip>
         </label>
       )}
 
       {(showSection('policyRate') || showSection('liquiditySupport')) && (
-        <div className={styles.sectionTitle}>貨幣政策 Monetary</div>
+        <div className={styles.sectionTitle}>{t('policy.monetary')}</div>
       )}
 
       {showSection('policyRate') && (
         <div className={styles.control}>
           <div className={styles.controlLabel}>
             <Tooltip content={POLICY_TOOLTIPS.policyRate.content} detail={POLICY_TOOLTIPS.policyRate.detail}>
-              <span>政策利率 Policy Rate</span>
+              <span>{t('policy.policyRate')}</span>
             </Tooltip>
             <span className={styles.controlValue}>{policyRateDisplay.toFixed(2)}%</span>
           </div>
@@ -446,49 +470,49 @@ export const PolicyPanel = memo(function PolicyPanel({
             onChange={e => onSetLiquiditySupport(e.target.checked)}
           />
           <Tooltip content={POLICY_TOOLTIPS.liquiditySupport.content} detail={POLICY_TOOLTIPS.liquiditySupport.detail}>
-            <span className={styles.toggleLabel}>流動性支持 Liquidity Support</span>
+            <span className={styles.toggleLabel}>{t('policy.liquiditySupport')}</span>
           </Tooltip>
         </label>
       )}
 
       {!isTutorial && forecast && (
         <div className={styles.forecastCard}>
-          <div className={styles.forecastTitle}>📊 下回合預測 Next-Turn Forecast</div>
+          <div className={styles.forecastTitle}>📊 {t('policy.forecast')}</div>
           <div className={styles.forecastRow}>
-            <span>稅收 Tax Revenue</span>
+            <span>{t('policy.forecast.taxRevenue')}</span>
             <span className={styles.forecastPositive}>+${forecast.taxRevenue.toFixed(0)}</span>
           </div>
           {forecast.welfareCost > 0 && (
             <div className={styles.forecastRow}>
-              <span>福利支出 Welfare</span>
+              <span>{t('policy.forecast.welfare')}</span>
               <span className={styles.forecastNegative}>-${forecast.welfareCost.toFixed(0)}</span>
             </div>
           )}
           {forecast.pwCost > 0 && (
             <div className={styles.forecastRow}>
-              <span>公共建設 Public Works</span>
+              <span>{t('policy.forecast.publicWorks')}</span>
               <span className={styles.forecastNegative}>-${forecast.pwCost.toFixed(0)}</span>
             </div>
           )}
           {forecast.liquidityCost > 0 && (
             <div className={styles.forecastRow}>
-              <span>流動性注入 Liquidity</span>
+              <span>{t('policy.forecast.liquidity')}</span>
               <span className={styles.forecastNegative}>-${forecast.liquidityCost.toFixed(0)}</span>
             </div>
           )}
           <div className={styles.forecastRow}>
-            <span>政策利率 Policy Rate</span>
+            <span>{t('policy.forecast.policyRate')}</span>
             <span>{(forecast.effectivePolicyRate * 100).toFixed(2)}%</span>
           </div>
           <div className={`${styles.forecastRow} ${styles.forecastTotal}`}>
-            <span>淨國庫變化 Net Treasury</span>
+            <span>{t('policy.forecast.netTreasury')}</span>
             <span className={forecast.netTreasury >= 0 ? styles.forecastPositive : styles.forecastNegative}>
               {forecast.netTreasury >= 0 ? '+' : ''}${forecast.netTreasury.toFixed(0)}
             </span>
           </div>
           {activeEventCount > 0 && (
             <div className={styles.forecastRow}>
-              <span>進行中事件 Active Events</span>
+              <span>{t('policy.activeEvents')}</span>
               <span>{activeEventCount}</span>
             </div>
           )}
@@ -497,11 +521,11 @@ export const PolicyPanel = memo(function PolicyPanel({
 
       {!isTutorial && (
         <>
-          <div className={styles.sectionTitle}>政策效果拆解 Policy Impact</div>
+          <div className={styles.sectionTitle}>{t('policy.impact')}</div>
           {latest ? (
             <div className={styles.impactCard}>
               <div className={styles.impactHeadline}>
-                本回合滿意度 ΔSat:
+                {t('policy.impact.satDelta')}:
                 <span className={latest.causalReplay.satisfaction.net >= 0 ? styles.impactUp : styles.impactDown}>
                   {signed(latest.causalReplay.satisfaction.net, 2)}%
                 </span>
@@ -513,42 +537,42 @@ export const PolicyPanel = memo(function PolicyPanel({
                 </div>
               ))}
               <div className={styles.impactLine}>
-                <span>稅收實績</span>
+                <span>{t('policy.impact.taxActual')}</span>
                 <span className={styles.impactUp}>+${latest.causalReplay.policy.taxCollected.toFixed(0)}</span>
               </div>
               <div className={styles.impactLine}>
-                <span>福利發放（{latest.causalReplay.policy.welfareRecipients} 人）</span>
+                <span>{t('policy.impact.welfareWithRecipients').replace('{n}', String(latest.causalReplay.policy.welfareRecipients))}</span>
                 <span className={styles.impactDown}>-${latest.causalReplay.policy.welfarePaid.toFixed(0)}</span>
               </div>
               <div className={styles.impactLine}>
-                <span>公共建設支出</span>
+                <span>{t('policy.impact.pwActual')}</span>
                 <span className={styles.impactDown}>-${latest.causalReplay.policy.publicWorksCost.toFixed(0)}</span>
               </div>
               <div className={styles.impactLine}>
-                <span>流動性注入</span>
+                <span>{t('policy.impact.liquidityActual')}</span>
                 <span className={styles.impactDown}>-${latest.causalReplay.policy.liquidityInjected.toFixed(0)}</span>
               </div>
               <div className={styles.impactLine}>
-                <span>政策利率</span>
+                <span>{t('policy.impact.rateActual')}</span>
                 <span>{(latest.causalReplay.policy.policyRate * 100).toFixed(2)}%</span>
               </div>
               <div className={styles.impactLine}>
-                <span>人均可支配現金 Δ</span>
+                <span>{t('policy.impact.cashDelta')}</span>
                 <span className={latest.causalReplay.policy.perCapitaCashDelta >= 0 ? styles.impactUp : styles.impactDown}>
                   {signed(latest.causalReplay.policy.perCapitaCashDelta, 2)}
                 </span>
               </div>
               <div className={styles.impactFoot}>
-                本區塊改為「純實際執行追蹤」，不再使用估算模型。
+                {t('policy.impact.note')}
               </div>
             </div>
           ) : (
-            <div className={styles.empty}>需要至少 1 回合資料才能拆解效果。</div>
+            <div className={styles.empty}>{t('policy.impact.noData')}</div>
           )}
 
-          <div className={styles.sectionTitle}>政策實驗卡 Prediction → Action → Outcome</div>
+          <div className={styles.sectionTitle}>{t('policy.experiment')}</div>
           {experimentCards.length === 0 ? (
-            <div className={styles.empty}>先下達至少 1 次政策，這裡會自動追蹤預測與實際結果。</div>
+            <div className={styles.empty}>{t('policy.experiment.noData')}</div>
           ) : (
             <div className={styles.experimentList}>
               {experimentCards.map(card => {
@@ -558,11 +582,15 @@ export const PolicyPanel = memo(function PolicyPanel({
                     <div className={styles.experimentHead}>
                       <span className={styles.experimentTitle}>{card.summary}</span>
                       <span className={`${styles.experimentStatus} ${styles[`experimentStatus${card.status}`]}`}>
-                        {statusLabel(card.status)}
+                        {statusLabel(card.status, t)}
                       </span>
                     </div>
                     <div className={styles.experimentMeta}>
-                      行動 T{card.requestedTurn}，生效 T{card.applyTurn}，觀察窗 T{card.applyTurn}~T{card.windowEndTurn}
+                      {t('policy.experiment.actionMeta')
+                        .replace('{t1}', String(card.requestedTurn))
+                        .replace('{t2}', String(card.applyTurn))
+                        .replace('{t3}', String(card.windowEndTurn))
+                        .replace('{t2}', String(card.applyTurn))}
                     </div>
                     <div className={styles.experimentBlock}>
                       <div className={styles.experimentBlockTitle}>Prediction</div>
@@ -573,19 +601,19 @@ export const PolicyPanel = memo(function PolicyPanel({
                       {!card.metrics ? (
                         <div className={styles.experimentPending}>
                           {card.status === 'pending'
-                            ? '尚未進入觀察窗口。'
-                            : `資料收集中（目前觀察到 T${card.observedTurn ?? '-'}）。`}
+                            ? t('policy.experiment.notInWindow')
+                            : t('policy.experiment.collectingMsg').replace('{t}', String(card.observedTurn ?? '-'))}
                         </div>
                       ) : (
                         <div className={styles.experimentMetrics}>
                           <div className={styles.experimentMetric}>
-                            <span>滿意度 Δ</span>
+                            <span>{t('dashboard.causal.satisfaction')}</span>
                             <span className={card.metrics.satisfactionDelta >= 0 ? styles.impactUp : styles.impactDown}>
                               {signed(card.metrics.satisfactionDelta, 2)}
                             </span>
                           </div>
                           <div className={styles.experimentMetric}>
-                            <span>國庫 Δ</span>
+                            <span>{t('dashboard.causal.treasuryDelta')}</span>
                             <span className={card.metrics.treasuryDelta >= 0 ? styles.impactUp : styles.impactDown}>
                               {signed(card.metrics.treasuryDelta, 0)}
                             </span>
@@ -597,7 +625,7 @@ export const PolicyPanel = memo(function PolicyPanel({
                             </span>
                           </div>
                           <div className={styles.experimentMetric}>
-                            <span>人口淨變化</span>
+                            <span>{t('policy.experiment.popDelta')}</span>
                             <span className={card.metrics.populationDelta >= 0 ? styles.impactUp : styles.impactDown}>
                               {signed(card.metrics.populationDelta, 0)}
                             </span>
@@ -613,12 +641,12 @@ export const PolicyPanel = memo(function PolicyPanel({
                           className={styles.experimentRecommendBtn}
                           onClick={() => applyRecommendation(recommendation.action)}
                         >
-                          採納建議：{recommendationActionLabel(recommendation.action)}
+                          {t('policy.experiment.adoptRecommend').replace('{action}', recommendationActionLabel(recommendation.action, t))}
                         </button>
                       </div>
                     ) : (
                       <div className={styles.experimentRecommendIdle}>
-                        目前訊號偏中性，建議先觀察下一個窗口。
+                        {t('policy.experiment.neutral')}
                       </div>
                     )}
                     {card.status === 'complete' && (
@@ -627,7 +655,7 @@ export const PolicyPanel = memo(function PolicyPanel({
                         onClick={() => handleWhatIf(card)}
                         disabled={cfLoading}
                       >
-                        {cfLoading ? '模擬中…' : '假如不做？What If?'}
+                        {cfLoading ? t('policy.experiment.simulating') : t('policy.experiment.whatIf')}
                       </button>
                     )}
                   </div>
@@ -638,9 +666,9 @@ export const PolicyPanel = memo(function PolicyPanel({
 
           {cfResult && <CounterfactualPanel />}
 
-          <div className={styles.sectionTitle}>待生效政策 Pending</div>
+          <div className={styles.sectionTitle}>{t('policy.pending')}</div>
           {pendingPolicies.length === 0 ? (
-            <div className={styles.empty}>目前沒有待生效政策</div>
+            <div className={styles.empty}>{t('policy.pending.empty')}</div>
           ) : (
             <div className={styles.pendingList}>
               {pendingPolicies
@@ -649,9 +677,9 @@ export const PolicyPanel = memo(function PolicyPanel({
                 .map(policy => (
                   <div key={policy.id} className={styles.pendingItem}>
                     <div className={styles.pendingMain}>
-                      <span>{pendingSummary(policy)}</span>
+                      <span>{pendingSummary(policy, t)}</span>
                       <span className={styles.pendingTurns}>
-                        還有 {Math.max(0, policy.applyTurn - turn)} 回合
+                        {t('policy.pending.turnsLeft').replace('{n}', String(Math.max(0, policy.applyTurn - turn)))}
                       </span>
                     </div>
                     <div className={styles.pendingSide}>
@@ -662,9 +690,9 @@ export const PolicyPanel = memo(function PolicyPanel({
             </div>
           )}
 
-          <div className={styles.sectionTitle}>政策因果時間線 Causal Timeline</div>
+          <div className={styles.sectionTitle}>{t('policy.timeline')}</div>
           {policyTimeline.length === 0 ? (
-            <div className={styles.empty}>尚無政策紀錄。</div>
+            <div className={styles.empty}>{t('policy.timeline.empty')}</div>
           ) : (
             <div className={styles.timelineList}>
               {policyTimeline.slice(0, 8).map(item => (
@@ -673,8 +701,8 @@ export const PolicyPanel = memo(function PolicyPanel({
                     <span>{item.summary}</span>
                     <span className={item.status === 'pending' ? styles.pendingTurns : styles.timelineApplied}>
                       {item.status === 'pending'
-                        ? `T${item.requestedTurn} → T${item.applyTurn}（待生效）`
-                        : `T${item.requestedTurn} → T${item.resolvedTurn ?? item.applyTurn}（已生效）`}
+                        ? `T${item.requestedTurn} → T${item.applyTurn} ${t('policy.timeline.pendingLabel')}`
+                        : `T${item.requestedTurn} → T${item.resolvedTurn ?? item.applyTurn} ${t('policy.timeline.appliedLabel')}`}
                     </span>
                   </div>
                   <div className={styles.pendingSide}>{item.sideEffects.join(' / ')}</div>

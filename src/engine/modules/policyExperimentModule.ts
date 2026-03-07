@@ -13,7 +13,7 @@ export interface PolicyExperimentCard {
   id: string;
   type: PendingPolicyType;
   summary: string;
-  value: number | boolean;
+  value: number | boolean | string;
   sector?: SectorType;
   requestedTurn: number;
   applyTurn: number;

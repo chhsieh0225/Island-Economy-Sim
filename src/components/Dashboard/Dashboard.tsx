@@ -1,8 +1,9 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import type { EconomyStage, GameState, SectorType, TurnCausalReplay } from '../../types';
 import { CONFIG } from '../../config';
 import { Tooltip } from '../Tooltip/Tooltip';
 import { DASHBOARD_TOOLTIPS } from '../../data/tooltipContent';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './Dashboard.module.css';
 
 interface Props {
@@ -20,23 +21,12 @@ interface SentimentAlert {
 
 interface GovernorObjective {
   id: string;
-  horizon: '短期' | '中期';
+  horizon: string;
   title: string;
   progress: number; // 0-100
   hint: string;
   done: boolean;
 }
-
-const SECTOR_LABELS: Record<SectorType, string> = {
-  food: '食物',
-  goods: '商品',
-  services: '服務',
-};
-const STAGE_LABELS = {
-  agriculture: '農業',
-  industrial: '工業',
-  service: '服務',
-} as const;
 
 function getUnlockedSectors(stage: EconomyStage): SectorType[] {
   switch (stage) {
@@ -49,7 +39,7 @@ function getUnlockedSectors(stage: EconomyStage): SectorType[] {
   }
 }
 
-function buildSentimentAlert(state: GameState): SentimentAlert | null {
+function buildSentimentAlert(state: GameState, t: (key: string) => string): SentimentAlert | null {
   const alive = state.agents.filter(a => a.alive);
   if (alive.length === 0) return null;
 
@@ -75,21 +65,21 @@ function buildSentimentAlert(state: GameState): SentimentAlert | null {
   });
 
   const actions: string[] = [];
-  if (shortages.includes('food')) actions.push('優先補貼食物業並保留低稅率，先穩定基本需求。');
-  if (shortages.includes('goods')) actions.push('提高商品補貼，讓中間財供應回升。');
-  if (shortages.includes('services')) actions.push('提高服務補貼，避免滿意度持續下滑。');
-  if (gini > 0.45) actions.push('啟用或維持福利，緩和底層購買力不足。');
-  if (state.government.taxRate > 0.2) actions.push('稅率偏高，可先下調 2%-5% 觀察。');
-  if (actions.length === 0) actions.push('保持供需平衡並避免政策一次變動過大。');
+  if (shortages.includes('food')) actions.push(t('alert.action.foodSubsidy'));
+  if (shortages.includes('goods')) actions.push(t('alert.action.goodsSubsidy'));
+  if (shortages.includes('services')) actions.push(t('alert.action.servicesSubsidy'));
+  if (gini > 0.45) actions.push(t('alert.action.welfare'));
+  if (state.government.taxRate > 0.2) actions.push(t('alert.action.lowerTax'));
+  if (actions.length === 0) actions.push(t('alert.action.default'));
 
-  const shortageLabel = shortages.map(s => SECTOR_LABELS[s]).join('、');
+  const shortageLabel = shortages.map(s => t(`sector.${s}`)).join('、');
   if (avgSat < 34 || nearLeaveRate > 0.12 || (satDelta < -4 && avgSat < 45)) {
     return {
       level: 'critical',
-      title: '民心警報：紅色 Red',
+      title: t('alert.critical.title'),
       message: shortageLabel
-        ? `民心急速惡化，${shortageLabel}供給不足且離島風險上升。`
-        : '民心急速惡化，居民離島風險上升。',
+        ? t('alert.critical.withShortage').replace('{sectors}', shortageLabel)
+        : t('alert.critical.noShortage'),
       actions: actions.slice(0, 2),
     };
   }
@@ -97,10 +87,10 @@ function buildSentimentAlert(state: GameState): SentimentAlert | null {
   if (avgSat < 48 || lowSatRate > 0.2 || shortages.length >= 2 || gini > 0.5) {
     return {
       level: 'warning',
-      title: '民心警報：橙色 Orange',
+      title: t('alert.warning.title'),
       message: shortageLabel
-        ? `民生壓力偏高，${shortageLabel}供應偏緊。`
-        : '民生壓力偏高，滿意度處於下行區間。',
+        ? t('alert.warning.withShortage').replace('{sectors}', shortageLabel)
+        : t('alert.warning.noShortage'),
       actions: actions.slice(0, 2),
     };
   }
@@ -108,10 +98,10 @@ function buildSentimentAlert(state: GameState): SentimentAlert | null {
   if (avgSat < 60 || satDelta < -2 || shortages.length === 1 || gini > 0.42) {
     return {
       level: 'watch',
-      title: '民心警報：黃色 Yellow',
+      title: t('alert.watch.title'),
       message: shortageLabel
-        ? `民心有轉弱跡象，${shortageLabel}已出現短缺壓力。`
-        : '民心有轉弱跡象，建議提前微調政策。',
+        ? t('alert.watch.withShortage').replace('{sectors}', shortageLabel)
+        : t('alert.watch.noShortage'),
       actions: actions.slice(0, 1),
     };
   }
@@ -134,12 +124,12 @@ function topDrivers(metric: TurnCausalReplay['satisfaction']) {
     .slice(0, 3);
 }
 
-function leadDriverLabel(metric: TurnCausalReplay['satisfaction']): string {
+function leadDriverLabel(metric: TurnCausalReplay['satisfaction'], fallback: string): string {
   const first = topDrivers(metric)[0];
-  return first ? first.label : '無顯著變化';
+  return first ? first.label : fallback;
 }
 
-function buildObjectives(state: GameState): GovernorObjective[] {
+function buildObjectives(state: GameState, t: (key: string) => string): GovernorObjective[] {
   const latest = state.statistics[state.statistics.length - 1];
   const alive = state.agents.filter(a => a.alive);
   const pop = alive.length;
@@ -160,48 +150,50 @@ function buildObjectives(state: GameState): GovernorObjective[] {
   return [
     {
       id: 'food_stability',
-      horizon: '短期',
-      title: '穩定食物供應',
+      horizon: t('horizon.short'),
+      title: t('objective.food'),
       progress: foodCoverage * 100,
       hint: foodCoverage >= 1
-        ? '食物供需已平衡，可維持補貼並觀察 2-3 回合。'
-        : '先拉高食物補貼或降稅，優先把基本需求補齊。',
+        ? t('objective.food.done')
+        : t('objective.food.hint'),
       done: foodCoverage >= 1,
     },
     {
       id: 'sentiment_recovery',
-      horizon: '短期',
-      title: '回升平均滿意度至 62%',
+      horizon: t('horizon.short'),
+      title: t('objective.sentiment'),
       progress: satProgress * 100,
       hint: avgSat >= 62
-        ? '民心進入穩定區，避免一次調太多政策。'
-        : '抑制短缺並維持福利，可更快拉回滿意度。',
+        ? t('objective.sentiment.done')
+        : t('objective.sentiment.hint'),
       done: avgSat >= 62,
     },
     {
       id: 'equity_guardrail',
-      horizon: '中期',
-      title: '控制不平等 (Gini <= 0.42)',
+      horizon: t('horizon.mid'),
+      title: t('objective.equity'),
       progress: giniProgress * 100,
       hint: gini <= 0.42
-        ? '財富分配在可控區間，繼續觀察成長與公平平衡。'
-        : '可維持福利並避免同時大幅拉高多產業補貼。',
+        ? t('objective.equity.done')
+        : t('objective.equity.hint'),
       done: gini <= 0.42,
     },
     {
       id: 'population_retention',
-      horizon: '中期',
-      title: `人口維持 ${targetPop}+`,
+      horizon: t('horizon.mid'),
+      title: t('objective.population').replace('{target}', String(targetPop)),
       progress: popProgress * 100,
       hint: pop >= targetPop
-        ? '人口留存達標，可轉向提升長期產業結構。'
-        : '降低離島率比拚命拉生育更有效，先救民心。',
+        ? t('objective.population.done')
+        : t('objective.population.hint'),
       done: pop >= targetPop,
     },
   ];
 }
 
 export const Dashboard = memo(function Dashboard({ state }: Props) {
+  const { t } = useI18n();
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const alive = state.agents.filter(a => a.alive);
   const pop = alive.length;
   const stats = state.statistics;
@@ -225,8 +217,8 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
   const laborProductivity = latest?.laborProductivity ?? 0;
   const dependencyRatio = latest?.dependencyRatio ?? 0;
   const causal = latest?.causalReplay ?? null;
-  const alert = buildSentimentAlert(state);
-  const objectives = buildObjectives(state);
+  const alert = buildSentimentAlert(state, t);
+  const objectives = buildObjectives(state, t);
   const ageLayers = alive.reduce(
     (acc, a) => {
       acc[a.ageGroup]++;
@@ -259,7 +251,7 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
         if (!hasData) return null;
         return (
           <div className={styles.sdBalance}>
-            <div className={styles.sdTitle}>供需平衡 Supply-Demand Balance</div>
+            <div className={styles.sdTitle}>{t('dashboard.sdBalance')}</div>
             <div className={styles.sdGrid}>
               {sectors.map(sector => {
                 const supply = state.market.supply[sector];
@@ -267,13 +259,17 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
                 const ratio = demand > 0.01 ? supply / demand : supply > 0 ? 2 : 1;
                 const isBalanced = ratio >= 0.8 && ratio <= 1.2;
                 const isWarn = !isBalanced && ratio >= 0.5 && ratio <= 2.0;
-                const label = ratio < 0.8 ? '短缺' : ratio > 1.2 ? '過剩' : '平衡';
+                const label = ratio < 0.8
+                  ? t('dashboard.sdShortage')
+                  : ratio > 1.2
+                    ? t('dashboard.sdSurplus')
+                    : t('dashboard.sdBalanced');
                 const colorClass = isBalanced ? styles.sdGreen : isWarn ? styles.sdYellow : styles.sdRed;
                 const barPct = Math.max(4, Math.min(100, ratio * 50));
                 return (
                   <div key={sector} className={styles.sdItem}>
                     <div className={styles.sdLabel}>
-                      <span>{SECTOR_LABELS[sector]}</span>
+                      <span>{t(`sector.${sector}`)}</span>
                       <span className={colorClass}>{ratio.toFixed(2)} {label}</span>
                     </div>
                     <div className={styles.sdBar}>
@@ -289,7 +285,7 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
       })()}
 
       <div className={styles.objectives}>
-        <div className={styles.objectivesTitle}>短中期任務 Objectives</div>
+        <div className={styles.objectivesTitle}>{t('dashboard.objectives')}</div>
         <div className={styles.objectiveList}>
           {objectives.map(objective => (
             <div
@@ -312,11 +308,11 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
 
       {causal && (
         <div className={styles.causal}>
-          <div className={styles.causalTitle}>因果回放 Causal Replay</div>
+          <div className={styles.causalTitle}>{t('dashboard.causal')}</div>
           <div className={styles.causalGrid}>
             <div className={styles.causalMetric}>
               <div className={styles.causalHead}>
-                <span>滿意度 Δ</span>
+                <span>{t('dashboard.causal.satisfaction')}</span>
                 <span className={causal.satisfaction.net >= 0 ? styles.causalUp : styles.causalDown}>
                   {signed(causal.satisfaction.net)} pt
                 </span>
@@ -333,7 +329,7 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
 
             <div className={styles.causalMetric}>
               <div className={styles.causalHead}>
-                <span>健康 Δ</span>
+                <span>{t('dashboard.causal.health')}</span>
                 <span className={causal.health.net >= 0 ? styles.causalUp : styles.causalDown}>
                   {signed(causal.health.net)} pt
                 </span>
@@ -350,7 +346,7 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
 
             <div className={styles.causalMetric}>
               <div className={styles.causalHead}>
-                <span>人口淨流出</span>
+                <span>{t('dashboard.causal.departures')}</span>
                 <span className={causal.departures.net > 0 ? styles.causalDown : styles.causalUp}>
                   {causal.departures.net > 0 ? '+' : ''}{causal.departures.net}
                 </span>
@@ -367,25 +363,25 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
 
             <div className={styles.causalMetric}>
               <div className={styles.causalHead}>
-                <span>政策執行（實績）</span>
+                <span>{t('dashboard.causal.policy')}</span>
                 <span className={causal.policy.treasuryDelta >= 0 ? styles.causalUp : styles.causalDown}>
-                  國庫 {signed(causal.policy.treasuryDelta)}
+                  {t('dashboard.causal.treasury')} {signed(causal.policy.treasuryDelta)}
                 </span>
               </div>
               <div className={styles.causalDriver}>
-                <span>稅收</span>
+                <span>{t('dashboard.causal.tax')}</span>
                 <span className={styles.causalUp}>+${causal.policy.taxCollected.toFixed(0)}</span>
               </div>
               <div className={styles.causalDriver}>
-                <span>福利（{causal.policy.welfareRecipients} 人）</span>
+                <span>{t('dashboard.causal.welfare')}（{causal.policy.welfareRecipients} {t('dashboard.causal.persons')}）</span>
                 <span className={styles.causalDown}>-${causal.policy.welfarePaid.toFixed(0)}</span>
               </div>
               <div className={styles.causalDriver}>
-                <span>公共建設</span>
+                <span>{t('dashboard.causal.publicWorks')}</span>
                 <span className={styles.causalDown}>-${causal.policy.publicWorksCost.toFixed(0)}</span>
               </div>
               <div className={styles.causalDriver}>
-                <span>人均可支配現金 Δ</span>
+                <span>{t('dashboard.causal.perCapitaCash')}</span>
                 <span className={causal.policy.perCapitaCashDelta >= 0 ? styles.causalUp : styles.causalDown}>
                   {signed(causal.policy.perCapitaCashDelta)}
                 </span>
@@ -394,24 +390,24 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
           </div>
 
           <div className={styles.causalTimeline}>
-            <div className={styles.causalTimelineTitle}>最近 6 回合（點擊展開）</div>
+            <div className={styles.causalTimelineTitle}>{t('dashboard.causal.timeline')}</div>
             {stats.slice(-6).reverse().map(s => (
               <details key={s.turn} className={styles.causalTimelineItem}>
                 <summary className={styles.causalTimelineRow}>
                   <span>T{s.turn}</span>
                   <span>Sat {signed(s.causalReplay.satisfaction.net, 1)}</span>
                   <span>HP {signed(s.causalReplay.health.net, 1)}</span>
-                  <span>流出 {s.causalReplay.departures.net > 0 ? '+' : ''}{s.causalReplay.departures.net}</span>
+                  <span>{t('dashboard.causal.departures.label')} {s.causalReplay.departures.net > 0 ? '+' : ''}{s.causalReplay.departures.net}</span>
                 </summary>
                 <div className={styles.causalTimelineDetail}>
-                  <div>滿意度主因：{leadDriverLabel(s.causalReplay.satisfaction)}</div>
-                  <div>健康主因：{leadDriverLabel(s.causalReplay.health)}</div>
+                  <div>{t('dashboard.causal.satDriver')}：{leadDriverLabel(s.causalReplay.satisfaction, t('dashboard.causal.noChange'))}</div>
+                  <div>{t('dashboard.causal.healthDriver')}：{leadDriverLabel(s.causalReplay.health, t('dashboard.causal.noChange'))}</div>
                   <div>
-                    政策實績：稅收 +${s.causalReplay.policy.taxCollected.toFixed(0)}
-                    ，福利 -${s.causalReplay.policy.welfarePaid.toFixed(0)}（{s.causalReplay.policy.welfareRecipients} 人）
-                    ，公建 -${s.causalReplay.policy.publicWorksCost.toFixed(0)}
-                    ，人均現金Δ {signed(s.causalReplay.policy.perCapitaCashDelta, 2)}
-                    ，國庫Δ {signed(s.causalReplay.policy.treasuryDelta, 1)}
+                    {t('dashboard.causal.policyPerformance')}：{t('dashboard.causal.taxRevenue')} +${s.causalReplay.policy.taxCollected.toFixed(0)}
+                    ，{t('dashboard.causal.welfareSpend')} -${s.causalReplay.policy.welfarePaid.toFixed(0)}（{s.causalReplay.policy.welfareRecipients} {t('dashboard.causal.persons')}）
+                    ，{t('dashboard.causal.pwSpend')} -${s.causalReplay.policy.publicWorksCost.toFixed(0)}
+                    ，{t('dashboard.causal.cashDelta')} {signed(s.causalReplay.policy.perCapitaCashDelta, 2)}
+                    ，{t('dashboard.causal.treasuryDelta')} {signed(s.causalReplay.policy.treasuryDelta, 1)}
                   </div>
                 </div>
               </details>
@@ -422,17 +418,17 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
 
       <div className={styles.stat}>
         <Tooltip content={DASHBOARD_TOOLTIPS.turn.content} detail={DASHBOARD_TOOLTIPS.turn.detail}>
-          <span className={styles.label}>回合 Turn</span>
+          <span className={styles.label}>{t('dashboard.turn')}</span>
         </Tooltip>
         <div className={styles.value}>{state.turn}</div>
       </div>
       <div className={styles.stat}>
-        <span className={styles.label}>產業階段 Stage</span>
-        <div className={styles.value}>{STAGE_LABELS[state.economyStage]}</div>
+        <span className={styles.label}>{t('dashboard.stage')}</span>
+        <div className={styles.value}>{t(`stage.${state.economyStage}`)}</div>
       </div>
       <div className={styles.stat}>
         <Tooltip content={DASHBOARD_TOOLTIPS.population.content} detail={DASHBOARD_TOOLTIPS.population.detail}>
-          <span className={styles.label}>人口 Pop</span>
+          <span className={styles.label}>{t('dashboard.population')}</span>
         </Tooltip>
         <div className={styles.value}>
           {pop}
@@ -441,7 +437,7 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
       </div>
       <div className={styles.stat}>
         <Tooltip content={DASHBOARD_TOOLTIPS.gdp.content} detail={DASHBOARD_TOOLTIPS.gdp.detail} realWorldRef={DASHBOARD_TOOLTIPS.gdp.realWorldRef}>
-          <span className={styles.label}>GDP</span>
+          <span className={styles.label}>{t('dashboard.gdp')}</span>
         </Tooltip>
         <div className={styles.value}>
           ${gdp.toFixed(0)}
@@ -450,7 +446,7 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
       </div>
       <div className={styles.stat}>
         <Tooltip content={DASHBOARD_TOOLTIPS.satisfaction.content} detail={DASHBOARD_TOOLTIPS.satisfaction.detail}>
-          <span className={styles.label}>滿意度 Sat</span>
+          <span className={styles.label}>{t('dashboard.satisfaction')}</span>
         </Tooltip>
         <div className={styles.value}>
           {avgSat.toFixed(0)}%
@@ -459,7 +455,7 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
       </div>
       <div className={styles.stat}>
         <Tooltip content={DASHBOARD_TOOLTIPS.health.content} detail={DASHBOARD_TOOLTIPS.health.detail}>
-          <span className={styles.label}>健康 HP</span>
+          <span className={styles.label}>{t('dashboard.health')}</span>
         </Tooltip>
         <div className={styles.value}>
           {avgHp.toFixed(0)}%
@@ -468,7 +464,7 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
       </div>
       <div className={styles.stat}>
         <Tooltip content={DASHBOARD_TOOLTIPS.gini.content} detail={DASHBOARD_TOOLTIPS.gini.detail} realWorldRef={DASHBOARD_TOOLTIPS.gini.realWorldRef}>
-          <span className={styles.label}>基尼係數 Gini</span>
+          <span className={styles.label}>{t('dashboard.gini')}</span>
         </Tooltip>
         <div className={styles.value}>
           {gini.toFixed(3)}
@@ -477,85 +473,96 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
       </div>
       <div className={styles.stat}>
         <Tooltip content={DASHBOARD_TOOLTIPS.treasury.content} detail={DASHBOARD_TOOLTIPS.treasury.detail}>
-          <span className={styles.label}>國庫 Treasury</span>
+          <span className={styles.label}>{t('dashboard.treasury')}</span>
         </Tooltip>
         <div className={styles.value}>${treasury.toFixed(0)}</div>
       </div>
-      <div className={styles.stat}>
-        <span className={styles.label}>銀行存款 Bank</span>
-        <div className={styles.value}>${totalSavings.toFixed(0)}</div>
-      </div>
-      <div className={styles.stat}>
-        <Tooltip content={DASHBOARD_TOOLTIPS.avgAge.content} detail={DASHBOARD_TOOLTIPS.avgAge.detail}>
-          <span className={styles.label}>平均年齡 Avg Age</span>
-        </Tooltip>
-        <div className={styles.value}>{avgAge.toFixed(1)} 歲</div>
-      </div>
-      <div className={styles.stat}>
-        <Tooltip content={DASHBOARD_TOOLTIPS.birthDeath.content} detail={DASHBOARD_TOOLTIPS.birthDeath.detail}>
-          <span className={styles.label}>出生/死亡</span>
-        </Tooltip>
-        <div className={styles.value}>
-          <span style={{ color: '#4caf50' }}>+{births}</span>
-          {' / '}
-          <span style={{ color: '#f44336' }}>-{deaths}</span>
-        </div>
-      </div>
-      <div className={styles.stat}>
-        <div className={styles.label}>年齡層 Y/A/S</div>
-        <div className={styles.value}>
-          {ageLayers.youth}/{ageLayers.adult}/{ageLayers.senior}
-        </div>
-      </div>
-      <div className={styles.stat}>
-        <div className={styles.label}>就業率 Employment</div>
-        <div className={styles.value}>
-          {employmentRate.toFixed(1)}%
-          {trend(employmentRate, prev?.employmentRate)}
-        </div>
-      </div>
-      <div className={styles.stat}>
-        <div className={styles.label}>失業率 Unemployment</div>
-        <div className={styles.value}>
-          {unemploymentRate.toFixed(1)}%
-          {trend(-unemploymentRate, prev ? -prev.unemploymentRate : undefined)}
-        </div>
-      </div>
-      <div className={styles.stat}>
-        <div className={styles.label}>勞參率 Labor Force</div>
-        <div className={styles.value}>
-          {laborParticipationRate.toFixed(1)}%
-          {trend(laborParticipationRate, prev?.laborParticipationRate)}
-        </div>
-      </div>
-      <div className={styles.stat}>
-        <div className={styles.label}>生育率 Fertility</div>
-        <div className={styles.value}>
-          {fertilityRate.toFixed(2)}
-          {trend(fertilityRate, prev?.fertilityRate)}
-        </div>
-      </div>
-      <div className={styles.stat}>
-        <div className={styles.label}>出生率 Birth/1k</div>
-        <div className={styles.value}>
-          {crudeBirthRate.toFixed(1)}
-          {trend(crudeBirthRate, prev?.crudeBirthRate)}
-        </div>
-      </div>
-      <div className={styles.stat}>
-        <div className={styles.label}>勞動生產率 GDP/worker</div>
-        <div className={styles.value}>
-          ${laborProductivity.toFixed(1)}
-          {trend(laborProductivity, prev?.laborProductivity)}
-        </div>
-      </div>
-      <div className={styles.stat}>
-        <div className={styles.label}>扶養比 Dependency</div>
-        <div className={styles.value}>
-          {dependencyRatio.toFixed(2)}
-          {trend(-dependencyRatio, prev ? -prev.dependencyRatio : undefined)}
-        </div>
-      </div>
+      <button
+        className={styles.advancedToggle}
+        onClick={() => setShowAdvanced(v => !v)}
+      >
+        {showAdvanced ? `▲ ${t('dashboard.advancedHide')}` : `▼ ${t('dashboard.advancedShow')}`}
+      </button>
+
+      {showAdvanced && (
+        <>
+          <div className={styles.stat}>
+            <span className={styles.label}>{t('dashboard.bank')}</span>
+            <div className={styles.value}>${totalSavings.toFixed(0)}</div>
+          </div>
+          <div className={styles.stat}>
+            <Tooltip content={DASHBOARD_TOOLTIPS.avgAge.content} detail={DASHBOARD_TOOLTIPS.avgAge.detail}>
+              <span className={styles.label}>{t('dashboard.avgAge')}</span>
+            </Tooltip>
+            <div className={styles.value}>{avgAge.toFixed(1)} {t('dashboard.ageSuffix')}</div>
+          </div>
+          <div className={styles.stat}>
+            <Tooltip content={DASHBOARD_TOOLTIPS.birthDeath.content} detail={DASHBOARD_TOOLTIPS.birthDeath.detail}>
+              <span className={styles.label}>{t('dashboard.birthDeath')}</span>
+            </Tooltip>
+            <div className={styles.value}>
+              <span style={{ color: '#4caf50' }}>+{births}</span>
+              {' / '}
+              <span style={{ color: '#f44336' }}>-{deaths}</span>
+            </div>
+          </div>
+          <div className={styles.stat}>
+            <div className={styles.label}>{t('dashboard.ageLayers')}</div>
+            <div className={styles.value}>
+              {ageLayers.youth}/{ageLayers.adult}/{ageLayers.senior}
+            </div>
+          </div>
+          <div className={styles.stat}>
+            <div className={styles.label}>{t('dashboard.employment')}</div>
+            <div className={styles.value}>
+              {employmentRate.toFixed(1)}%
+              {trend(employmentRate, prev?.employmentRate)}
+            </div>
+          </div>
+          <div className={styles.stat}>
+            <div className={styles.label}>{t('dashboard.unemployment')}</div>
+            <div className={styles.value}>
+              {unemploymentRate.toFixed(1)}%
+              {trend(-unemploymentRate, prev ? -prev.unemploymentRate : undefined)}
+            </div>
+          </div>
+          <div className={styles.stat}>
+            <div className={styles.label}>{t('dashboard.laborForce')}</div>
+            <div className={styles.value}>
+              {laborParticipationRate.toFixed(1)}%
+              {trend(laborParticipationRate, prev?.laborParticipationRate)}
+            </div>
+          </div>
+          <div className={styles.stat}>
+            <div className={styles.label}>{t('dashboard.fertility')}</div>
+            <div className={styles.value}>
+              {fertilityRate.toFixed(2)}
+              {trend(fertilityRate, prev?.fertilityRate)}
+            </div>
+          </div>
+          <div className={styles.stat}>
+            <div className={styles.label}>{t('dashboard.birthRate')}</div>
+            <div className={styles.value}>
+              {crudeBirthRate.toFixed(1)}
+              {trend(crudeBirthRate, prev?.crudeBirthRate)}
+            </div>
+          </div>
+          <div className={styles.stat}>
+            <div className={styles.label}>{t('dashboard.laborProductivity')}</div>
+            <div className={styles.value}>
+              ${laborProductivity.toFixed(1)}
+              {trend(laborProductivity, prev?.laborProductivity)}
+            </div>
+          </div>
+          <div className={styles.stat}>
+            <div className={styles.label}>{t('dashboard.dependency')}</div>
+            <div className={styles.value}>
+              {dependencyRatio.toFixed(2)}
+              {trend(-dependencyRatio, prev ? -prev.dependencyRatio : undefined)}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 });

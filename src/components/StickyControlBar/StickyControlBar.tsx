@@ -4,6 +4,7 @@ import { useGameStore } from '../../stores/gameStore';
 import { useTurnDiffStore } from '../../stores/turnDiffStore';
 import { useStreakStore } from '../../stores/streakStore';
 import { useAudioStore } from '../../audio/audioManager';
+import { useI18n } from '../../i18n/useI18n';
 import type { GameState } from '../../types';
 import styles from './StickyControlBar.module.css';
 
@@ -52,20 +53,22 @@ function DeltaBadge({ value, prefix = '', suffix = '', invert = false }: {
 
 /* ─── Save / Load sub-component ──────────────────────────────────────── */
 function SaveLoadControls() {
+  const { t } = useI18n();
   const hasSavedGame = useGameStore(s => s.hasSavedGame);
   const save = useGameStore(s => s.saveCurrentGame);
   const load = useGameStore(s => s.loadSavedGame);
 
   return (
     <div className={styles.saveLoadGroup}>
-      <button className={styles.saveBtn} onClick={save} title="儲存 Save">存</button>
-      <button className={styles.loadBtn} onClick={load} disabled={!hasSavedGame} title="讀取 Load">讀</button>
+      <button className={styles.saveBtn} onClick={save} title={t('controlBar.save')}>{t('controlBar.save')}</button>
+      <button className={styles.loadBtn} onClick={load} disabled={!hasSavedGame} title={t('controlBar.load')}>{t('controlBar.load')}</button>
     </div>
   );
 }
 
 /* ─── Audio sub-component ────────────────────────────────────────────── */
 function AudioControls() {
+  const { t } = useI18n();
   const muted = useAudioStore(s => s.muted);
   const volume = useAudioStore(s => s.volume);
   const toggleMute = useAudioStore(s => s.toggleMute);
@@ -73,7 +76,7 @@ function AudioControls() {
 
   return (
     <div className={styles.audioControls}>
-      <button className={styles.muteBtn} onClick={toggleMute} title={muted ? '取消靜音' : '靜音'}>
+      <button className={styles.muteBtn} onClick={toggleMute} title={muted ? t('controlBar.unmute') : t('controlBar.mute')}>
         {muted ? '🔇' : volume > 0.5 ? '🔊' : '🔉'}
       </button>
       <input
@@ -82,7 +85,7 @@ function AudioControls() {
         value={muted ? 0 : volume}
         onChange={e => setVolume(parseFloat(e.target.value))}
         className={styles.volumeSlider}
-        title={`音量 ${Math.round(volume * 100)}%`}
+        title={`${t('controlBar.volumeLabel')} ${Math.round(volume * 100)}%`}
       />
     </div>
   );
@@ -101,6 +104,7 @@ export const StickyControlBar = memo(function StickyControlBar({
   onEndGame,
   inlineControlBarVisible,
 }: Props) {
+  const { t } = useI18n();
   const diff = useTurnDiffStore(s => s.currentDiff);
   const expanded = useTurnDiffStore(s => s.expanded);
   const setExpanded = useTurnDiffStore(s => s.setExpanded);
@@ -142,6 +146,12 @@ export const StickyControlBar = memo(function StickyControlBar({
   const sat = latest?.avgSatisfaction ?? 100;
   const treasury = latest?.government.treasury ?? 0;
 
+  const speedLabels: Record<string, string> = {
+    slow: t('controlBar.autoSlow'),
+    medium: t('controlBar.autoMed'),
+    fast: t('controlBar.autoFast'),
+  };
+
   return (
     <div className={`${styles.stickyBar} ${inlineControlBarVisible ? styles.hidden : ''}`}>
     <div className={styles.stickyBarInner}>
@@ -157,9 +167,9 @@ export const StickyControlBar = memo(function StickyControlBar({
             ))}
             {(diff.births > 0 || diff.deaths > 0) && (
               <span className={styles.summaryBirthDeath}>
-                {diff.births > 0 && <span className={styles.summaryBirth}>+{diff.births} 出生</span>}
+                {diff.births > 0 && <span className={styles.summaryBirth}>+{diff.births} {t('turnSummary.births')}</span>}
                 {diff.births > 0 && diff.deaths > 0 && ' / '}
-                {diff.deaths > 0 && <span className={styles.summaryDeath}>-{diff.deaths} 死亡</span>}
+                {diff.deaths > 0 && <span className={styles.summaryDeath}>-{diff.deaths} {t('turnSummary.deaths')}</span>}
               </span>
             )}
           </div>
@@ -168,7 +178,7 @@ export const StickyControlBar = memo(function StickyControlBar({
 
       {/* ─── Stat Delta Row ────────────────────────────────────────────── */}
       <div className={styles.statRow}>
-        <span className={styles.statPill} onClick={() => scrollTo('dashboard-anchor')} title="Dashboard">
+        <span className={styles.statPill} onClick={() => scrollTo('dashboard-anchor')} title={t('dashboard.turn')}>
           <span className={styles.statLabel}>T</span>
           <span className={styles.statValue}>{turn}</span>
         </span>
@@ -186,19 +196,19 @@ export const StickyControlBar = memo(function StickyControlBar({
           {diff && <DeltaBadge value={diff.deltas.gdp} prefix="$" />}
         </span>
 
-        <span className={`${styles.statPill} ${diff?.dramaticMetrics.includes('population') ? styles.dramaticPill : ''}`} onClick={() => scrollTo('dashboard-anchor')} title="Population">
+        <span className={`${styles.statPill} ${diff?.dramaticMetrics.includes('population') ? styles.dramaticPill : ''}`} onClick={() => scrollTo('dashboard-anchor')} title={t('dashboard.population')}>
           <span className={styles.statLabel}>POP</span>
           <span className={styles.statValue}>{pop}</span>
           {diff && <DeltaBadge value={diff.deltas.population} />}
         </span>
 
-        <span className={`${styles.statPill} ${diff?.dramaticMetrics.includes('avgSatisfaction') ? styles.dramaticPill : ''}`} onClick={() => scrollTo('dashboard-anchor')} title="Satisfaction">
+        <span className={`${styles.statPill} ${diff?.dramaticMetrics.includes('avgSatisfaction') ? styles.dramaticPill : ''}`} onClick={() => scrollTo('dashboard-anchor')} title={t('dashboard.satisfaction')}>
           <span className={styles.statLabel}>SAT</span>
           <span className={styles.statValue}>{sat.toFixed(0)}%</span>
           {diff && <DeltaBadge value={diff.deltas.avgSatisfaction} suffix="%" />}
         </span>
 
-        <span className={`${styles.statPill} ${diff?.dramaticMetrics.includes('treasury') ? styles.dramaticPill : ''}`} onClick={() => scrollTo('dashboard-anchor')} title="Treasury">
+        <span className={`${styles.statPill} ${diff?.dramaticMetrics.includes('treasury') ? styles.dramaticPill : ''}`} onClick={() => scrollTo('dashboard-anchor')} title={t('dashboard.treasury')}>
           <span className={styles.statLabel}>$$$</span>
           <span className={styles.statValue}>${treasury.toFixed(0)}</span>
           {diff && <DeltaBadge value={diff.deltas.treasury} prefix="$" />}
@@ -209,9 +219,13 @@ export const StickyControlBar = memo(function StickyControlBar({
           <button
             className={`${styles.toggleSummary} ${diff.isDramatic ? styles.dramaticToggle : ''}`}
             onClick={() => setExpanded(!expanded)}
-            title={expanded ? '收合 Collapse' : '展開 Expand'}
+            title={expanded ? t('turnSummary.collapse') : t('turnSummary.expand')}
           >
-            {expanded ? '▼ 收合' : diff.isDramatic ? `⚡ ${diff.events.length} 事件` : `▲ ${diff.events.length} 事件`}
+            {expanded
+              ? `▼ ${t('turnSummary.collapse')}`
+              : diff.isDramatic
+                ? `⚡ ${diff.events.length} ${t('turnSummary.events')}`
+                : `▲ ${diff.events.length} ${t('turnSummary.events')}`}
           </button>
         )}
       </div>
@@ -224,15 +238,15 @@ export const StickyControlBar = memo(function StickyControlBar({
             onClick={onAdvanceTurn}
             disabled={isGameOver || hasPendingDecision}
           >
-            ▶ 下一回合
+            ▶ {t('controlBar.advance')}
           </button>
         ) : (
           <button className={styles.pauseBtn} onClick={onStopAutoPlay}>
-            ⏸ 暫停 Pause
+            ⏸ {t('controlBar.pause')}
           </button>
         )}
 
-        <span className={styles.autoLabel}>自動:</span>
+        <span className={styles.autoLabel}>{t('controlBar.auto')}:</span>
         <div className={styles.autoGroup}>
           {(['slow', 'medium', 'fast'] as const).map(speed => (
             <button
@@ -241,20 +255,20 @@ export const StickyControlBar = memo(function StickyControlBar({
               onClick={() => handleSpeedClick(speed)}
               disabled={isGameOver || hasPendingDecision}
             >
-              {speed === 'slow' ? '慢' : speed === 'medium' ? '中' : '快'}
+              {speedLabels[speed]}
             </button>
           ))}
         </div>
 
         {hasPendingDecision && (
-          <span className={styles.pendingFlag}>等待市政抉擇中</span>
+          <span className={styles.pendingFlag}>{t('controlBar.pendingDecision')}</span>
         )}
 
         <div className={styles.secondaryGroup}>
           <button className={styles.endGameBtn} onClick={onEndGame} disabled={isGameOver}>
-            結束
+            {t('controlBar.endGame')}
           </button>
-          <button className={styles.resetBtn} onClick={onReset}>重置</button>
+          <button className={styles.resetBtn} onClick={onReset}>{t('controlBar.reset')}</button>
           <SaveLoadControls />
           <AudioControls />
         </div>

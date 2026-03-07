@@ -97,6 +97,17 @@ export const CONFIG = {
   AUTO_STABILIZER_MAX_AMOUNT: 10,        // max welfare per eligible agent per turn
   AUTO_STABILIZER_PERCENTILE: 0.50,      // bottom 50% of population by money receive support
 
+  // Government strategic stockpile (buffer stock)
+  STOCKPILE_BUY_THRESHOLD: 0.8,         // buy when price < initial_price × this
+  STOCKPILE_SELL_THRESHOLD: 1.3,        // sell when price > initial_price × this
+  STOCKPILE_MAX_BUY_PER_TURN: 5,       // max qty to buy per sector per turn
+  STOCKPILE_MAX_SELL_PER_TURN: 5,      // max qty to sell per sector per turn
+  STOCKPILE_MAX_CAPACITY: 50,          // max stockpile per sector
+  STOCKPILE_BUY_PRICE_PREMIUM: 1.1,    // willing to pay 10% above market
+  STOCKPILE_SELL_PRICE_DISCOUNT: 0.9,   // willing to sell 10% below market
+  STOCKPILE_MAINTENANCE_COST: 3,        // treasury cost per turn when enabled
+  STOCKPILE_SPOILAGE_RATE: 0.05,       // 5% stockpile decays per turn
+
   // History
   MAX_HISTORY_LENGTH: 200,
 

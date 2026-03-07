@@ -10,6 +10,9 @@ export interface TurnGovernmentSummary {
   liquidityInjected: number;
   liquidityRecipients: number;
   autoStabilizerSpent: number;
+  stockpileBuySpent: number;
+  stockpileSellRevenue: number;
+  stockpileMaintenance: number;
   policyRate: number;
   treasuryDelta: number;
   perCapitaCashDelta: number;

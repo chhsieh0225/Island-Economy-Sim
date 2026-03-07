@@ -37,6 +37,7 @@ interface Props {
   onSetPublicWorks: (active: boolean) => void;
   onSetPolicyRate: (rate: number) => void;
   onSetLiquiditySupport: (active: boolean) => void;
+  onSetStockpile: (enabled: boolean) => void;
   /** When set, only show the specified policy sections (tutorial mode) */
   enabledSections?: Set<string>;
 }
@@ -65,6 +66,8 @@ function pendingSummary(policy: PendingPolicyChange, t: (key: string) => string)
       return `${t('policy.policyRate')} → ${((policy.value as number) * 100).toFixed(2)}%`;
     case 'liquiditySupport':
       return `${t('policy.liquiditySupport')} → ${(policy.value as boolean) ? on : off}`;
+    case 'stockpile':
+      return `${t('policy.stockpile')} → ${(policy.value as boolean) ? on : off}`;
   }
 }
 
@@ -195,6 +198,7 @@ export const PolicyPanel = memo(function PolicyPanel({
   onSetPublicWorks,
   onSetPolicyRate,
   onSetLiquiditySupport,
+  onSetStockpile,
   enabledSections,
 }: Props) {
   const { t } = useI18n();
@@ -207,6 +211,7 @@ export const PolicyPanel = memo(function PolicyPanel({
   const pendingWelfare = pendingPolicies.find(p => p.type === 'welfare');
   const pendingPublicWorks = pendingPolicies.find(p => p.type === 'publicWorks');
   const pendingLiquiditySupport = pendingPolicies.find(p => p.type === 'liquiditySupport');
+  const pendingStockpile = pendingPolicies.find(p => p.type === 'stockpile');
   const getSubsidyDisplay = (sector: SectorType): number => (
     (pendingPolicies.find(p => p.type === 'subsidy' && p.sector === sector)?.value as number | undefined)
     ?? government.subsidies[sector]
@@ -222,6 +227,9 @@ export const PolicyPanel = memo(function PolicyPanel({
   const liquiditySupportDisplay = pendingLiquiditySupport
     ? pendingLiquiditySupport.value as boolean
     : government.liquiditySupportActive;
+  const stockpileDisplay = pendingStockpile
+    ? pendingStockpile.value as boolean
+    : government.stockpileEnabled;
   const latest = statistics.length > 0 ? statistics[statistics.length - 1] : null;
   const activeEventCount = activeRandomEvents.length;
 
@@ -473,6 +481,25 @@ export const PolicyPanel = memo(function PolicyPanel({
             <span className={styles.toggleLabel}>{t('policy.liquiditySupport')}</span>
           </Tooltip>
         </label>
+      )}
+
+      {showSection('stockpile') && (
+        <>
+          <label className={styles.toggle}>
+            <input
+              type="checkbox"
+              className={styles.checkbox}
+              checked={stockpileDisplay}
+              onChange={e => onSetStockpile(e.target.checked)}
+            />
+            <span className={styles.toggleLabel}>{t('policy.stockpile')}</span>
+          </label>
+          {stockpileDisplay && (
+            <div className={styles.forecastRow} style={{ fontSize: '0.8em', opacity: 0.75, paddingLeft: 8 }}>
+              <span>{t('policy.stockpile.levels')}: {t('sector.food')} {government.stockpile.food.toFixed(1)} / {t('sector.goods')} {government.stockpile.goods.toFixed(1)} / {t('sector.services')} {government.stockpile.services.toFixed(1)}</span>
+            </div>
+          )}
+        </>
       )}
 
       {!isTutorial && forecast && (

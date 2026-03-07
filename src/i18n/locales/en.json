@@ -135,6 +135,8 @@
   "policy.publicWorks": "Public Works",
   "policy.policyRate": "Policy Rate",
   "policy.liquiditySupport": "Liquidity Support",
+  "policy.stockpile": "Strategic Reserve",
+  "policy.stockpile.levels": "Stock",
   "policy.enabled": "Enabled",
   "policy.disabled": "Disabled",
   "policy.social": "Social Policy",

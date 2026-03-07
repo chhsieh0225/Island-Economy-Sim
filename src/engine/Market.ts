@@ -8,11 +8,21 @@ import {
 } from './economicCalibration';
 import type { Agent } from './Agent';
 
+/** Minimal interface for anything that can participate in market trades. */
+export interface MarketTrader {
+  spendMoney(amount: number): void;
+  receiveMoney(amount: number): void;
+  receiveGoods(sector: SectorType, qty: number): void;
+  removeGoods(sector: SectorType, qty: number): void;
+}
+
 interface MarketOptions {
   getEconomicCalibration?: () => EconomicCalibrationProfile;
 }
 
 export class Market {
+  static readonly GOVERNMENT_TRADER_ID = -1;
+
   prices: Record<SectorType, number>;
   priceHistory: Record<SectorType, number[]>;
   supply: Record<SectorType, number>;
@@ -22,6 +32,7 @@ export class Market {
   private sellOrders: Map<SectorType, SellOrder[]>;
   private buyOrders: Map<SectorType, BuyOrder[]>;
   private agents: Map<number, Agent>;
+  private governmentTrader: MarketTrader | null = null;
   private policyRate: number;
   private liquiditySupportActive: boolean;
   private readonly getEconomicCalibration: () => EconomicCalibrationProfile;
@@ -56,6 +67,17 @@ export class Market {
     for (const agent of agents) {
       this.agents.set(agent.id, agent);
     }
+  }
+
+  setGovernmentTrader(trader: MarketTrader | null): void {
+    this.governmentTrader = trader;
+  }
+
+  private getTrader(agentId: number): MarketTrader | undefined {
+    if (agentId === Market.GOVERNMENT_TRADER_ID && this.governmentTrader) {
+      return this.governmentTrader;
+    }
+    return this.agents.get(agentId);
   }
 
   getPrice(sector: SectorType): number {
@@ -126,8 +148,8 @@ export class Market {
       }
 
       // Execute trade
-      const seller = this.agents.get(sell.agentId);
-      const buyer = this.agents.get(buy.agentId);
+      const seller = this.getTrader(sell.agentId);
+      const buyer = this.getTrader(buy.agentId);
 
       if (seller && buyer) {
         const totalCost = tradePrice * tradeQty;

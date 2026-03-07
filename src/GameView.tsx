@@ -80,6 +80,7 @@ export default function GameView() {
   const setPublicWorks = useGameStore(s => s.setPublicWorks);
   const setPolicyRate = useGameStore(s => s.setPolicyRate);
   const setLiquiditySupport = useGameStore(s => s.setLiquiditySupport);
+  const setStockpile = useGameStore(s => s.setStockpile);
   const reset = useGameStore(s => s.reset);
   const startNewRun = useGameStore(s => s.startNewRun);
   const startAutoPlay = useGameStore(s => s.startAutoPlay);
@@ -270,6 +271,7 @@ export default function GameView() {
                 onSetPublicWorks={setPublicWorks}
                 onSetPolicyRate={setPolicyRate}
                 onSetLiquiditySupport={setLiquiditySupport}
+                onSetStockpile={setStockpile}
                 enabledSections={isTutorial ? enabledControls : undefined}
               />
             )}

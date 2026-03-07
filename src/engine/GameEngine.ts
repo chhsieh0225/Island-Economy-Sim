@@ -104,6 +104,7 @@ export class GameEngine {
   private lastRandomEventTurn: number = -999;
   private lastDecisionTurn: number = -999;
   private eventChainSignals: Record<string, number> = {};
+  private stockpileTreasurySnapshot: number = 0; // snapshot before market clearing
   private milestoneFlags: Set<string> = new Set();
   private _newMilestonesThisTurn: MilestoneRecord[] = [];
   private stageTransitionFrom: EconomyStage | null = null;
@@ -124,6 +125,7 @@ export class GameEngine {
       getEconomicCalibration: () => this.getEconomicCalibration(),
     });
     this.government = new Government();
+    this.market.setGovernmentTrader(this.government.createMarketTrader());
     this.statistics = new Statistics();
     this.terrain = generateTerrainProfile(this.seed);
     this.initializeAgents();
@@ -242,7 +244,10 @@ export class GameEngine {
     const govSpending = pipeline.governmentSummary.welfareSpent
       + pipeline.governmentSummary.publicWorksSpent
       + pipeline.governmentSummary.liquidityInjected
-      + pipeline.governmentSummary.autoStabilizerSpent;
+      + pipeline.governmentSummary.autoStabilizerSpent
+      + pipeline.governmentSummary.stockpileBuySpent
+      + pipeline.governmentSummary.stockpileMaintenance
+      - pipeline.governmentSummary.stockpileSellRevenue;
     const snapshot = this.statistics.recordTurn(
       this.turn,
       this.agents,
@@ -356,6 +361,23 @@ export class GameEngine {
       demandMultipliers,
       allowedSectors,
     });
+
+    // Government strategic stockpile: post buy/sell orders alongside agents
+    if (this.government.stockpileEnabled) {
+      const orders = this.government.computeStockpileOrders(
+        this.market.prices,
+        Market.GOVERNMENT_TRADER_ID,
+      );
+      for (const order of orders.buyOrders) {
+        this.market.addBuyOrder(order);
+      }
+      for (const order of orders.sellOrders) {
+        this.market.addSellOrder(order);
+      }
+    }
+
+    // Snapshot treasury before market clearing to track stockpile trades
+    this.stockpileTreasurySnapshot = this.government.treasury;
   }
 
   private phaseConsumption(agents: Agent[]): ConsumptionPhaseSummary {
@@ -473,6 +495,29 @@ export class GameEngine {
       this.addEvent('info', `📋 自動穩定機制啟動 → ${autoStabilizerResult.recipients} 人獲緊急補助 $${autoStabilizerSpent.toFixed(0)}`);
     }
 
+    // Strategic stockpile: compute trade amounts, maintenance & spoilage
+    // Treasury now = snapshot + stockpileChange + tax - welfare - pw - liquidity - auto
+    // Isolate stockpileChange by subtracting all known fiscal operations:
+    const treasuryAfterGov = this.government.treasury;
+    const treasuryChangeFromMarket = treasuryAfterGov - this.stockpileTreasurySnapshot
+      - taxCollected + welfareSpent + publicWorksSpent + liquidityInjected + autoStabilizerSpent;
+    // If negative, government spent money buying; if positive, government earned from selling
+    const stockpileBuySpent = Math.max(0, -treasuryChangeFromMarket);
+    const stockpileSellRevenue = Math.max(0, treasuryChangeFromMarket);
+
+    const stockpileMaintenance = this.government.payStockpileMaintenance();
+    this.government.applySpoilage();
+
+    if (stockpileBuySpent > 0.1) {
+      this.addEvent('info', `📋 戰略儲備收購 → 支出 $${stockpileBuySpent.toFixed(0)}`);
+    }
+    if (stockpileSellRevenue > 0.1) {
+      this.addEvent('info', `📋 戰略儲備釋出 → 收入 $${stockpileSellRevenue.toFixed(0)}`);
+    }
+    if (stockpileMaintenance > 0 && this.government.stockpileEnabled) {
+      // Only log if still enabled (not auto-disabled due to insufficient funds)
+    }
+
     const treasuryDelta = this.government.treasury - treasuryStart;
     const perCapitaCashDelta = aliveCount > 0
       ? (welfareSpent + liquidityInjected + autoStabilizerSpent - taxCollected) / aliveCount
@@ -485,6 +530,9 @@ export class GameEngine {
       liquidityInjected,
       liquidityRecipients,
       autoStabilizerSpent,
+      stockpileBuySpent,
+      stockpileSellRevenue,
+      stockpileMaintenance,
       policyRate: this.government.policyRate,
       treasuryDelta,
       perCapitaCashDelta,
@@ -875,6 +923,19 @@ export class GameEngine {
       value: active,
       summary: `流動性支持 ${active ? '啟用' : '停用'}`,
       sideEffects: getPolicySideEffectsModule('liquiditySupport', active),
+    });
+  }
+
+  setStockpile(enabled: boolean): void {
+    const existing = this.pendingPolicies.find(p => p.type === 'stockpile');
+    if (existing && existing.value === enabled) return;
+    if (!existing && this.government.stockpileEnabled === enabled) return;
+
+    this.queuePolicy({
+      type: 'stockpile',
+      value: enabled,
+      summary: `戰略儲備 ${enabled ? '啟用' : '停用'}`,
+      sideEffects: getPolicySideEffectsModule('stockpile', enabled),
     });
   }
 

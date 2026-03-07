@@ -20,6 +20,7 @@ function getTestProps() {
     onSetPublicWorks: vi.fn(),
     onSetPolicyRate: vi.fn(),
     onSetLiquiditySupport: vi.fn(),
+    onSetStockpile: vi.fn(),
   };
 }
 

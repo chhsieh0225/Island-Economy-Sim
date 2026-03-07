@@ -70,7 +70,10 @@ describe('deterministicRegression', () => {
         - replay.welfarePaid
         - replay.publicWorksCost
         - replay.liquidityInjected
-        - replay.autoStabilizerSpent;
+        - replay.autoStabilizerSpent
+        - replay.stockpileBuySpent
+        + replay.stockpileSellRevenue
+        - replay.stockpileMaintenance;
       expect(Math.abs(replay.treasuryDelta - expectedTreasuryDelta) < 0.02).toBe(true);
     }
   });

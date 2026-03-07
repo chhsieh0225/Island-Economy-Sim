@@ -75,6 +75,7 @@ interface GameStoreState {
   setPublicWorks: (active: boolean) => void;
   setPolicyRate: (rate: number) => void;
   setLiquiditySupport: (active: boolean) => void;
+  setStockpile: (enabled: boolean) => void;
   reset: () => void;
   startNewRun: (seed: number, scenarioId: ScenarioId) => void;
   startAutoPlay: (speed: 'slow' | 'medium' | 'fast') => void;
@@ -313,6 +314,14 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     logPolicy({ type: 'liquiditySupport', active });
     playSound('policy_set');
     useNotificationStore.getState().pushPolicyToast(active ? '流動性支援已啟用' : '流動性支援已停用');
+    set({ gameState: syncState(get().gameState) });
+  },
+
+  setStockpile: (enabled) => {
+    engine.setStockpile(enabled);
+    logPolicy({ type: 'stockpile', enabled });
+    playSound('policy_set');
+    useNotificationStore.getState().pushPolicyToast(enabled ? '戰略儲備已啟用' : '戰略儲備已停用');
     set({ gameState: syncState(get().gameState) });
   },
 

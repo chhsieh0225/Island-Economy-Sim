@@ -75,6 +75,8 @@ export interface GovernmentState {
   publicWorksActive: boolean;
   policyRate: number; // annual policy rate
   liquiditySupportActive: boolean;
+  stockpileEnabled: boolean;
+  stockpile: Record<SectorType, number>;
 }
 
 export interface TurnSnapshot {
@@ -130,9 +132,12 @@ export interface PolicyExecutionReplay {
   publicWorksCost: number;
   liquidityInjected: number;
   autoStabilizerSpent: number; // emergency welfare from automatic fiscal stabilizers
+  stockpileBuySpent: number;       // treasury spent buying goods into stockpile
+  stockpileSellRevenue: number;    // treasury gained from selling stockpile goods
+  stockpileMaintenance: number;    // storage maintenance cost
   policyRate: number;
   perCapitaCashDelta: number; // (welfare + liquidity + autoStabilizer - tax) / population
-  treasuryDelta: number; // tax - welfare - public works - liquidity - autoStabilizer
+  treasuryDelta: number; // tax - welfare - public works - liquidity - autoStabilizer - stockpile
 }
 
 export interface GameEvent {
@@ -211,7 +216,8 @@ export type PendingPolicyType =
   | 'welfare'
   | 'publicWorks'
   | 'policyRate'
-  | 'liquiditySupport';
+  | 'liquiditySupport'
+  | 'stockpile';
 
 export interface PendingPolicyChange {
   id: string;

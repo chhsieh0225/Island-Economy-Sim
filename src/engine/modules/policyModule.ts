@@ -188,5 +188,9 @@ export function getPolicySideEffects(type: PendingPolicyType, value: number | bo
       return value
         ? ['向低資產家戶注入流動性', '短期穩定民心但增加國庫支出']
         : ['停止注入以保留財政空間', '弱勢現金壓力可能回升'];
+    case 'stockpile':
+      return value
+        ? ['低價時收購商品儲備，高價時釋出穩定物價', '每回合需維護費用，且庫存會損耗']
+        : ['停止收購與釋出', '節省維護費用但失去價格穩定機制'];
   }
 }

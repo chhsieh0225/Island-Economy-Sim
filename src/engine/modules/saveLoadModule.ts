@@ -28,6 +28,7 @@ export type PolicyAction =
   | { type: 'publicWorks'; active: boolean }
   | { type: 'policyRate'; value: number }
   | { type: 'liquiditySupport'; active: boolean }
+  | { type: 'stockpile'; enabled: boolean }
   | { type: 'decision'; choiceId: string };
 
 export function hasSave(): boolean {

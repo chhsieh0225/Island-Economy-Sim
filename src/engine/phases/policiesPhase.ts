@@ -53,6 +53,9 @@ export function applyPendingPoliciesPhase({
       case 'liquiditySupport':
         government.setLiquiditySupport(policy.value as boolean);
         break;
+      case 'stockpile':
+        government.setStockpileEnabled(policy.value as boolean);
+        break;
     }
 
     markPolicyApplied(policy);

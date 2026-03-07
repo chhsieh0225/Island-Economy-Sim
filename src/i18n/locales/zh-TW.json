@@ -135,6 +135,8 @@
   "policy.publicWorks": "公共建設",
   "policy.policyRate": "政策利率",
   "policy.liquiditySupport": "流動性支持",
+  "policy.stockpile": "戰略儲備",
+  "policy.stockpile.levels": "庫存",
   "policy.enabled": "啟用",
   "policy.disabled": "停用",
   "policy.social": "社會政策",

@@ -92,6 +92,40 @@ export class Government {
     return { totalSpent, recipients: servedRecipients };
   }
 
+  /**
+   * Automatic fiscal stabilizer: emergency welfare when economy is in distress.
+   * Triggers when average satisfaction drops below threshold.
+   * Scales with severity — mild distress gets small support, crisis gets larger.
+   */
+  distributeEmergencyWelfare(agents: Agent[]): { totalSpent: number; recipients: number } {
+    const alive = agents.filter(a => a.alive);
+    if (alive.length === 0) return { totalSpent: 0, recipients: 0 };
+
+    const avgSat = alive.reduce((s, a) => s + a.satisfaction, 0) / alive.length;
+    if (avgSat >= CONFIG.AUTO_STABILIZER_SAT_THRESHOLD) return { totalSpent: 0, recipients: 0 };
+
+    // Scale amount by severity: more distress = more support
+    const severity = (CONFIG.AUTO_STABILIZER_SAT_THRESHOLD - avgSat) / CONFIG.AUTO_STABILIZER_SAT_THRESHOLD;
+    const amount = Math.min(CONFIG.AUTO_STABILIZER_MAX_AMOUNT, 2 + severity * 8);
+
+    // Target bottom 50% by money holdings
+    const sorted = [...alive].sort((a, b) => a.money - b.money);
+    const threshold = Math.floor(sorted.length * CONFIG.AUTO_STABILIZER_PERCENTILE);
+    const recipients = sorted.slice(0, threshold);
+
+    let totalSpent = 0;
+    let servedCount = 0;
+    for (const agent of recipients) {
+      const give = Math.min(amount, this.treasury);
+      if (give <= 0) break;
+      agent.receiveWelfare(give);
+      this.treasury -= give;
+      totalSpent += give;
+      servedCount++;
+    }
+    return { totalSpent, recipients: servedCount };
+  }
+
   payPublicWorks(): boolean {
     if (!this.publicWorksActive) return false;
     if (this.treasury >= CONFIG.PUBLIC_WORKS_COST_PER_TURN) {

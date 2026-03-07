@@ -9,6 +9,7 @@ interface GovernmentPhaseSummary {
   publicWorksSpent: number;
   liquidityInjected: number;
   liquidityRecipients: number;
+  autoStabilizerSpent: number;
   policyRate: number;
   treasuryDelta: number;
   perCapitaCashDelta: number;
@@ -65,6 +66,7 @@ export function buildZeroCausalReplay(): TurnCausalReplay {
       welfareRecipients: 0,
       publicWorksCost: 0,
       liquidityInjected: 0,
+      autoStabilizerSpent: 0,
       policyRate: 0,
       perCapitaCashDelta: 0,
       treasuryDelta: 0,
@@ -185,6 +187,7 @@ export function buildTurnCausalReplay({
       welfareRecipients: governmentSummary.welfareRecipients,
       publicWorksCost: roundMetric(governmentSummary.publicWorksSpent),
       liquidityInjected: roundMetric(governmentSummary.liquidityInjected),
+      autoStabilizerSpent: roundMetric(governmentSummary.autoStabilizerSpent),
       policyRate: roundMetric(governmentSummary.policyRate * 100) / 100,
       perCapitaCashDelta: roundMetric(governmentSummary.perCapitaCashDelta),
       treasuryDelta: roundMetric(governmentSummary.treasuryDelta),

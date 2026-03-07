@@ -241,7 +241,8 @@ export class GameEngine {
     }
     const govSpending = pipeline.governmentSummary.welfareSpent
       + pipeline.governmentSummary.publicWorksSpent
-      + pipeline.governmentSummary.liquidityInjected;
+      + pipeline.governmentSummary.liquidityInjected
+      + pipeline.governmentSummary.autoStabilizerSpent;
     const snapshot = this.statistics.recordTurn(
       this.turn,
       this.agents,
@@ -341,6 +342,7 @@ export class GameEngine {
       calibration: this.getEconomicCalibration(),
       infrastructureSectorBoost: infraFx.productivityBoost,
       infrastructureOverallBoost: infraFx.overallProductivity,
+      marketPrices: { ...this.market.prices },
     });
   }
 
@@ -464,9 +466,16 @@ export class GameEngine {
       }
     }
 
+    // Automatic fiscal stabilizer: emergency welfare when economy is in distress
+    const autoStabilizerResult = this.government.distributeEmergencyWelfare(agents);
+    const autoStabilizerSpent = autoStabilizerResult.totalSpent;
+    if (autoStabilizerSpent > 0) {
+      this.addEvent('info', `📋 自動穩定機制啟動 → ${autoStabilizerResult.recipients} 人獲緊急補助 $${autoStabilizerSpent.toFixed(0)}`);
+    }
+
     const treasuryDelta = this.government.treasury - treasuryStart;
     const perCapitaCashDelta = aliveCount > 0
-      ? (welfareSpent + liquidityInjected - taxCollected) / aliveCount
+      ? (welfareSpent + liquidityInjected + autoStabilizerSpent - taxCollected) / aliveCount
       : 0;
     return {
       taxCollected,
@@ -475,6 +484,7 @@ export class GameEngine {
       publicWorksSpent,
       liquidityInjected,
       liquidityRecipients,
+      autoStabilizerSpent,
       policyRate: this.government.policyRate,
       treasuryDelta,
       perCapitaCashDelta,

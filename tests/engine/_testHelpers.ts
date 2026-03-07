@@ -119,6 +119,7 @@ export function makeSnapshot(overrides?: Partial<TurnSnapshot>): TurnSnapshot {
         welfareRecipients: 0,
         publicWorksCost: 0,
         liquidityInjected: 0,
+        autoStabilizerSpent: 0,
         policyRate: 0.018,
         perCapitaCashDelta: 0,
         treasuryDelta: 0,

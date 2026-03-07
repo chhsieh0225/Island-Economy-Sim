@@ -69,7 +69,8 @@ describe('deterministicRegression', () => {
       const expectedTreasuryDelta = replay.taxCollected
         - replay.welfarePaid
         - replay.publicWorksCost
-        - replay.liquidityInjected;
+        - replay.liquidityInjected
+        - replay.autoStabilizerSpent;
       expect(Math.abs(replay.treasuryDelta - expectedTreasuryDelta) < 0.02).toBe(true);
     }
   });

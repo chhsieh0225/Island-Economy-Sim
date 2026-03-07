@@ -20,6 +20,8 @@ interface ProductionPhaseInput {
   infrastructureSectorBoost?: Partial<Record<SectorType, number>>;
   /** Overall infrastructure productivity boost (additive ratio) */
   infrastructureOverallBoost?: number;
+  /** Current market prices — used for supply-side price elasticity (agents reduce output when price < break-even) */
+  marketPrices?: Record<SectorType, number>;
 }
 
 interface MarketPostingPhaseInput {
@@ -55,6 +57,7 @@ export function runProductionPhase({
   calibration,
   infrastructureSectorBoost,
   infrastructureOverallBoost,
+  marketPrices,
 }: ProductionPhaseInput): void {
   const productivityMods: Record<SectorType, number> = { food: 1, goods: 1, services: 1 };
   for (const event of activeRandomEvents) {
@@ -76,6 +79,18 @@ export function runProductionPhase({
     for (const s of SECTORS) {
       const sectorBoost = infrastructureSectorBoost?.[s] ?? 0;
       productivityMods[s] *= (1 + overallBoost + sectorBoost);
+    }
+  }
+
+  // Supply-side price elasticity: agents reduce output when price falls below break-even cost
+  const priceResponseBySector: Record<SectorType, number> = { food: 1, goods: 1, services: 1 };
+  if (marketPrices) {
+    for (const s of SECTORS) {
+      const breakEven = CONFIG.INITIAL_PRICES[s] * CONFIG.PRODUCTION_BREAK_EVEN_RATIO;
+      priceResponseBySector[s] = Math.max(
+        CONFIG.PRODUCTION_MIN_PRICE_RESPONSE,
+        Math.min(1, marketPrices[s] / breakEven),
+      );
     }
   }
 
@@ -115,7 +130,7 @@ export function runProductionPhase({
     const subsidyMult = government.getSubsidyMultiplier(agent.sector) * productivityMods[agent.sector] * terrainMult;
     const publicWorksBoost = government.getPublicWorksBoost();
     agent.produce(
-      subsidyMult * caregiverMultiplier,
+      subsidyMult * caregiverMultiplier * priceResponseBySector[agent.sector],
       publicWorksBoost,
       laborScaleBySector[agent.sector],
     );

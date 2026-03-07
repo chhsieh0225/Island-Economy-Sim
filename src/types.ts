@@ -129,9 +129,10 @@ export interface PolicyExecutionReplay {
   welfareRecipients: number;
   publicWorksCost: number;
   liquidityInjected: number;
+  autoStabilizerSpent: number; // emergency welfare from automatic fiscal stabilizers
   policyRate: number;
-  perCapitaCashDelta: number; // (welfare + liquidity - tax) / population
-  treasuryDelta: number; // tax - welfare - public works - liquidity
+  perCapitaCashDelta: number; // (welfare + liquidity + autoStabilizer - tax) / population
+  treasuryDelta: number; // tax - welfare - public works - liquidity - autoStabilizer
 }
 
 export interface GameEvent {

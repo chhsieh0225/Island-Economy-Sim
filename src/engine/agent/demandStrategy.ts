@@ -119,13 +119,22 @@ export function computeBuyOrders(
   const orders: BuyOrder[] = [];
   const candidateSectors = [...allowed].sort((a, b) => computeSectorPriority(ctx, b) - computeSectorPriority(ctx, a));
 
+  // Price-elastic demand: agents buy more when a sector's price is below market average
+  const avgPrice = allowed.reduce((sum, s) => sum + Math.max(0.01, marketPrices[s]), 0) / Math.max(1, allowed.length);
+
   for (const sector of candidateSectors) {
     const maxDesired = targetGap[sector];
     if (maxDesired <= 0.01) continue;
 
     const price = Math.max(0.01, marketPrices[sector]);
     const desiredQty = requiredNow[sector] + budgetShares[sector] * (supernumeraryBudget / price);
-    let quantity = Math.min(maxDesired, desiredQty);
+
+    // Low-price demand boost: buy more when sector price is cheap relative to average
+    const priceDemandBoost = Math.min(
+      CONFIG.DEMAND_LOW_PRICE_BOOST_MAX,
+      Math.max(1.0, avgPrice / Math.max(CONFIG.MIN_PRICE, price)),
+    );
+    let quantity = Math.min(maxDesired, desiredQty * priceDemandBoost);
     if (quantity <= 0.01) continue;
 
     const priority = computeSectorPriority(ctx, sector);

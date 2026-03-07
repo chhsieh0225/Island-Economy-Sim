@@ -19,6 +19,10 @@ export const CONFIG = {
     services: 1.2,
   } as Record<SectorType, number>,
 
+  // Production price-response (supply elasticity)
+  PRODUCTION_BREAK_EVEN_RATIO: 0.6,       // fraction of initial price = "cost of production"
+  PRODUCTION_MIN_PRICE_RESPONSE: 0.3,     // minimum production factor when price collapses
+
   // Cobb-Douglas labor elasticity by sector (Y_s ~ L_s^alpha_s, alpha_s < 1 => diminishing returns)
   PRODUCTION_LABOR_ELASTICITY: {
     food: 0.95,
@@ -41,11 +45,13 @@ export const CONFIG = {
   PRICE_SMOOTHING: 0.7,  // weight of new price vs old
   MIN_PRICE: 1,
   MAX_PRICE: 200,
+  PRICE_DOWNWARD_STICKINESS: 0.5,  // downward max step = base step × this ratio (prices drop slower than they rise)
 
   // Agent trading behavior
   SELL_PRICE_DISCOUNT: 0.9,   // willing to sell at 90% of market price
   BUY_PRICE_PREMIUM: 1.2,     // willing to pay up to 120% of market price
   MAX_DESPERATION_PREMIUM: 2.0, // when health is critically low
+  DEMAND_LOW_PRICE_BOOST_MAX: 1.5, // max demand multiplier when sector price is below market average
 
   // Job switching
   JOB_SWITCH_INCOME_RATIO: 0.6,   // switch if earning < 60% of best alternative
@@ -86,6 +92,10 @@ export const CONFIG = {
   WELFARE_AMOUNT: 5,
   PUBLIC_WORKS_COST_PER_TURN: 50,
   PUBLIC_WORKS_PRODUCTIVITY_BOOST: 0.1,
+  // Automatic fiscal stabilizers (emergency welfare when economy is in distress)
+  AUTO_STABILIZER_SAT_THRESHOLD: 35,     // avg satisfaction below which auto-welfare triggers
+  AUTO_STABILIZER_MAX_AMOUNT: 10,        // max welfare per eligible agent per turn
+  AUTO_STABILIZER_PERCENTILE: 0.50,      // bottom 50% of population by money receive support
 
   // History
   MAX_HISTORY_LENGTH: 200,

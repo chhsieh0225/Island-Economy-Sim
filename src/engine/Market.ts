@@ -172,7 +172,11 @@ export class Market {
         : CONFIG.MONETARY_MAX_PRICE_STEP_BASE;
       const tightening = Math.max(0, policyDelta) * CONFIG.MONETARY_MAX_PRICE_STEP_RATE_SENSITIVITY;
       const maxStep = Math.max(0.08, stepBase - tightening);
-      const lowerBound = this.prices[sector] * (1 - maxStep);
+      // Asymmetric price adjustment: prices drop slower than they rise (downward stickiness)
+      const maxStepDown = excessDemandRatio < 0
+        ? maxStep * CONFIG.PRICE_DOWNWARD_STICKINESS
+        : maxStep;
+      const lowerBound = this.prices[sector] * (1 - maxStepDown);
       const upperBound = this.prices[sector] * (1 + maxStep);
       const boundedRaw = Math.max(lowerBound, Math.min(upperBound, rawNewPrice));
 

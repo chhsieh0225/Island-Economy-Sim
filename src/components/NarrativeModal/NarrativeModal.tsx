@@ -1,6 +1,7 @@
 import { memo, useState } from 'react';
 import type { NarrativeDisplay } from '../../stores/uiStore';
 import { useI18n } from '../../i18n/useI18n';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import styles from './NarrativeModal.module.css';
 
 const PORTRAIT_EMOJI: Record<string, string> = {
@@ -18,13 +19,14 @@ interface Props {
 
 export const NarrativeModal = memo(function NarrativeModal({ narrative, onDismiss }: Props) {
   const { t } = useI18n();
+  const trapRef = useFocusTrap<HTMLDivElement>(true);
   const [pageIdx, setPageIdx] = useState(0);
 
   if (narrative.kind === 'scenario') {
     const { title, paragraphs, challenge } = narrative.data;
     return (
       <div className={styles.overlay} onClick={onDismiss}>
-        <div className={styles.modal} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+        <div ref={trapRef} className={styles.modal} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
           <h2 className={styles.title}>{title}</h2>
           {paragraphs.map((p, i) => (
             <p key={i} className={styles.paragraph}>{p}</p>
@@ -49,7 +51,7 @@ export const NarrativeModal = memo(function NarrativeModal({ narrative, onDismis
 
   return (
     <div className={styles.overlay}>
-      <div className={styles.modal} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+      <div ref={trapRef} className={styles.modal} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
         <h2 className={styles.title}>{title}</h2>
 
         <div className={styles.storyPage}>

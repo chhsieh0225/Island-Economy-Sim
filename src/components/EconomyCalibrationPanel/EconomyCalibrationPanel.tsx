@@ -1,10 +1,11 @@
 import { useState, memo } from 'react';
 import {
-  ECONOMIC_CALIBRATION_REFERENCES,
+  getEconomicCalibrationReferences,
   getEconomicCalibrationProfile,
   getEconomicCalibrationProfiles,
 } from '../../engine/economicCalibration';
 import type { EconomicCalibrationProfileId } from '../../engine/economicCalibration';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './EconomyCalibrationPanel.module.css';
 
 interface Props {
@@ -17,6 +18,7 @@ function fmt(value: number, digits: number = 2): string {
 }
 
 export const EconomyCalibrationPanel = memo(function EconomyCalibrationPanel({ mode, onChangeMode }: Props) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const current = getEconomicCalibrationProfile(mode);
   const profiles = getEconomicCalibrationProfiles();
@@ -30,7 +32,7 @@ export const EconomyCalibrationPanel = memo(function EconomyCalibrationPanel({ m
           onClick={() => setExpanded(prev => !prev)}
           aria-expanded={expanded}
         >
-          {expanded ? '收合細節' : '查看細節'}
+          {expanded ? t('calibration.collapse') : t('calibration.expand')}
         </button>
       </div>
 
@@ -86,7 +88,7 @@ export const EconomyCalibrationPanel = memo(function EconomyCalibrationPanel({ m
 
           <div className={styles.refTitle}>文獻常見區間</div>
           <div className={styles.refs}>
-            {ECONOMIC_CALIBRATION_REFERENCES.map(ref => (
+            {getEconomicCalibrationReferences().map(ref => (
               <div key={ref.key} className={styles.refItem}>
                 <div className={styles.refHead}>
                   <span>{ref.label}</span>

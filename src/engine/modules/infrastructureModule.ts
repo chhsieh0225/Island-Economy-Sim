@@ -1,4 +1,5 @@
 import type { Infrastructure, InfrastructureType, SectorType } from '../../types';
+import { te } from '../engineI18n';
 
 export interface InfrastructureDef {
   type: InfrastructureType;
@@ -25,9 +26,9 @@ export interface InfrastructureEffect {
 export const INFRASTRUCTURE_DEFS: InfrastructureDef[] = [
   {
     type: 'well',
-    label: '水井',
+    label: te('infra.well'),
     labelEn: 'Well',
-    description: '改善灌溉，提升食物產量 10%',
+    description: te('infra.well.desc'),
     cost: 150,
     buildTurns: 2,
     maxCount: 3,
@@ -37,9 +38,9 @@ export const INFRASTRUCTURE_DEFS: InfrastructureDef[] = [
   },
   {
     type: 'workshop',
-    label: '工坊',
+    label: te('infra.workshop'),
     labelEn: 'Workshop',
-    description: '改善生產設備，提升商品產量 12%',
+    description: te('infra.workshop.desc'),
     cost: 200,
     buildTurns: 3,
     maxCount: 3,
@@ -49,9 +50,9 @@ export const INFRASTRUCTURE_DEFS: InfrastructureDef[] = [
   },
   {
     type: 'clinic',
-    label: '診所',
+    label: te('infra.clinic'),
     labelEn: 'Clinic',
-    description: '每回合全島民健康 +2，滿意度 +1',
+    description: te('infra.clinic.desc'),
     cost: 250,
     buildTurns: 3,
     maxCount: 2,
@@ -62,9 +63,9 @@ export const INFRASTRUCTURE_DEFS: InfrastructureDef[] = [
   },
   {
     type: 'school',
-    label: '學校',
+    label: te('infra.school'),
     labelEn: 'School',
-    description: '全產業生產力 +5%',
+    description: te('infra.school.desc'),
     cost: 300,
     buildTurns: 4,
     maxCount: 2,
@@ -74,9 +75,9 @@ export const INFRASTRUCTURE_DEFS: InfrastructureDef[] = [
   },
   {
     type: 'port',
-    label: '港口',
+    label: te('infra.port'),
     labelEn: 'Port',
-    description: '提升服務業產量 15%，全產業 +3%',
+    description: te('infra.port.desc'),
     cost: 400,
     buildTurns: 5,
     maxCount: 1,
@@ -99,10 +100,10 @@ export function canBuild(
   const def = getInfrastructureDef(type);
   const activeCount = existing.filter(i => i.type === type).length;
   if (activeCount >= def.maxCount) {
-    return { ok: false, reason: `已達上限 (${def.maxCount})` };
+    return { ok: false, reason: te('infra.error.maxReached', { max: def.maxCount }) };
   }
   if (treasury < def.cost) {
-    return { ok: false, reason: `國庫不足 (需 $${def.cost})` };
+    return { ok: false, reason: te('infra.error.noFunds', { cost: def.cost }) };
   }
   return { ok: true };
 }

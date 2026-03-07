@@ -11,6 +11,7 @@ import {
   type TurnSnapshot,
 } from '../../types';
 import type { Agent } from '../Agent';
+import { te } from '../engineI18n';
 import { computeScore } from '../Scoring';
 
 export function deriveGameOverReason({
@@ -32,38 +33,15 @@ export function deriveGameOverReason({
 }
 
 function classifySectorDevelopment(share: number): SectorDevelopmentLevel {
-  if (share >= 45) return '主導';
-  if (share >= 33) return '成熟';
-  if (share >= 20) return '成長';
-  if (share >= 10) return '起步';
-  return '薄弱';
+  if (share >= 45) return 'dominant';
+  if (share >= 33) return 'mature';
+  if (share >= 20) return 'growth';
+  if (share >= 10) return 'initial';
+  return 'weak';
 }
 
 function getSectorDevelopmentComment(sector: SectorType, level: SectorDevelopmentLevel): string {
-  const comments: Record<SectorType, Record<SectorDevelopmentLevel, string>> = {
-    food: {
-      薄弱: '糧食基礎不足，遇到衝擊時風險偏高。',
-      起步: '糧食供給剛起步，仍需擴大生產能力。',
-      成長: '糧食體系逐步穩定，已具備基本支撐力。',
-      成熟: '糧食供應成熟，對人口承載較有保障。',
-      主導: '糧食產業高度主導，安全盤穩但結構較單一。',
-    },
-    goods: {
-      薄弱: '製造產能偏弱，實體經濟擴張受限。',
-      起步: '工坊與生產鏈剛建立，仍在打底階段。',
-      成長: '製造部門穩定成長，帶動交易活力。',
-      成熟: '商品產業成熟，是經濟增長的重要引擎。',
-      主導: '商品業高度集中，效率高但波動風險上升。',
-    },
-    services: {
-      薄弱: '服務供給不足，生活品質與消費偏弱。',
-      起步: '服務業剛形成，內需體驗還在建立。',
-      成長: '服務業穩步發展，內需韌性逐漸提升。',
-      成熟: '服務網絡成熟，居民福祉與交易體驗良好。',
-      主導: '服務業主導結構，內需強勁但實體供應需平衡。',
-    },
-  };
-  return comments[sector][level];
+  return te(`gameover.comment.${sector}.${level}`);
 }
 
 function buildSectorDevelopment(history: TurnSnapshot[]): GameOverState['finalStats']['sectorDevelopment'] {
@@ -91,7 +69,7 @@ function buildSectorDevelopment(history: TurnSnapshot[]): GameOverState['finalSt
 function buildCounterfactualNotes(history: TurnSnapshot[], agents: Agent[]): string[] {
   const latest = history[history.length - 1];
   if (!latest) {
-    return ['資料不足，建議先運行數回合再比較政策反事實。'];
+    return [te('gameover.counterfactual.noData')];
   }
 
   const notes: string[] = [];
@@ -104,7 +82,13 @@ function buildCounterfactualNotes(history: TurnSnapshot[], agents: Agent[]): str
     const taxCut = 5;
     const taxRelief = Math.max(1, (taxPct - 10) * 0.18 + latest.giniCoefficient * 3.2);
     notes.push(
-      `若稅率下調 ${taxCut}%（${taxPct.toFixed(0)}% → ${Math.max(0, taxPct - taxCut).toFixed(0)}%），估計離島率可減少約 ${taxRelief.toFixed(1)}%（現況約 ${leaveRate.toFixed(1)}%）。`,
+      te('gameover.counterfactual.taxCut', {
+        taxCut,
+        from: taxPct.toFixed(0),
+        to: Math.max(0, taxPct - taxCut).toFixed(0),
+        relief: taxRelief.toFixed(1),
+        leaveRate: leaveRate.toFixed(1),
+      }),
     );
   }
 
@@ -113,16 +97,16 @@ function buildCounterfactualNotes(history: TurnSnapshot[], agents: Agent[]): str
   const foodGapRatio = foodDemand > 0 ? Math.max(0, (foodDemand - foodSupply) / foodDemand) : 0;
   if (foodGapRatio > 0.1) {
     const satLift = Math.min(7.5, 2 + foodGapRatio * 10);
-    notes.push(`若把食物缺口補回一半，估計平均滿意度可回升約 ${satLift.toFixed(1)}%。`);
+    notes.push(te('gameover.counterfactual.foodGap', { satLift: satLift.toFixed(1) }));
   }
 
   if (!latest.government.welfareEnabled && latest.giniCoefficient > 0.44) {
     const giniDrop = Math.min(0.08, 0.02 + (latest.giniCoefficient - 0.44) * 0.35);
-    notes.push(`若啟用福利並持續 12 回合，估計基尼可下降約 ${giniDrop.toFixed(3)}。`);
+    notes.push(te('gameover.counterfactual.welfare', { giniDrop: giniDrop.toFixed(3) }));
   }
 
   if (notes.length === 0) {
-    notes.push('現況結構相對平衡：可用稅率或補貼 ±5% 做對照實驗，觀察中期差異。');
+    notes.push(te('gameover.counterfactual.balanced'));
   }
 
   return notes.slice(0, 3);
@@ -133,35 +117,36 @@ function buildReflectiveQuestions(history: TurnSnapshot[]): ReflectiveQuestion[]
   const questions: ReflectiveQuestion[] = [];
 
   const gini = latest?.giniCoefficient ?? 0;
-  const country = gini < 0.3 ? '北歐國家' : gini < 0.35 ? '台灣' : gini < 0.4 ? '美國' : gini < 0.45 ? '巴西' : '南非';
+  const countryKey = gini < 0.3 ? 'nordic' : gini < 0.35 ? 'taiwan' : gini < 0.4 ? 'usa' : gini < 0.45 ? 'brazil' : 'southAfrica';
+  const country = te(`gameover.reflect.country.${countryKey}`);
   questions.push({
-    question: `你的島嶼 Gini=${gini.toFixed(2)}，接近${country}的水平。你覺得不平等是經濟成長的必然代價嗎？`,
-    context: '基尼係數反映財富分配不均的程度。現實中各國選擇了不同的平衡點。',
-    realWorldComparison: '台灣≈0.34, 美國≈0.39, 北歐≈0.27, 巴西≈0.48',
+    question: te('gameover.reflect.giniQuestion', { gini: gini.toFixed(2), country }),
+    context: te('gameover.reflect.giniContext'),
+    realWorldComparison: te('gameover.reflect.giniComparison'),
   });
 
   const avgTax = history.reduce((s, h) => s + h.government.taxRate, 0) / Math.max(1, history.length);
   questions.push({
-    question: `你的平均稅率是 ${(avgTax * 100).toFixed(0)}%。高稅率能支撐更多公共服務，但是否壓抑了經濟活力？`,
-    context: '這是經濟學中「效率 vs 公平」的經典取捨。',
-    realWorldComparison: '北歐稅率約 45-55%, 美國約 25-35%, 香港約 15%',
+    question: te('gameover.reflect.taxQuestion', { avgTax: (avgTax * 100).toFixed(0) }),
+    context: te('gameover.reflect.taxContext'),
+    realWorldComparison: te('gameover.reflect.taxComparison'),
   });
 
   return questions.slice(0, 2);
 }
 
 function generateNarrative(agent: Agent): string {
-  let text = `${agent.name}（IQ ${agent.intelligence}）`;
+  let text = te('gameover.narrative.header', { name: agent.name, iq: agent.intelligence });
   const jobs = agent.lifeEvents.filter(e => e.category === 'job');
   const achievements = agent.lifeEvents.filter(e => e.category === 'achievement');
-  if (jobs.length > 0) text += `，歷經 ${jobs.length} 次轉職`;
-  if (achievements.length > 0) text += `，獲得 ${achievements.length} 項成就`;
-  text += `，最終累積財富 $${agent.money.toFixed(0)}`;
+  if (jobs.length > 0) text += te('gameover.narrative.jobs', { count: jobs.length });
+  if (achievements.length > 0) text += te('gameover.narrative.achievements', { count: achievements.length });
+  text += te('gameover.narrative.wealth', { money: agent.money.toFixed(0) });
   if (!agent.alive) {
-    const cause = agent.causeOfDeath === 'age' ? '壽終正寢' : agent.causeOfDeath === 'health' ? '因病離世' : '離開了小島';
-    text += `。${Math.floor(agent.age / 12)} 歲時${cause}。`;
+    const causeKey = agent.causeOfDeath === 'age' ? 'age' : agent.causeOfDeath === 'health' ? 'health' : 'left';
+    text += te(`gameover.narrative.death.${causeKey}`, { age: Math.floor(agent.age / 12) });
   } else {
-    text += `。至今仍健在（${Math.floor(agent.age / 12)} 歲）。`;
+    text += te('gameover.narrative.alive', { age: Math.floor(agent.age / 12) });
   }
   return text;
 }
@@ -174,7 +159,7 @@ function buildAgentBiographies(agents: Agent[]): AgentBiography[] {
   biographies.push({
     agentId: richest.id,
     name: richest.name,
-    title: '💰 最富有的島民',
+    title: te('gameover.bio.richest'),
     narrative: generateNarrative(richest),
     highlights: richest.lifeEvents
       .filter(e => e.category === 'achievement' || e.category === 'job')
@@ -187,7 +172,7 @@ function buildAgentBiographies(agents: Agent[]): AgentBiography[] {
     biographies.push({
       agentId: oldest.id,
       name: oldest.name,
-      title: '🎂 最年長的島民',
+      title: te('gameover.bio.oldest'),
       narrative: generateNarrative(oldest),
       highlights: oldest.lifeEvents
         .filter(e => e.category === 'achievement' || e.category === 'job')
@@ -201,7 +186,7 @@ function buildAgentBiographies(agents: Agent[]): AgentBiography[] {
     biographies.push({
       agentId: switcher.id,
       name: switcher.name,
-      title: '🔄 最多轉職的島民',
+      title: te('gameover.bio.switcher'),
       narrative: generateNarrative(switcher),
       highlights: switcher.lifeEvents
         .filter(e => e.category === 'achievement' || e.category === 'job')
@@ -218,15 +203,15 @@ function buildBestOfRankings(agents: Agent[]): BestOfRanking[] {
   if (agents.length === 0) return rankings;
 
   const richest = agents.reduce((b, a) => a.money > b.money ? a : b);
-  rankings.push({ category: 'wealth', label: '💰 最富有', agentName: richest.name, value: `$${richest.money.toFixed(0)}` });
+  rankings.push({ category: 'wealth', label: te('gameover.ranking.wealth'), agentName: richest.name, value: `$${richest.money.toFixed(0)}` });
   const oldest = agents.reduce((b, a) => a.age > b.age ? a : b);
-  rankings.push({ category: 'age', label: '🎂 最長壽', agentName: oldest.name, value: `${Math.floor(oldest.age / 12)} 歲` });
+  rankings.push({ category: 'age', label: te('gameover.ranking.age'), agentName: oldest.name, value: te('gameover.ranking.ageValue', { age: Math.floor(oldest.age / 12) }) });
   const switcher = agents.reduce((b, a) => a.totalSwitches > b.totalSwitches ? a : b);
   if (switcher.totalSwitches > 0) {
-    rankings.push({ category: 'career', label: '🔄 最多轉職', agentName: switcher.name, value: `${switcher.totalSwitches} 次` });
+    rankings.push({ category: 'career', label: te('gameover.ranking.career'), agentName: switcher.name, value: te('gameover.ranking.careerValue', { count: switcher.totalSwitches }) });
   }
   const smartest = agents.reduce((b, a) => a.intelligence > b.intelligence ? a : b);
-  rankings.push({ category: 'iq', label: '🧠 最聰明', agentName: smartest.name, value: `IQ ${smartest.intelligence}` });
+  rankings.push({ category: 'iq', label: te('gameover.ranking.iq'), agentName: smartest.name, value: `IQ ${smartest.intelligence}` });
   return rankings;
 }
 

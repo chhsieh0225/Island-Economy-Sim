@@ -1,5 +1,6 @@
 import { useState, useMemo, memo } from 'react';
 import type { AgentState, SectorType } from '../../types';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './AgentRoster.module.css';
 
 interface Props {
@@ -16,6 +17,7 @@ const SECTOR_COLORS: Record<SectorType, string> = {
 type SortKey = 'name' | 'money' | 'health' | 'satisfaction' | 'age' | 'intelligence';
 
 export const AgentRoster = memo(function AgentRoster({ agents, onAgentClick }: Props) {
+  const { t } = useI18n();
   const [filterSector, setFilterSector] = useState<SectorType | 'all'>('all');
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [showDeparted, setShowDeparted] = useState(false);
@@ -44,10 +46,10 @@ export const AgentRoster = memo(function AgentRoster({ agents, onAgentClick }: P
   const totalCount = agents.length;
 
   const deathLabel = (agent: AgentState) => {
-    if (agent.causeOfDeath === 'age') return '年老';
-    if (agent.causeOfDeath === 'health') return '病故';
-    if (agent.causeOfDeath === 'left') return '離開';
-    return '離世';
+    if (agent.causeOfDeath === 'age') return t('roster.causeOfDeath.age');
+    if (agent.causeOfDeath === 'health') return t('roster.causeOfDeath.health');
+    if (agent.causeOfDeath === 'left') return t('roster.causeOfDeath.left');
+    return t('roster.causeOfDeath.unknown');
   };
 
   return (

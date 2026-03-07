@@ -1,5 +1,6 @@
 import type { PendingDecision, DecisionChoice } from '../../types';
 import { useI18n } from '../../i18n/useI18n';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import styles from './DecisionPanel.module.css';
 
 interface Props {
@@ -26,10 +27,11 @@ function buildImpactTags(choice: DecisionChoice, t: (key: string) => string): { 
 
 export function DecisionPanel({ decision, onChoose }: Props) {
   const { t } = useI18n();
+  const trapRef = useFocusTrap<HTMLDivElement>(true);
 
   return (
     <div className={styles.overlay}>
-      <div className={styles.panel} role="dialog" aria-modal="true">
+      <div ref={trapRef} className={styles.panel} role="dialog" aria-modal="true">
         <div className={styles.title}>{t('decision.title')}</div>
         <div className={styles.name}>{decision.name}</div>
         <div className={styles.message}>{decision.message}</div>

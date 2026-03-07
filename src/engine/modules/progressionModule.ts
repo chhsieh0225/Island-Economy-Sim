@@ -1,6 +1,7 @@
 import { CONFIG } from '../../config';
 import type { Agent } from '../Agent';
 import type { EconomyStage, SectorType } from '../../types';
+import { te } from '../engineI18n';
 
 export interface StageProgressionInput {
   turn: number;
@@ -135,7 +136,7 @@ export function evaluateEconomyStageProgression({
         economyStage: 'industrial',
         stageTransitionFrom: ramp.stageTransitionFrom,
         stageTransitionStartTurn: ramp.stageTransitionStartTurn,
-        message: `產業升級：島嶼進入工業化階段（糧食覆蓋 ${foodCoverage.toFixed(2)}），商品業開始成形。`,
+        message: te('progression.industrial', { coverage: foodCoverage.toFixed(2) }),
       };
     }
     return { economyStage, stageTransitionFrom, stageTransitionStartTurn };
@@ -157,7 +158,7 @@ export function evaluateEconomyStageProgression({
         economyStage: 'service',
         stageTransitionFrom: ramp.stageTransitionFrom,
         stageTransitionStartTurn: ramp.stageTransitionStartTurn,
-        message: '產業升級：島嶼進入服務化階段，服務業全面展開。',
+        message: te('progression.service'),
       };
     }
   }

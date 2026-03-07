@@ -1,4 +1,5 @@
 import type { PendingPolicyType, PolicyTimelineEntry, SectorType, TurnSnapshot } from '../../types';
+import { te } from '../engineI18n';
 
 export type PolicyExperimentStatus = 'pending' | 'collecting' | 'complete';
 
@@ -53,7 +54,7 @@ export function buildPolicyExperimentCards(
       const windowEndTurn = item.applyTurn + observationTurns - 1;
       const latestTurn = latest?.turn ?? 0;
       const observedTurn = latestTurn > 0 ? Math.min(latestTurn, windowEndTurn) : null;
-      const predictions = item.sideEffects.length > 0 ? item.sideEffects : ['此政策尚未提供明確預測。'];
+      const predictions = item.sideEffects.length > 0 ? item.sideEffects : [te('policyExp.noPredictions')];
 
       if (item.status === 'pending' || latestTurn < item.applyTurn) {
         return {

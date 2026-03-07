@@ -10,6 +10,7 @@ import {
 } from '../../engine/modules/aiOpponentModule';
 import { loadLeaderboard, saveToLeaderboard, type LeaderboardEntry } from '../../data/leaderboard';
 import { computeScore } from '../../engine/Scoring';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './CompetitionPanel.module.css';
 
 interface Props {
@@ -26,6 +27,7 @@ const METRICS = [
 type MetricKey = typeof METRICS[number]['key'];
 
 export const CompetitionPanel = memo(function CompetitionPanel({ state }: Props) {
+  const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(true);
   const [aiStrategy, setAiStrategy] = useState<AIStrategy>('balanced');
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>('population');
@@ -116,7 +118,7 @@ export const CompetitionPanel = memo(function CompetitionPanel({ state }: Props)
                   className={`${styles.strategyBtn} ${aiStrategy === s ? styles.strategyBtnActive : ''}`}
                   onClick={() => setAiStrategy(s)}
                 >
-                  {s === 'balanced' ? '平衡' : s === 'growth' ? '成長' : '福利'}
+                  {s === 'balanced' ? t('ai.strategy.balanced') : s === 'growth' ? t('ai.strategy.growth') : t('ai.strategy.welfare')}
                 </button>
               ))}
             </div>

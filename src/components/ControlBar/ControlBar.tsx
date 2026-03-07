@@ -2,6 +2,7 @@ import { memo } from 'react';
 import type { AutoPlaySpeed } from '../../stores/gameStore';
 import { useGameStore } from '../../stores/gameStore';
 import { useAudioStore } from '../../audio/audioManager';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './ControlBar.module.css';
 
 interface Props {
@@ -42,10 +43,11 @@ function AudioControls() {
   const volume = useAudioStore(s => s.volume);
   const toggleMute = useAudioStore(s => s.toggleMute);
   const setVolume = useAudioStore(s => s.setVolume);
+  const { t } = useI18n();
 
   return (
     <div className={styles.audioControls}>
-      <button className={styles.muteBtn} onClick={toggleMute} title={muted ? '取消靜音' : '靜音'}>
+      <button className={styles.muteBtn} onClick={toggleMute} title={muted ? t('controlBar.unmute') : t('controlBar.mute')}>
         {muted ? '🔇' : volume > 0.5 ? '🔊' : '🔉'}
       </button>
       <input

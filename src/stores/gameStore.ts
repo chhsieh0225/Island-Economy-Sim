@@ -92,12 +92,23 @@ interface GameStoreState {
   getPolicyLog: () => PolicyLogEntry[];
 }
 
-// Module-level engine singleton
+// ── Module-level singletons ────────────────────────────────────────────────
+// These live outside Zustand because they are tightly coupled to the engine
+// singleton lifecycle. All are cleared/reset inside startNewRun().
 const engine = new GameEngine(Date.now(), DEFAULT_SCENARIO);
 let runIdCounter = 1;
+/** Browser setInterval handle; cleared in stopAutoPlayInternal(). */
 let autoPlayInterval: number | null = null;
+/**
+ * Policy actions log — used for save/load replay.
+ * Cleared on reset/startNewRun; capped at MAX_POLICY_LOG_ENTRIES as a safety
+ * net. In normal play (~600 turns × a few actions) this cap is never hit.
+ */
+const MAX_POLICY_LOG_ENTRIES = 2000;
 let policyLog: PolicyLogEntry[] = [];
+/** Counter for auto-save every N turns. Reset on startNewRun(). */
 let autoSaveTurnCounter = 0;
+/** Narrative trigger de-dup set. Reset on startNewRun(). */
 let firedNarrativeIds = new Set<string>();
 
 function buildNarrativeContext(state: GameState): NarrativeContext {
@@ -148,7 +159,7 @@ function checkAndShowNarrative(state: GameState): void {
 function pushStreakMilestoneToast(milestone: StreakMilestone): void {
   const isPositive = milestone.type === 'positive';
   const emoji = isPositive ? '🔥' : '❄️';
-  const label = isPositive ? '成長連勝' : '衰退連跌';
+  const label = isPositive ? te('streak.positive') : te('streak.negative');
   const title = `${emoji} ${milestone.count} 回合${label}！`;
   const messages: Record<number, [string, string]> = {
     3:  ['經濟穩健成長中，持續保持！', '連續衰退中，考慮調整政策。'],
@@ -174,6 +185,9 @@ function pushStreakMilestoneToast(milestone: StreakMilestone): void {
 
 function logPolicy(action: PolicyAction): void {
   policyLog.push({ turn: engine.turn, action });
+  if (policyLog.length > MAX_POLICY_LOG_ENTRIES) {
+    policyLog = policyLog.slice(-MAX_POLICY_LOG_ENTRIES);
+  }
 }
 
 function syncState(prevState?: GameState): GameState {

@@ -5,6 +5,7 @@ import { useTurnDiffStore } from '../../stores/turnDiffStore';
 import { useStreakStore } from '../../stores/streakStore';
 import { useAudioStore } from '../../audio/audioManager';
 import { useI18n } from '../../i18n/useI18n';
+import { DeltaBadge } from '../shared/DeltaBadge';
 import type { GameState } from '../../types';
 import styles from './StickyControlBar.module.css';
 
@@ -27,28 +28,6 @@ interface Props {
   onEndGame: () => void;
   /** When the inline ControlBar is visible, we hide this bar */
   inlineControlBarVisible: boolean;
-}
-
-/* ─── Delta badge helper ─────────────────────────────────────────────── */
-function DeltaBadge({ value, prefix = '', suffix = '', invert = false }: {
-  value: number;
-  prefix?: string;
-  suffix?: string;
-  /** If true, positive = bad (red), negative = good (green). Used for Gini. */
-  invert?: boolean;
-}) {
-  if (Math.abs(value) < 0.01) return null;
-
-  const isPositive = value > 0;
-  let cls: string;
-  if (invert) {
-    cls = isPositive ? styles.deltaGiniUp : styles.deltaGiniDown;
-  } else {
-    cls = isPositive ? styles.deltaUp : styles.deltaDown;
-  }
-
-  const formatted = `${isPositive ? '+' : ''}${prefix}${Math.abs(value) < 10 ? value.toFixed(1) : Math.round(value)}${suffix}`;
-  return <span className={`${styles.delta} ${cls}`}>{formatted}</span>;
 }
 
 /* ─── Save / Load sub-component ──────────────────────────────────────── */

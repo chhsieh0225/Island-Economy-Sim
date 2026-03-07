@@ -120,19 +120,6 @@
   font-size: 13px;
 }
 
-.delta {
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.deltaUp { color: #4caf50; }
-.deltaDown { color: #f44336; }
-.deltaNeutral { color: #556677; }
-/* For Gini, rising is bad (red) and falling is good (green) */
-.deltaGiniUp { color: #f44336; }
-.deltaGiniDown { color: #4caf50; }
-
 /* ─── Dramatic Turn Pulse ──────────────────────────────────────────────── */
 .dramaticPill {
   border-color: #f44336;

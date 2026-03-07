@@ -71,7 +71,7 @@ export const Toast = memo(function Toast({ toasts, onDismiss }: Props) {
   if (visible.length === 0) return null;
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} aria-live="polite" role="status">
       {visible.map(toast => (
         <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} />
       ))}

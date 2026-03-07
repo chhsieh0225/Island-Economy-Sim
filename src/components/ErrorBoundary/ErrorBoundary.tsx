@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { t } from '../../i18n/i18n';
 import styles from './ErrorBoundary.module.css';
 
 interface Props {
@@ -30,11 +31,11 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className={styles.container}>
           <div className={styles.title}>
-            {this.props.fallbackLabel ?? '此區塊發生錯誤'}
+            {this.props.fallbackLabel ?? t('errorBoundary.blockError')}
           </div>
           <pre className={styles.detail}>{this.state.error.message}</pre>
           <button className={styles.retryBtn} onClick={this.handleRetry}>
-            重試 Retry
+            {t('errorBoundary.retry')}
           </button>
         </div>
       );

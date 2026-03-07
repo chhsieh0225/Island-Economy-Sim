@@ -1,6 +1,8 @@
 // ── AI Opponent Module ──────────────────────────────────────────────
 // Simplified AI simulation for competition mode.
 
+import { te } from '../engineI18n';
+
 export type AIStrategy = 'balanced' | 'growth' | 'welfare';
 
 export interface AISnapshot {
@@ -18,11 +20,9 @@ export interface AIOpponent {
   history: AISnapshot[];
 }
 
-const STRATEGY_NAMES: Record<AIStrategy, string> = {
-  balanced: '平衡島 Balanced Isle',
-  growth: '成長島 Growth Isle',
-  welfare: '福利島 Welfare Isle',
-};
+function getStrategyName(strategy: AIStrategy): string {
+  return te(`ai.strategy.${strategy}`);
+}
 
 // Strategy parameters affect simulation dynamics
 const STRATEGY_PARAMS: Record<AIStrategy, {
@@ -62,7 +62,7 @@ const STRATEGY_PARAMS: Record<AIStrategy, {
 export function createAIOpponent(strategy: AIStrategy): AIOpponent {
   return {
     strategy,
-    name: STRATEGY_NAMES[strategy],
+    name: getStrategyName(strategy),
     history: [{
       turn: 0,
       population: 100,

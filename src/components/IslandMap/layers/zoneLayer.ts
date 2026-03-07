@@ -4,6 +4,7 @@ import { getIslandGeometry } from '../islandGeometry';
 import type { ZoneEllipse, Rgb } from '../renderConfig';
 import { clamp01, smoothstep, rgba, shade, hashText, SECTOR_TEXTURE, SECTOR_TINT } from '../renderConfig';
 import { getTextureTile, fillTexture, drawIslandPath } from './islandLayer';
+import { t } from '../../../i18n/i18n';
 
 export function computeZoneReveal(sector: SectorType, agents: AgentState[], turn: number): number {
   const alive = agents.filter(a => a.alive);
@@ -212,7 +213,7 @@ export function drawZoneLabels(
     ctx.font = '9px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = 'rgba(226, 236, 252, 0.92)';
-    ctx.fillText('點擊', x, y + nodeRadius + 9);
+    ctx.fillText(t('island.click'), x, y + nodeRadius + 9);
     ctx.restore();
   };
 
@@ -312,8 +313,8 @@ export function drawMarket(ctx: CanvasRenderingContext2D, layout: ZoneLayout): v
     ctx.fillText(label, x, cy + nodeRadius + 8);
   };
 
-  drawNode(marketX, '🏪', '市場', 'rgba(255, 215, 0, 0.2)', 'rgba(255, 215, 0, 0.48)', 'rgba(255, 215, 0, 0.92)');
-  drawNode(bankX, '🏦', '銀行', 'rgba(120, 180, 255, 0.2)', 'rgba(120, 180, 255, 0.5)', 'rgba(188, 225, 255, 0.95)');
+  drawNode(marketX, '🏪', t('island.market'), 'rgba(255, 215, 0, 0.2)', 'rgba(255, 215, 0, 0.48)', 'rgba(255, 215, 0, 0.92)');
+  drawNode(bankX, '🏦', t('island.bank'), 'rgba(120, 180, 255, 0.2)', 'rgba(120, 180, 255, 0.5)', 'rgba(188, 225, 255, 0.95)');
 
   ctx.beginPath();
   ctx.moveTo(marketX + nodeRadius * 0.72, cy);

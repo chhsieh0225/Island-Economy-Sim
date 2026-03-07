@@ -74,7 +74,7 @@ describe('uiLayoutSmoke', () => {
     expect(zoneLayer).toMatch(/'🌾'/);
     expect(zoneLayer).toMatch(/'🏭'/);
     expect(zoneLayer).toMatch(/'🏢'/);
-    expect(zoneLayer).toMatch(/'點擊'/);
+    expect(zoneLayer).toMatch(/island\.click/);
   });
 
   it('feature clicks trigger transient highlight pulse', () => {

@@ -1,6 +1,7 @@
 import type { GameOverState, SectorType } from '../../types';
 import { getGrade } from '../../engine/Scoring';
 import { useI18n } from '../../i18n/useI18n';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import styles from './GameOver.module.css';
 
 interface Props {
@@ -31,6 +32,7 @@ function ScoreRow({ label, value, max }: { label: string; value: number; max: nu
 
 export function GameOver({ gameOver, onRestart }: Props) {
   const { t } = useI18n();
+  const trapRef = useFocusTrap<HTMLDivElement>(true);
   const { reason, turn, score, finalStats } = gameOver;
   const grade = getGrade(score.totalScore);
   const isVictory = reason === 'gdp_victory' || reason === 'treasury_victory';
@@ -41,7 +43,7 @@ export function GameOver({ gameOver, onRestart }: Props) {
 
   return (
     <div className={styles.overlay}>
-      <div className={styles.modal} role="dialog" aria-modal="true">
+      <div ref={trapRef} className={styles.modal} role="dialog" aria-modal="true">
         <h2 className={`${styles.title} ${isVictory ? styles.victory : ''}`}>
           {reasonLabel}
         </h2>

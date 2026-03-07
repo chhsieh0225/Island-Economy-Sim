@@ -291,7 +291,7 @@ export interface ScoreBreakdown {
   longevityScore: number;
 }
 
-export type SectorDevelopmentLevel = '薄弱' | '起步' | '成長' | '成熟' | '主導';
+export type SectorDevelopmentLevel = 'weak' | 'initial' | 'growth' | 'mature' | 'dominant';
 
 export interface SectorDevelopmentSummary {
   share: number; // percentage 0-100

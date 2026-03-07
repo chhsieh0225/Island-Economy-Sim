@@ -1,5 +1,6 @@
 import type { SectorType, IslandTerrainState } from '../../types';
 import { SECTORS } from '../../types';
+import { te, teSector } from '../engineI18n';
 import { RNG } from '../RNG';
 
 export function generateTerrainProfile(seed: number): IslandTerrainState {
@@ -64,41 +65,21 @@ export function generateTerrainProfile(seed: number): IslandTerrainState {
 }
 
 function pickTerrainFeature(sector: SectorType, suitability: number, rng: RNG): string {
-  const highPools: Record<SectorType, string[]> = {
-    food: ['沖積平原', '濕潤谷地', '黑土農帶'],
-    goods: ['礦脈丘陵', '工業盆地', '石灰岩台地'],
-    services: ['天然港灣', '觀光海岬', '交通樞紐'],
-  };
-  const midPools: Record<SectorType, string[]> = {
-    food: ['一般農地', '混合地貌', '丘陵農區'],
-    goods: ['一般工地', '混合地貌', '河港工區'],
-    services: ['一般市鎮', '混合地貌', '商業聚落'],
-  };
-  const lowPools: Record<SectorType, string[]> = {
-    food: ['鹽鹼薄土', '乾燥坡地', '碎石地'],
-    goods: ['缺礦地帶', '鬆散砂地', '分散聚落'],
-    services: ['內陸閉塞', '交通瓶頸', '低密度聚落'],
-  };
-
-  const pool = suitability >= 1.05
-    ? highPools[sector]
-    : suitability <= 0.95
-      ? lowPools[sector]
-      : midPools[sector];
-  return rng.pick(pool);
+  const tier = suitability >= 1.05 ? 'high' : suitability <= 0.95 ? 'low' : 'mid';
+  const index = rng.nextInt(0, 2);
+  return te(`terrain.${sector}.${tier}.${index}`);
 }
-
-const SECTOR_LABELS: Record<SectorType, string> = {
-  food: '食物業',
-  goods: '商品業',
-  services: '服務業',
-};
 
 export function buildTerrainAnnouncement(terrain: IslandTerrainState): string {
   const labels = SECTORS.map(sector => {
     const pct = (terrain.sectorSuitability[sector] - 1) * 100;
     const sign = pct >= 0 ? '+' : '';
-    return `${SECTOR_LABELS[sector]}${sign}${pct.toFixed(0)}%（${terrain.sectorFeatures[sector]}）`;
+    return te('terrain.sectorEntry', {
+      sector: teSector(sector),
+      sign,
+      pct: pct.toFixed(0),
+      feature: terrain.sectorFeatures[sector],
+    });
   });
-  return `新地貌生成：${labels.join('、')}`;
+  return te('terrain.announcement', { details: labels.join(te('terrain.separator')) });
 }

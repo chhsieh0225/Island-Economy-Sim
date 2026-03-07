@@ -10,6 +10,7 @@ import type {
   SectorType,
 } from '../../types';
 import type { Agent } from '../Agent';
+import { te } from '../engineI18n';
 import type { Government } from '../Government';
 import type { Market } from '../Market';
 import type { RNG } from '../RNG';
@@ -113,28 +114,28 @@ function getRandomEventProbability(
       hasEventChainSignal(eventChainSignals, 'drought')
     ) {
       multiplier *= 1.85;
-      reasons.push('三段鏈第 1 段：供應衝擊推升通膨風險');
+      reasons.push(te('eventChain.supplyStage1Inflation'));
     }
     if (hasEventChainSignal(eventChainSignals, 'storm')) {
       multiplier *= 1.3;
-      reasons.push('風災擾動生產與運輸');
+      reasons.push(te('eventChain.stormDisruption'));
     }
     const foodShortage = sectorShortageRatio(market, 'food');
     if (foodShortage >= 0.16) {
       const shortageMultiplier = 1 + Math.min(0.45, foodShortage * 1.2);
       multiplier *= shortageMultiplier;
-      reasons.push('食物短缺推升物價');
+      reasons.push(te('eventChain.foodShortageInflation'));
     }
   }
 
   if (eventDef.id === 'trade_ship' && hasEventChainSignal(eventChainSignals, CHAIN_SIGNALS.growthStage1)) {
     multiplier *= 1.55;
-    reasons.push('三段鏈第 1 段：豐收擴大對外貿易');
+    reasons.push(te('eventChain.harvestExpandsTrade'));
   }
 
   if (eventDef.id === 'festival' && hasEventChainSignal(eventChainSignals, CHAIN_SIGNALS.growthStage2)) {
     multiplier *= 1.65;
-    reasons.push('三段鏈第 2 段：貿易繁榮帶動慶典消費');
+    reasons.push(te('eventChain.tradeBoomFestival'));
   }
 
   const boostedProbability = Math.min(
@@ -160,28 +161,28 @@ function getDecisionEventProbability(
   if (eventDef.id === 'cost_of_living') {
     if (hasEventChainSignal(eventChainSignals, CHAIN_SIGNALS.supplyStage2)) {
       multiplier *= 2.35;
-      reasons.push('三段鏈第 2 段：通膨衝擊延燒到民生壓力');
+      reasons.push(te('eventChain.inflationLivingCost'));
     }
     if (hasEventChainSignal(eventChainSignals, 'inflation_spike')) {
       multiplier *= 2.15;
-      reasons.push('通膨壓力延燒');
+      reasons.push(te('eventChain.inflationSpillover'));
     }
     const foodShortage = sectorShortageRatio(market, 'food');
     if (foodShortage >= 0.18) {
       const shortageMultiplier = 1 + Math.min(0.35, foodShortage);
       multiplier *= shortageMultiplier;
-      reasons.push('民生供給偏緊');
+      reasons.push(te('eventChain.supplyTight'));
     }
   }
 
   if (eventDef.id === 'health_crisis' && hasEventChainSignal(eventChainSignals, 'epidemic')) {
     multiplier *= 1.8;
-    reasons.push('疫病餘波未平');
+    reasons.push(te('eventChain.epidemicAftermath'));
   }
 
   if (eventDef.id === 'industry_lobby' && hasEventChainSignal(eventChainSignals, CHAIN_SIGNALS.growthStage2)) {
     multiplier *= 1.45;
-    reasons.push('三段鏈第 2 段：貿易擴張提高產業升級訴求');
+    reasons.push(te('eventChain.tradeUpgradeIndustry'));
   }
 
   const boostedProbability = Math.min(
@@ -237,10 +238,10 @@ export function runRandomEventsPhase({
         };
         nextLastDecisionTurn = turn;
         if (chainReason) {
-          addEvent('info', `事件連鎖：${chainReason}，導致「${eventDef.name}」。`);
+          addEvent('info', te('event.chainCausedDecision', { reason: chainReason, name: eventDef.name }));
         }
         addEvent(eventDef.severity, `${eventDef.name}：${eventDef.message}`);
-        addEvent('info', '市政抉擇已出現，請先做出選擇。');
+        addEvent('info', te('event.decisionAwaiting'));
         break;
       }
     }
@@ -266,7 +267,7 @@ export function runRandomEventsPhase({
             registerChainProgressByEvent(nextSignals, eventDef.id);
           }
           if (chainReason) {
-            addEvent('info', `事件連鎖：${chainReason}，觸發「${eventDef.name}」。`);
+            addEvent('info', te('event.chainTriggeredRandom', { reason: chainReason, name: eventDef.name }));
           }
           addEvent(eventDef.severity, eventDef.message);
           break;

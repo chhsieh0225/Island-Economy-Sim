@@ -44,28 +44,6 @@
   color: #e6f1ff;
 }
 
-.delta {
-  font-size: 10px;
-  font-weight: 600;
-  margin-left: 2px;
-}
-
-.deltaUp {
-  color: #4caf50;
-}
-
-.deltaDown {
-  color: #f44336;
-}
-
-.deltaGiniUp {
-  color: #f44336;
-}
-
-.deltaGiniDown {
-  color: #4caf50;
-}
-
 .streakBadge {
   display: flex;
   align-items: center;

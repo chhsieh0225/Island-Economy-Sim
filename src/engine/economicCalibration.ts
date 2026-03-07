@@ -1,5 +1,6 @@
 import { CONFIG } from '../config';
 import type { SectorType } from '../types';
+import { te } from './engineI18n';
 
 export type EconomicCalibrationProfileId = 'baseline' | 'academic';
 
@@ -24,12 +25,12 @@ export interface EconomicCalibrationReference {
 
 export const DEFAULT_ECONOMIC_CALIBRATION_PROFILE_ID: EconomicCalibrationProfileId = 'baseline';
 
-const PROFILES: Record<EconomicCalibrationProfileId, EconomicCalibrationProfile> = {
+const PROFILES: Record<EconomicCalibrationProfileId, Omit<EconomicCalibrationProfile, 'label' | 'description' | 'sourceSummary'> & { _labelKey: string; _descKey: string; _sourceKey: string }> = {
   baseline: {
     id: 'baseline',
-    label: '平衡模式 Balanced',
-    description: '保留原遊戲節奏，價格和需求反應較直觀，適合一般遊玩。',
-    sourceSummary: '以目前遊戲校準為主，保留標準微觀框架但偏重可玩性。',
+    _labelKey: 'calibration.profile.balanced.label',
+    _descKey: 'calibration.profile.balanced.description',
+    _sourceKey: 'calibration.profile.balanced.source',
     productionLaborElasticity: { ...CONFIG.PRODUCTION_LABOR_ELASTICITY },
     tatonnementGain: CONFIG.PRICE_ELASTICITY,
     priceSmoothing: CONFIG.PRICE_SMOOTHING,
@@ -38,9 +39,9 @@ const PROFILES: Record<EconomicCalibrationProfileId, EconomicCalibrationProfile>
   },
   academic: {
     id: 'academic',
-    label: '學術模式 Academic',
-    description: '參數貼近常見教科書/實證區間，價格與配置調整較保守。',
-    sourceSummary: '參考 Cobb-Douglas、Stone-Geary/LES、tatonnement 常見標定範圍。',
+    _labelKey: 'calibration.profile.academic.label',
+    _descKey: 'calibration.profile.academic.description',
+    _sourceKey: 'calibration.profile.academic.source',
     productionLaborElasticity: { food: 0.92, goods: 0.86, services: 0.82 },
     tatonnementGain: 0.035,
     priceSmoothing: 0.78,
@@ -49,51 +50,49 @@ const PROFILES: Record<EconomicCalibrationProfileId, EconomicCalibrationProfile>
   },
 };
 
-export const ECONOMIC_CALIBRATION_REFERENCES: EconomicCalibrationReference[] = [
-  {
-    key: 'alpha_food',
-    label: '食物部門勞動彈性 α_food',
-    range: '0.85 - 1.00',
-    source: 'Cobb-Douglas 部門生產函數常見估計（農業接近常數報酬）。',
-  },
-  {
-    key: 'alpha_goods',
-    label: '商品部門勞動彈性 α_goods',
-    range: '0.75 - 0.95',
-    source: '製造部門常見遞減報酬估計區間。',
-  },
-  {
-    key: 'alpha_services',
-    label: '服務部門勞動彈性 α_services',
-    range: '0.70 - 0.95',
-    source: '服務部門受組織與需求限制，彈性常低於 1。',
-  },
-  {
-    key: 'tatonnement_gain',
-    label: '價格調整速度 k',
-    range: '0.02 - 0.08 / turn',
-    source: '離散時間 tatonnement 常用穩定範圍。',
-  },
-  {
-    key: 'price_smoothing',
-    label: '價格平滑係數 λ',
-    range: '0.55 - 0.85',
-    source: '短期黏著價格設定，避免單期超調。',
-  },
-  {
-    key: 'les_subsistence',
-    label: 'LES 最低需求係數',
-    range: '0.90 - 1.10',
-    source: 'Stone-Geary 最低消費項比例化校準。',
-  },
-];
+const REFERENCE_KEYS = [
+  'alpha_food',
+  'alpha_goods',
+  'alpha_services',
+  'tatonnement_gain',
+  'price_smoothing',
+  'les_subsistence',
+] as const;
+
+const REFERENCE_RANGES: Record<string, string> = {
+  alpha_food: '0.85 - 1.00',
+  alpha_goods: '0.75 - 0.95',
+  alpha_services: '0.70 - 0.95',
+  tatonnement_gain: '0.02 - 0.08 / turn',
+  price_smoothing: '0.55 - 0.85',
+  les_subsistence: '0.90 - 1.10',
+};
+
+export function getEconomicCalibrationReferences(): EconomicCalibrationReference[] {
+  return REFERENCE_KEYS.map(key => ({
+    key,
+    label: te(`calibration.ref.${key}.label`),
+    range: REFERENCE_RANGES[key],
+    source: te(`calibration.ref.${key}.source`),
+  }));
+}
+
+function resolveProfile(raw: (typeof PROFILES)[EconomicCalibrationProfileId]): EconomicCalibrationProfile {
+  const { _labelKey, _descKey, _sourceKey, ...rest } = raw;
+  return {
+    ...rest,
+    label: te(_labelKey),
+    description: te(_descKey),
+    sourceSummary: te(_sourceKey),
+  };
+}
 
 export function getEconomicCalibrationProfiles(): EconomicCalibrationProfile[] {
-  return [PROFILES.baseline, PROFILES.academic];
+  return [resolveProfile(PROFILES.baseline), resolveProfile(PROFILES.academic)];
 }
 
 export function getEconomicCalibrationProfile(
   id: EconomicCalibrationProfileId,
 ): EconomicCalibrationProfile {
-  return PROFILES[id];
+  return resolveProfile(PROFILES[id]);
 }

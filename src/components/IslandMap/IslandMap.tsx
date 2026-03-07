@@ -30,6 +30,7 @@ import {
   drawTooltip,
   computeZoneReveal,
 } from './islandRenderer';
+import { t } from '../../i18n/i18n';
 import styles from './IslandMap.module.css';
 
 type AutoPlaySpeed = 'slow' | 'medium' | 'fast' | null;
@@ -691,7 +692,7 @@ export const IslandMap = memo(function IslandMap({
         const agentRender = rendered.find(r => r.agent.id === hoveredAgent.id);
         if (agentRender) {
           const { pos, agent } = agentRender;
-          const sectorLabel = agent.sector === 'food' ? '食物' : agent.sector === 'goods' ? '商品' : '服務';
+          const sectorLabel = t('sector.' + agent.sector);
           const genderIcon = agent.gender === 'M' ? '♂' : '♀';
           const ageYears = Math.floor(agent.age / 12);
           const label = `${genderIcon}${agent.name} [${sectorLabel}] ${ageYears}歲 $${agent.money.toFixed(0)} HP:${agent.health.toFixed(0)}`;

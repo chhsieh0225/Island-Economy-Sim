@@ -2,6 +2,7 @@ import { CONFIG } from '../../config';
 import type { GameEvent } from '../../types';
 import type { Agent } from '../Agent';
 import type { RNG } from '../RNG';
+import { te } from '../engineI18n';
 
 interface LifeDeathPhaseInput {
   turn: number;
@@ -33,8 +34,8 @@ export function runAgingPhase({ turn, agents, addEvent }: AgingPhaseInput): void
     const wasMinor = agent.age < CONFIG.WORKING_AGE;
     agent.ageOneTurn();
     if (wasMinor && agent.age >= CONFIG.WORKING_AGE) {
-      agent.addLifeEvent(turn, 'join', '成年並開始投入勞動市場。', 'positive');
-      addEvent('info', `${agent.name} 已成年，正式加入勞動市場。`);
+      agent.addLifeEvent(turn, 'join', te('event.maturity.life'), 'positive');
+      addEvent('info', te('event.maturity', { name: agent.name }));
     }
   }
 }
@@ -57,17 +58,17 @@ export function runLifeDeathPhase({
     if (agent.isOld) {
       agent.alive = false;
       agent.causeOfDeath = 'age';
-      agent.addLifeEvent(turn, 'death', `於 ${Math.floor(agent.age / 12)} 歲因年老去世。`, 'warning');
+      agent.addLifeEvent(turn, 'death', te('event.death.age.life', { age: Math.floor(agent.age / 12) }), 'warning');
       deaths++;
       deathByCause.age++;
-      addEvent('warning', `${agent.name} 因年老去世 (${Math.floor(agent.age / 12)} 歲)。`);
+      addEvent('warning', te('event.death.age', { name: agent.name, age: Math.floor(agent.age / 12) }));
     } else if (agent.isDead) {
       agent.alive = false;
       agent.causeOfDeath = 'health';
-      agent.addLifeEvent(turn, 'death', '因健康不佳去世。', 'critical');
+      agent.addLifeEvent(turn, 'death', te('event.death.health.life'), 'critical');
       deaths++;
       deathByCause.health++;
-      addEvent('critical', `${agent.name} 因健康不佳而死亡。`);
+      addEvent('critical', te('event.death.health', { name: agent.name }));
     } else if (agent.age >= CONFIG.WORKING_AGE && agent.shouldLeave) {
       leaveCandidates.push(agent);
     }
@@ -92,15 +93,15 @@ export function runLifeDeathPhase({
 
       agent.alive = false;
       agent.causeOfDeath = 'left';
-      agent.addLifeEvent(turn, 'leave', '對小島失去信心，選擇離開。', 'warning');
+      agent.addLifeEvent(turn, 'leave', te('event.leave.life'), 'warning');
       deaths++;
       deathByCause.left++;
       leftThisTurn++;
-      addEvent('warning', `${agent.name} 因不滿離開了小島。`);
+      addEvent('warning', te('event.leave', { name: agent.name }));
     }
 
     if (leaveCandidates.length > leaveCap && leftThisTurn >= leaveCap) {
-      addEvent('warning', '本回合出現離島潮，但已由交通與行政容量限制住瞬間外流規模。');
+      addEvent('warning', te('event.migrationWaveLimited'));
     }
   }
 
@@ -140,7 +141,7 @@ export function runLifeDeathPhase({
       const newAgent = createNewAgent(parent.familyId, CONFIG.NEWBORN_STARTING_AGE, true);
       allAgents.push(newAgent);
       births++;
-      addEvent('positive', `島上迎來新生兒 ${newAgent.name}（1 歲）。`);
+      addEvent('positive', te('event.newborn', { name: newAgent.name }));
     }
   }
 

@@ -3,28 +3,11 @@ import type { GameState } from '../../types';
 import { useTurnDiffStore } from '../../stores/turnDiffStore';
 import { useStreakStore } from '../../stores/streakStore';
 import { useI18n } from '../../i18n/useI18n';
+import { DeltaBadge } from '../shared/DeltaBadge';
 import styles from './HudOverlay.module.css';
 
 interface Props {
   state: GameState;
-}
-
-function DeltaBadge({ value, prefix = '', suffix = '', invert = false }: {
-  value: number;
-  prefix?: string;
-  suffix?: string;
-  invert?: boolean;
-}) {
-  if (Math.abs(value) < 0.01) return null;
-  const isPositive = value > 0;
-  let cls: string;
-  if (invert) {
-    cls = isPositive ? styles.deltaGiniUp : styles.deltaGiniDown;
-  } else {
-    cls = isPositive ? styles.deltaUp : styles.deltaDown;
-  }
-  const formatted = `${isPositive ? '+' : ''}${prefix}${Math.abs(value) < 10 ? value.toFixed(1) : Math.round(value)}${suffix}`;
-  return <span className={`${styles.delta} ${cls}`}>{formatted}</span>;
 }
 
 export const HudOverlay = memo(function HudOverlay({ state }: Props) {

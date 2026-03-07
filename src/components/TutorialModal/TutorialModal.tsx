@@ -2,6 +2,7 @@ import { memo } from 'react';
 import type { TutorialLesson } from '../../data/tutorialLessons';
 import type { TutorialPhase } from '../../stores/tutorialStore';
 import { useI18n } from '../../i18n/useI18n';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import styles from './TutorialModal.module.css';
 
 interface Props {
@@ -22,12 +23,13 @@ export const TutorialModal = memo(function TutorialModal({
   onExitTutorial,
 }: Props) {
   const { t } = useI18n();
+  const trapRef = useFocusTrap<HTMLDivElement>(true);
   const zh = locale === 'zh-TW';
 
   if (phase === 'intro') {
     return (
       <div className={styles.overlay}>
-        <div className={styles.modal}>
+        <div ref={trapRef} className={styles.modal} role="dialog" aria-modal="true">
           <div className={styles.modalEmoji}>{lesson.emoji}</div>
           <div className={styles.modalLabel}>
             {t('tutorial.lessonN').replace('{n}', String(lesson.order + 1))}
@@ -53,7 +55,7 @@ export const TutorialModal = memo(function TutorialModal({
   if (phase === 'completed') {
     return (
       <div className={styles.overlay}>
-        <div className={styles.modal}>
+        <div ref={trapRef} className={styles.modal} role="dialog" aria-modal="true">
           <div className={styles.modalEmoji}>🎉</div>
           <div className={styles.modalLabel}>
             {t('tutorial.complete')}
@@ -85,7 +87,7 @@ export const TutorialModal = memo(function TutorialModal({
   if (phase === 'finished') {
     return (
       <div className={styles.overlay}>
-        <div className={styles.modal}>
+        <div ref={trapRef} className={styles.modal} role="dialog" aria-modal="true">
           <div className={styles.modalEmoji}>🎓</div>
           <div className={styles.modalLabel}>
             {t('tutorial.congratulations')}

@@ -1,5 +1,6 @@
 import { memo, useEffect, useCallback, type ReactNode } from 'react';
 import { useI18n } from '../../i18n/useI18n';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import styles from './DrawerPanel.module.css';
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 
 export const DrawerPanel = memo(function DrawerPanel({ open, title, onClose, children }: Props) {
   const { t } = useI18n();
+  const trapRef = useFocusTrap<HTMLDivElement>(open);
 
   // Close on Escape key
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -31,6 +33,7 @@ export const DrawerPanel = memo(function DrawerPanel({ open, title, onClose, chi
         onClick={onClose}
       />
       <div
+        ref={trapRef}
         className={`${styles.panel} ${open ? styles.panelVisible : ''}`}
         role="dialog"
         aria-modal={open}

@@ -5,6 +5,7 @@ import {
   canBuild,
 } from '../../engine/modules/infrastructureModule';
 import { useGameStore } from '../../stores/gameStore';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './InfrastructurePanel.module.css';
 
 interface Props {
@@ -16,6 +17,7 @@ export const InfrastructurePanel = memo(function InfrastructurePanel({
   treasury,
   infrastructure,
 }: Props) {
+  const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(true);
   const build = useGameStore(s => s.buildInfrastructure);
 
@@ -72,9 +74,9 @@ export const InfrastructurePanel = memo(function InfrastructurePanel({
                     className={styles.buildBtn}
                     disabled={!check.ok}
                     onClick={() => build(def.type)}
-                    title={check.reason ?? '建設'}
+                    title={check.reason ?? t('infra.build')}
                   >
-                    建設
+                    {t('infra.build')}
                   </button>
                 </div>
               </div>

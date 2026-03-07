@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { ToastNotification, MilestoneRecord } from '../types';
 import { buildLearningJourney } from '../learning/journey';
 import type { GameState } from '../types';
+import { t } from '../i18n/i18n';
 
 interface NotificationState {
   toastQueue: ToastNotification[];
@@ -45,7 +46,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     const toast: ToastNotification = {
       id: `toast-${toastIdCounter++}`,
       type: 'info',
-      title: '政策調整',
+      title: t('notification.policyChange'),
       message,
       createdAt: Date.now(),
       duration: 2500,

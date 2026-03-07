@@ -17,7 +17,7 @@ function App() {
   const setAppMode = useUiStore(s => s.setAppMode);
   const completedLessons = useTutorialStore(s => s.completedLessons);
   const startTutorial = useTutorialStore(s => s.startTutorial);
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
 
   const handleStartFreePlay = useCallback(() => {
     setAppMode('freeplay');
@@ -43,12 +43,12 @@ function App() {
 
   // ─── Game View (lazy-loaded) ─────────────────────────────────────────
   return (
-    <ErrorBoundary fallbackLabel="應用程式發生嚴重錯誤">
+    <ErrorBoundary fallbackLabel={t('error.appCrash')}>
       <Suspense
         fallback={
           <div className={styles.loadingScreen}>
             <div className={styles.loadingIsland}>🏝️</div>
-            <div className={styles.loadingText}>載入遊戲中…</div>
+            <div className={styles.loadingText}>{t('loading.game')}</div>
           </div>
         }
       >

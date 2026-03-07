@@ -93,8 +93,8 @@ describe('uiLayoutSmoke', () => {
     const panel = readProjectFile('src/components/LearningJourneyPanel/LearningJourneyPanel.tsx');
     const journey = readProjectFile('src/learning/journey.ts');
 
-    expect(panel).toMatch(/經濟教練 Coach/);
-    expect(panel).toMatch(/下一步操作（建議順序）/);
+    expect(panel).toMatch(/t\('learning\.coach'\)/);
+    expect(panel).toMatch(/t\('learning\.nextSteps'\)/);
     expect(panel).toMatch(/coach\.actions\.map/);
 
     expect(journey).toMatch(/interface LearningCoachBrief/);

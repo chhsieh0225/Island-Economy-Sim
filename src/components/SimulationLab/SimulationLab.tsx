@@ -1,6 +1,7 @@
 import { useMemo, useState, memo } from 'react';
 import { SCENARIOS } from '../../data/scenarios';
 import type { RunSummary, ScenarioId } from '../../types';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './SimulationLab.module.css';
 
 interface Props {
@@ -16,6 +17,7 @@ function fmtDelta(value: number, digits: number = 0): string {
 }
 
 export const SimulationLab = memo(function SimulationLab({ scenarioId, seed, runHistory, onStartRun }: Props) {
+  const { t } = useI18n();
   const [seedInput, setSeedInput] = useState(String(seed));
   const [scenarioInput, setScenarioInput] = useState<ScenarioId>(scenarioId);
   const [seedDirty, setSeedDirty] = useState(false);
@@ -49,10 +51,10 @@ export const SimulationLab = memo(function SimulationLab({ scenarioId, seed, run
 
   return (
     <div className={styles.panel}>
-      <div className={styles.title}>模擬實驗室 Simulation Lab</div>
+      <div className={styles.title}>{t('simLab.title')}</div>
 
       <div className={styles.controlRow}>
-        <label className={styles.label}>劇本 Scenario</label>
+        <label className={styles.label}>{t('simLab.scenario')}</label>
         <select
           className={styles.select}
           value={displayedScenario}
@@ -79,34 +81,34 @@ export const SimulationLab = memo(function SimulationLab({ scenarioId, seed, run
             setSeedInput(e.target.value);
           }}
           inputMode="numeric"
-          placeholder="輸入整數 seed"
+          placeholder={t('simLab.seedPlaceholder')}
         />
       </div>
 
       <div className={styles.buttonRow}>
-        <button className={styles.secondaryBtn} onClick={randomizeSeed}>隨機 Seed</button>
-        <button className={styles.primaryBtn} onClick={launch}>套用並重開</button>
+        <button className={styles.secondaryBtn} onClick={randomizeSeed}>{t('simLab.randomSeed')}</button>
+        <button className={styles.primaryBtn} onClick={launch}>{t('simLab.applyRestart')}</button>
       </div>
 
-      <div className={styles.sectionTitle}>最近兩局比較 Recent Compare</div>
+      <div className={styles.sectionTitle}>{t('simLab.recentCompare')}</div>
       {!latest || !prev ? (
-        <div className={styles.empty}>完成至少兩局後會顯示對比。</div>
+        <div className={styles.empty}>{t('simLab.compareEmpty')}</div>
       ) : (
         <div className={styles.compare}>
           <div className={styles.compareRow}>
-            <span>分數</span>
+            <span>{t('simLab.score')}</span>
             <span className={styles.delta}>{fmtDelta(latest.score - prev.score)}</span>
           </div>
           <div className={styles.compareRow}>
-            <span>最終人口</span>
+            <span>{t('simLab.finalPop')}</span>
             <span className={styles.delta}>{fmtDelta(latest.finalPopulation - prev.finalPopulation)}</span>
           </div>
           <div className={styles.compareRow}>
-            <span>最終 GDP</span>
+            <span>{t('simLab.finalGdp')}</span>
             <span className={styles.delta}>{fmtDelta(latest.finalGdp - prev.finalGdp, 0)}</span>
           </div>
           <div className={styles.compareRow}>
-            <span>最終基尼</span>
+            <span>{t('simLab.finalGini')}</span>
             <span className={styles.delta}>{fmtDelta(latest.finalGini - prev.finalGini, 3)}</span>
           </div>
         </div>
@@ -114,7 +116,7 @@ export const SimulationLab = memo(function SimulationLab({ scenarioId, seed, run
 
       {runHistory.length > 0 && (
         <>
-          <div className={styles.sectionTitle}>最近紀錄</div>
+          <div className={styles.sectionTitle}>{t('simLab.recentHistory')}</div>
           <div className={styles.history}>
             {runHistory.slice(0, 5).map(run => (
               <div key={run.id} className={styles.historyItem}>

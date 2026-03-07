@@ -72,7 +72,7 @@ function buildSentimentAlert(state: GameState, t: (key: string) => string): Sent
   if (state.government.taxRate > 0.2) actions.push(t('alert.action.lowerTax'));
   if (actions.length === 0) actions.push(t('alert.action.default'));
 
-  const shortageLabel = shortages.map(s => t(`sector.${s}`)).join('、');
+  const shortageLabel = shortages.map(s => t(`sector.${s}`)).join(t('common.listSeparator'));
   if (avgSat < 34 || nearLeaveRate > 0.12 || (satDelta < -4 && avgSat < 45)) {
     return {
       level: 'critical',
@@ -373,7 +373,7 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
                 <span className={styles.causalUp}>+${causal.policy.taxCollected.toFixed(0)}</span>
               </div>
               <div className={styles.causalDriver}>
-                <span>{t('dashboard.causal.welfare')}（{causal.policy.welfareRecipients} {t('dashboard.causal.persons')}）</span>
+                <span>{t('dashboard.causal.welfare')} ({causal.policy.welfareRecipients} {t('dashboard.causal.persons')})</span>
                 <span className={styles.causalDown}>-${causal.policy.welfarePaid.toFixed(0)}</span>
               </div>
               <div className={styles.causalDriver}>
@@ -400,14 +400,14 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
                   <span>{t('dashboard.causal.departures.label')} {s.causalReplay.departures.net > 0 ? '+' : ''}{s.causalReplay.departures.net}</span>
                 </summary>
                 <div className={styles.causalTimelineDetail}>
-                  <div>{t('dashboard.causal.satDriver')}：{leadDriverLabel(s.causalReplay.satisfaction, t('dashboard.causal.noChange'))}</div>
-                  <div>{t('dashboard.causal.healthDriver')}：{leadDriverLabel(s.causalReplay.health, t('dashboard.causal.noChange'))}</div>
+                  <div>{t('dashboard.causal.satDriver')}: {leadDriverLabel(s.causalReplay.satisfaction, t('dashboard.causal.noChange'))}</div>
+                  <div>{t('dashboard.causal.healthDriver')}: {leadDriverLabel(s.causalReplay.health, t('dashboard.causal.noChange'))}</div>
                   <div>
-                    {t('dashboard.causal.policyPerformance')}：{t('dashboard.causal.taxRevenue')} +${s.causalReplay.policy.taxCollected.toFixed(0)}
-                    ，{t('dashboard.causal.welfareSpend')} -${s.causalReplay.policy.welfarePaid.toFixed(0)}（{s.causalReplay.policy.welfareRecipients} {t('dashboard.causal.persons')}）
-                    ，{t('dashboard.causal.pwSpend')} -${s.causalReplay.policy.publicWorksCost.toFixed(0)}
-                    ，{t('dashboard.causal.cashDelta')} {signed(s.causalReplay.policy.perCapitaCashDelta, 2)}
-                    ，{t('dashboard.causal.treasuryDelta')} {signed(s.causalReplay.policy.treasuryDelta, 1)}
+                    {t('dashboard.causal.policyPerformance')}: {t('dashboard.causal.taxRevenue')} +${s.causalReplay.policy.taxCollected.toFixed(0)}
+                    {t('common.listSeparator')}{t('dashboard.causal.welfareSpend')} -${s.causalReplay.policy.welfarePaid.toFixed(0)} ({s.causalReplay.policy.welfareRecipients} {t('dashboard.causal.persons')})
+                    {t('common.listSeparator')}{t('dashboard.causal.pwSpend')} -${s.causalReplay.policy.publicWorksCost.toFixed(0)}
+                    {t('common.listSeparator')}{t('dashboard.causal.cashDelta')} {signed(s.causalReplay.policy.perCapitaCashDelta, 2)}
+                    {t('common.listSeparator')}{t('dashboard.causal.treasuryDelta')} {signed(s.causalReplay.policy.treasuryDelta, 1)}
                   </div>
                 </div>
               </details>

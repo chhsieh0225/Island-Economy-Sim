@@ -1,6 +1,7 @@
 import { useMemo, useState, memo } from 'react';
 import type { GameState } from '../../types';
 import { buildLearningJourney } from '../../learning/journey';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './LearningJourneyPanel.module.css';
 
 interface Props {
@@ -15,6 +16,7 @@ function firstIncomplete(items: ReturnType<typeof buildLearningJourney>['quests'
 }
 
 export const LearningJourneyPanel = memo(function LearningJourneyPanel({ state, tutorialToastsEnabled, onSetTutorialToasts }: Props) {
+  const { t } = useI18n();
   const [activeQuestId, setActiveQuestId] = useState<string>('turn_3');
   const [activeNodeId, setActiveNodeId] = useState<string>('market_signal');
   const { coach, quests, knowledgeNodes } = useMemo(() => buildLearningJourney(state), [state]);
@@ -32,18 +34,18 @@ export const LearningJourneyPanel = memo(function LearningJourneyPanel({ state, 
   return (
     <div className={styles.panel}>
       <div className={styles.titleRow}>
-        <div className={styles.title}>學習路徑 Learning Journey</div>
+        <div className={styles.title}>{t('learning.title')}</div>
         <button
           className={`${styles.toastToggleBtn} ${tutorialToastsEnabled ? styles.toastToggleOn : styles.toastToggleOff}`}
           onClick={() => onSetTutorialToasts(!tutorialToastsEnabled)}
         >
-          教學推播：{tutorialToastsEnabled ? '開' : '關'}
+          {t('learning.toastLabel')}: {tutorialToastsEnabled ? t('learning.toastOn') : t('learning.toastOff')}
         </button>
       </div>
 
       <div className={styles.section}>
         <div className={styles.sectionHead}>
-          <span>經濟教練 Coach</span>
+          <span>{t('learning.coach')}</span>
           <span>{coach.phaseLabel}</span>
         </div>
         <div className={styles.coachGoal}>{coach.phaseGoal}</div>
@@ -55,14 +57,14 @@ export const LearningJourneyPanel = memo(function LearningJourneyPanel({ state, 
           ))}
         </div>
 
-        <div className={styles.coachBlockTitle}>本回合解讀</div>
+        <div className={styles.coachBlockTitle}>{t('learning.turnInterpretation')}</div>
         <div className={styles.coachNarrative}>
           {coach.turnNarrative.map(line => (
             <div key={line} className={styles.coachLine}>{line}</div>
           ))}
         </div>
 
-        <div className={styles.coachBlockTitle}>下一步操作（建議順序）</div>
+        <div className={styles.coachBlockTitle}>{t('learning.nextSteps')}</div>
         <div className={styles.coachActionList}>
           {coach.actions.map((action, index) => (
             <div key={action.id} className={styles.coachActionItem}>
@@ -70,16 +72,16 @@ export const LearningJourneyPanel = memo(function LearningJourneyPanel({ state, 
                 <span className={styles.coachActionIndex}>{index + 1}</span>
                 <span className={styles.coachActionTitle}>{action.title}</span>
               </div>
-              <div className={styles.coachLine}>原因：{action.rationale}</div>
+              <div className={styles.coachLine}>{t('learning.reason')}: {action.rationale}</div>
               {action.steps.map(step => (
                 <div key={step} className={styles.coachStep}>- {step}</div>
               ))}
-              <div className={styles.coachSignal}>預期訊號：{action.expectedSignal}</div>
+              <div className={styles.coachSignal}>{t('learning.expectedSignal')}: {action.expectedSignal}</div>
             </div>
           ))}
         </div>
 
-        <div className={styles.coachBlockTitle}>盯盤清單</div>
+        <div className={styles.coachBlockTitle}>{t('learning.watchlist')}</div>
         <div className={styles.watchList}>
           {coach.watchlist.map(item => (
             <div key={item} className={styles.watchItem}>{item}</div>
@@ -87,14 +89,14 @@ export const LearningJourneyPanel = memo(function LearningJourneyPanel({ state, 
         </div>
 
         <div className={styles.coachFoot}>
-          <div>避坑提醒：{coach.pitfall}</div>
-          <div>經濟學對照：{coach.economicsLink}</div>
+          <div>{t('learning.pitfall')}: {coach.pitfall}</div>
+          <div>{t('learning.economicsLink')}: {coach.economicsLink}</div>
         </div>
       </div>
 
       <div className={styles.section}>
         <div className={styles.sectionHead}>
-          <span>新手任務線</span>
+          <span>{t('learning.quests')}</span>
           <span>{completedQuestCount}/{quests.length}</span>
         </div>
         <div className={styles.progressBar}>
@@ -117,8 +119,8 @@ export const LearningJourneyPanel = memo(function LearningJourneyPanel({ state, 
         <div className={styles.detailCard}>
           <div className={styles.detailTitle}>{activeQuest.title}</div>
           <div className={styles.detailLine}>{activeQuest.objective}</div>
-          <div className={styles.detailLine}>為什麼：{activeQuest.why}</div>
-          <div className={styles.detailLine}>怎麼做：{activeQuest.action}</div>
+          <div className={styles.detailLine}>{t('learning.questWhy')}: {activeQuest.why}</div>
+          <div className={styles.detailLine}>{t('learning.questAction')}: {activeQuest.action}</div>
           <div className={styles.detailBar}>
             <span style={{ width: `${Math.max(4, activeQuest.progress * 100)}%` }} />
           </div>
@@ -126,19 +128,19 @@ export const LearningJourneyPanel = memo(function LearningJourneyPanel({ state, 
 
         {nextQuest && (
           <div className={styles.nextHint}>
-            下一步建議：{nextQuest.title}
+            {t('learning.nextSuggestion')}: {nextQuest.title}
           </div>
         )}
         {!nextQuest && (
           <div className={styles.nextHintDone}>
-            新手任務線完成，已進入進階知識串連階段。
+            {t('learning.questsComplete')}
           </div>
         )}
       </div>
 
       <div className={styles.section}>
         <div className={styles.sectionHead}>
-          <span>老手知識串連</span>
+          <span>{t('learning.advanced')}</span>
           <span>{unlockedNodes.length}/{knowledgeNodes.length}</span>
         </div>
         <div className={styles.nodeList}>
@@ -155,7 +157,7 @@ export const LearningJourneyPanel = memo(function LearningJourneyPanel({ state, 
               <div className={styles.nodeTitleRow}>
                 <span className={styles.nodeChain}>{node.chain}</span>
                 <span className={node.unlocked ? styles.nodeUnlocked : styles.nodeLocked}>
-                  {node.unlocked ? '已解鎖' : '未解鎖'}
+                  {node.unlocked ? t('learning.unlocked') : t('learning.locked')}
                 </span>
               </div>
               <div className={styles.nodeTitle}>{node.title}</div>
@@ -166,14 +168,14 @@ export const LearningJourneyPanel = memo(function LearningJourneyPanel({ state, 
         {activeNode.unlocked ? (
           <div className={styles.detailCard}>
             <div className={styles.detailTitle}>{activeNode.title}</div>
-            <div className={styles.detailLine}>概念：{activeNode.concept}</div>
-            <div className={styles.detailLine}>你的小島訊號：{activeNode.gameSignal}</div>
-            <div className={styles.detailLine}>現實對照：{activeNode.worldLink}</div>
-            <div className={styles.detailLine}>下一個練習：{activeNode.nextPrompt}</div>
+            <div className={styles.detailLine}>{t('learning.concept')}: {activeNode.concept}</div>
+            <div className={styles.detailLine}>{t('learning.gameSignal')}: {activeNode.gameSignal}</div>
+            <div className={styles.detailLine}>{t('learning.worldLink')}: {activeNode.worldLink}</div>
+            <div className={styles.detailLine}>{t('learning.nextPrompt')}: {activeNode.nextPrompt}</div>
           </div>
         ) : (
           <div className={styles.lockHint}>
-            先完成前面的任務或累積更多回合，會自動解鎖此知識節點。
+            {t('learning.lockHint')}
           </div>
         )}
       </div>

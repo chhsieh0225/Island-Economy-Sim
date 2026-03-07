@@ -3,6 +3,7 @@ import { useTutorialStore } from '../../stores/tutorialStore';
 import { TUTORIAL_LESSONS } from '../../data/tutorialLessons';
 import { getEncyclopediaEntry } from '../../data/encyclopedia';
 import type { GameState } from '../../types';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './TutorialPanel.module.css';
 
 interface Props {
@@ -16,6 +17,7 @@ export const TutorialPanel = memo(function TutorialPanel({
   locale,
   onExitTutorial,
 }: Props) {
+  const { t } = useI18n();
   const zh = locale === 'zh-TW';
 
   const currentLessonIndex = useTutorialStore(s => s.currentLessonIndex);
@@ -43,14 +45,14 @@ export const TutorialPanel = memo(function TutorialPanel({
           <span className={styles.lessonEmoji}>{lesson.emoji}</span>
           <div>
             <div className={styles.lessonLabel}>
-              {zh ? `第 ${currentLessonIndex + 1} 課 / ${TUTORIAL_LESSONS.length}` : `Lesson ${currentLessonIndex + 1} / ${TUTORIAL_LESSONS.length}`}
+              {t('tutorial.lessonProgress').replace('{n}', String(currentLessonIndex + 1)).replace('{total}', String(TUTORIAL_LESSONS.length))}
             </div>
             <div className={styles.lessonTitle}>
               {zh ? lesson.title : lesson.titleEn}
             </div>
           </div>
         </div>
-        <button className={styles.exitBtn} onClick={onExitTutorial} title={zh ? '離開教學' : 'Exit Tutorial'}>
+        <button className={styles.exitBtn} onClick={onExitTutorial} title={t('tutorial.exit')}>
           ✕
         </button>
       </div>
@@ -85,7 +87,7 @@ export const TutorialPanel = memo(function TutorialPanel({
       {/* Objectives */}
       <div className={styles.section}>
         <div className={styles.sectionTitle}>
-          {zh ? '學習目標' : 'Objectives'}
+          {t('tutorial.objectives')}
           <span className={styles.objectiveCount}>{completedCount}/{totalObjectives}</span>
         </div>
         <div className={styles.objectives}>
@@ -123,7 +125,7 @@ export const TutorialPanel = memo(function TutorialPanel({
       {lesson.conceptIds.length > 0 && (
         <div className={styles.section}>
           <div className={styles.sectionTitle}>
-            {zh ? '📖 相關概念' : '📖 Related Concepts'}
+            {t('tutorial.relatedConcepts')}
           </div>
           <div className={styles.concepts}>
             {lesson.conceptIds.map(cid => {
@@ -147,7 +149,7 @@ export const TutorialPanel = memo(function TutorialPanel({
       {/* Lesson Selector */}
       <div className={styles.section}>
         <div className={styles.sectionTitle}>
-          {zh ? '📋 所有課程' : '📋 All Lessons'}
+          {t('tutorial.allLessons')}
         </div>
         <div className={styles.lessonList}>
           {TUTORIAL_LESSONS.map((l, i) => {
@@ -163,7 +165,7 @@ export const TutorialPanel = memo(function TutorialPanel({
                   {zh ? l.title : l.titleEn}
                 </span>
                 {isDone && <span className={styles.lessonListCheck}>✓</span>}
-                {isCurrent && <span className={styles.lessonListBadge}>{zh ? '目前' : 'Current'}</span>}
+                {isCurrent && <span className={styles.lessonListBadge}>{t('tutorial.currentBadge')}</span>}
               </div>
             );
           })}

@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import type { TutorialLesson } from '../../data/tutorialLessons';
 import type { TutorialPhase } from '../../stores/tutorialStore';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './TutorialModal.module.css';
 
 interface Props {
@@ -20,6 +21,7 @@ export const TutorialModal = memo(function TutorialModal({
   onNextLesson,
   onExitTutorial,
 }: Props) {
+  const { t } = useI18n();
   const zh = locale === 'zh-TW';
 
   if (phase === 'intro') {
@@ -28,7 +30,7 @@ export const TutorialModal = memo(function TutorialModal({
         <div className={styles.modal}>
           <div className={styles.modalEmoji}>{lesson.emoji}</div>
           <div className={styles.modalLabel}>
-            {zh ? `第 ${lesson.order + 1} 課` : `Lesson ${lesson.order + 1}`}
+            {t('tutorial.lessonN').replace('{n}', String(lesson.order + 1))}
           </div>
           <h2 className={styles.modalTitle}>
             {zh ? lesson.title : lesson.titleEn}
@@ -40,7 +42,7 @@ export const TutorialModal = memo(function TutorialModal({
           </div>
           <div className={styles.modalActions}>
             <button className={styles.primaryBtn} onClick={onDismissIntro}>
-              {zh ? '開始學習 ▶' : 'Start Learning ▶'}
+              {t('tutorial.startLearning')}
             </button>
           </div>
         </div>
@@ -54,14 +56,14 @@ export const TutorialModal = memo(function TutorialModal({
         <div className={styles.modal}>
           <div className={styles.modalEmoji}>🎉</div>
           <div className={styles.modalLabel}>
-            {zh ? '課程完成！' : 'Lesson Complete!'}
+            {t('tutorial.complete')}
           </div>
           <h2 className={styles.modalTitle}>
             {zh ? lesson.title : lesson.titleEn}
           </h2>
           <div className={styles.summaryBlock}>
             <div className={styles.summaryLabel}>
-              {zh ? '📝 你學到了：' : '📝 What you learned:'}
+              {t('tutorial.whatYouLearned')}
             </div>
             <p className={styles.summaryText}>
               {zh ? lesson.summary : lesson.summaryEn}
@@ -69,10 +71,10 @@ export const TutorialModal = memo(function TutorialModal({
           </div>
           <div className={styles.modalActions}>
             <button className={styles.primaryBtn} onClick={onNextLesson}>
-              {zh ? '下一課 ▶' : 'Next Lesson ▶'}
+              {t('tutorial.nextLessonBtn')}
             </button>
             <button className={styles.secondaryBtn} onClick={onExitTutorial}>
-              {zh ? '回到主選單' : 'Back to Menu'}
+              {t('tutorial.backToMenu')}
             </button>
           </div>
         </div>
@@ -86,21 +88,19 @@ export const TutorialModal = memo(function TutorialModal({
         <div className={styles.modal}>
           <div className={styles.modalEmoji}>🎓</div>
           <div className={styles.modalLabel}>
-            {zh ? '恭喜畢業！' : 'Congratulations!'}
+            {t('tutorial.congratulations')}
           </div>
           <h2 className={styles.modalTitle}>
-            {zh ? '你已完成所有經濟學教學課程' : 'You\'ve completed all economics lessons'}
+            {t('tutorial.completedAllTitle')}
           </h2>
           <div className={styles.summaryBlock}>
             <p className={styles.summaryText}>
-              {zh
-                ? '你學習了供給與需求、價格機制、稅收、補貼、福利、公共財、通膨與貨幣政策等核心概念。現在可以進入自由模式，挑戰真正的經濟治理！'
-                : 'You learned supply & demand, pricing, taxation, subsidies, welfare, public goods, inflation & monetary policy. Now enter Free Play for the real challenge!'}
+              {t('tutorial.completedAllDesc')}
             </p>
           </div>
           <div className={styles.modalActions}>
             <button className={styles.primaryBtn} onClick={onExitTutorial}>
-              {zh ? '進入自由模式 🎮' : 'Enter Free Play 🎮'}
+              {t('tutorial.enterFreePlay')}
             </button>
           </div>
         </div>

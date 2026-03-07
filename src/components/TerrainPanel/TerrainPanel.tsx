@@ -1,18 +1,14 @@
 import { useMemo, useState } from 'react';
 import type { IslandTerrainState, SectorType } from '../../types';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './TerrainPanel.module.css';
 
 interface Props {
   terrain: IslandTerrainState;
 }
 
-const LABELS: Record<SectorType, string> = {
-  food: '食物 Food',
-  goods: '商品 Goods',
-  services: '服務 Services',
-};
-
 export function TerrainPanel({ terrain }: Props) {
+  const { t } = useI18n();
   const [active, setActive] = useState<SectorType>('food');
 
   const ranking = useMemo(() => {
@@ -23,16 +19,16 @@ export function TerrainPanel({ terrain }: Props) {
 
   return (
     <div className={styles.panel}>
-      <div className={styles.title}>地貌剖面 Terrain</div>
+      <div className={styles.title}>{t('terrain.title')}</div>
       <div className={styles.seed}>Seed #{terrain.seed}</div>
 
       <div className={styles.rankRow}>
-        <span className={styles.rankLabel}>最適產業</span>
-        <span className={styles.rankValue}>{LABELS[ranking[0].sector]}</span>
+        <span className={styles.rankLabel}>{t('terrain.bestSector')}</span>
+        <span className={styles.rankValue}>{t(`sector.${ranking[0].sector}`)}</span>
       </div>
       <div className={styles.rankRow}>
-        <span className={styles.rankLabel}>最弱產業</span>
-        <span className={styles.rankValue}>{LABELS[ranking[ranking.length - 1].sector]}</span>
+        <span className={styles.rankLabel}>{t('terrain.weakestSector')}</span>
+        <span className={styles.rankValue}>{t(`sector.${ranking[ranking.length - 1].sector}`)}</span>
       </div>
 
       <div className={styles.cards}>
@@ -46,7 +42,7 @@ export function TerrainPanel({ terrain }: Props) {
               onClick={() => setActive(sector)}
             >
               <div className={styles.cardHead}>
-                <span>{LABELS[sector]}</span>
+                <span>{t(`sector.${sector}`)}</span>
                 <span className={delta >= 0 ? styles.up : styles.down}>
                   {(delta >= 0 ? '+' : '') + delta.toFixed(0)}%
                 </span>
@@ -61,9 +57,9 @@ export function TerrainPanel({ terrain }: Props) {
       </div>
 
       <div className={styles.focus}>
-        <div className={styles.focusTitle}>目前聚焦 Focus</div>
+        <div className={styles.focusTitle}>{t('terrain.focus')}</div>
         <div className={styles.focusText}>
-          {LABELS[active]}：{terrain.sectorFeatures[active]}，地貌修正{' '}
+          {t(`sector.${active}`)}: {terrain.sectorFeatures[active]}, {t('terrain.modifier')}{' '}
           {(terrain.sectorSuitability[active] >= 1 ? '+' : '') + ((terrain.sectorSuitability[active] - 1) * 100).toFixed(0)}%
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import type { IslandTerrainState, MarketState, SectorType } from '../../types';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './MarketPanel.module.css';
 
 interface Props {
@@ -9,13 +10,13 @@ interface Props {
 }
 
 const SECTOR_COLORS = { food: '#4caf50', goods: '#2196f3', services: '#ff9800' };
-const SECTOR_LABELS = { food: '食物 Food', goods: '商品 Goods', services: '服務 Services' };
 
 function SupplyDemandChart({ market }: { market: MarketState }) {
+  const { t } = useI18n();
   const sectors: { key: SectorType; label: string; color: string }[] = [
-    { key: 'food', label: '食物', color: '#4caf50' },
-    { key: 'goods', label: '商品', color: '#2196f3' },
-    { key: 'services', label: '服務', color: '#ff9800' },
+    { key: 'food', label: t('sector.food'), color: '#4caf50' },
+    { key: 'goods', label: t('sector.goods'), color: '#2196f3' },
+    { key: 'services', label: t('sector.services'), color: '#ff9800' },
   ];
 
   return (
@@ -38,17 +39,15 @@ function SupplyDemandChart({ market }: { market: MarketState }) {
         const eqX = 30 + (Math.min(supply, demand) / maxQ) * 140;
         const eqY = 120 - (price / maxP) * 100;
 
-        const englishLabel = label === '食物' ? 'Food' : label === '商品' ? 'Goods' : 'Services';
-
         return (
           <div key={key} className={styles.sdChart}>
-            <div className={styles.sdLabel} style={{ color }}>{label} {englishLabel}</div>
+            <div className={styles.sdLabel} style={{ color }}>{label}</div>
             <svg viewBox="0 0 200 140" className={styles.sdSvg}>
               {/* Axes */}
               <line x1="30" y1="120" x2="180" y2="120" stroke="#233554" strokeWidth="1" />
               <line x1="30" y1="120" x2="30" y2="10" stroke="#233554" strokeWidth="1" />
-              <text x="180" y="135" fill="#8892b0" fontSize="9" textAnchor="end">數量 Q</text>
-              <text x="10" y="15" fill="#8892b0" fontSize="9">價格 P</text>
+              <text x="180" y="135" fill="#8892b0" fontSize="9" textAnchor="end">{t('market.axisQuantity')}</text>
+              <text x="10" y="15" fill="#8892b0" fontSize="9">{t('market.axisPrice')}</text>
 
               {/* Supply curve (upward) */}
               <line x1={supplyX1} y1={supplyY1} x2={supplyX2} y2={supplyY2} stroke="#4caf50" strokeWidth="2" strokeDasharray="4,2" />
@@ -76,6 +75,7 @@ function SupplyDemandChart({ market }: { market: MarketState }) {
 }
 
 export function MarketPanel({ market, terrain }: Props) {
+  const { t } = useI18n();
   const chartData = useMemo(() => {
     const len = market.priceHistory.food.length;
     const data = [];
@@ -112,24 +112,24 @@ export function MarketPanel({ market, terrain }: Props) {
 
   return (
     <div className={styles.panel}>
-      <div className={styles.title}>市場價格 Market Prices</div>
+      <div className={styles.title}>{t('market.title')}</div>
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>產業</th>
-              <th>價格</th>
-              <th>趨勢</th>
-              <th>供給</th>
-              <th>需求</th>
-              <th>成交量</th>
-              <th>地貌</th>
+              <th>{t('market.table.sector')}</th>
+              <th>{t('market.table.price')}</th>
+              <th>{t('market.table.trend')}</th>
+              <th>{t('market.table.supply')}</th>
+              <th>{t('market.table.demand')}</th>
+              <th>{t('market.table.volume')}</th>
+              <th>{t('market.table.terrain')}</th>
             </tr>
           </thead>
           <tbody>
             {(['food', 'goods', 'services'] as const).map(sector => (
               <tr key={sector}>
-                <td className={styles[sector]}>{SECTOR_LABELS[sector]}</td>
+                <td className={styles[sector]}>{t(`sector.${sector}`)}</td>
                 <td>${market.prices[sector].toFixed(1)}</td>
                 <td className={trendClass(sector)}>{priceTrend(sector)}</td>
                 <td>{market.supply[sector].toFixed(1)}</td>
@@ -149,13 +149,13 @@ export function MarketPanel({ market, terrain }: Props) {
           className={chartView === 'history' ? styles.chartToggleActive : styles.chartToggleBtn}
           onClick={() => setChartView('history')}
         >
-          📈 價格歷史
+          {t('market.priceHistory')}
         </button>
         <button
           className={chartView === 'sd' ? styles.chartToggleActive : styles.chartToggleBtn}
           onClick={() => setChartView('sd')}
         >
-          📊 供需圖
+          {t('market.sdChart')}
         </button>
       </div>
 
@@ -171,9 +171,9 @@ export function MarketPanel({ market, terrain }: Props) {
                 labelStyle={{ color: '#ccd6f6' }}
               />
               <Legend />
-              <Line type="monotone" dataKey="food" stroke={SECTOR_COLORS.food} name="食物" dot={false} strokeWidth={2} />
-              <Line type="monotone" dataKey="goods" stroke={SECTOR_COLORS.goods} name="商品" dot={false} strokeWidth={2} />
-              <Line type="monotone" dataKey="services" stroke={SECTOR_COLORS.services} name="服務" dot={false} strokeWidth={2} />
+              <Line type="monotone" dataKey="food" stroke={SECTOR_COLORS.food} name={t('sector.food')} dot={false} strokeWidth={2} />
+              <Line type="monotone" dataKey="goods" stroke={SECTOR_COLORS.goods} name={t('sector.goods')} dot={false} strokeWidth={2} />
+              <Line type="monotone" dataKey="services" stroke={SECTOR_COLORS.services} name={t('sector.services')} dot={false} strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </div>

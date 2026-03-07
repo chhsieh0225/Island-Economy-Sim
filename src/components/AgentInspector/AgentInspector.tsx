@@ -1,6 +1,7 @@
 import { LineChart, Line, ResponsiveContainer, YAxis } from 'recharts';
 import type { AgentState, SectorType } from '../../types';
 import { buildAgentDialogue } from '../../data/agentDialogue';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './AgentInspector.module.css';
 
 interface Props {
@@ -8,13 +9,8 @@ interface Props {
   onClose: () => void;
 }
 
-const SECTOR_LABELS: Record<SectorType, string> = {
-  food: '食物業',
-  goods: '商品業',
-  services: '服務業',
-};
-
 export function AgentInspector({ agent, onClose }: Props) {
+  const { t } = useI18n();
   const incomeData = agent.incomeHistory.map((v, i) => ({ turn: i, income: v }));
   const lifeEvents = [...agent.lifeEvents].reverse();
   const ageYears = Math.floor(agent.age / 12);
@@ -22,20 +18,12 @@ export function AgentInspector({ agent, onClose }: Props) {
   const maxAgeYears = Math.floor(agent.maxAge / 12);
   const lifeProgress = Math.min(100, (agent.age / agent.maxAge) * 100);
 
+  const sectorLabel = (s: SectorType) => t(`sector.${s}`) + t('agent.sectorSuffix');
+
   const genderIcon = agent.gender === 'M' ? '♂' : '♀';
-  const genderLabel = agent.gender === 'M' ? '男' : '女';
-  const ageGroupLabel = agent.ageGroup === 'youth'
-    ? '青年'
-    : agent.ageGroup === 'adult'
-      ? '壯年'
-      : '高齡';
-  const goalLabel = agent.goalType === 'survival'
-    ? '生存'
-    : agent.goalType === 'wealth'
-      ? '財富'
-      : agent.goalType === 'happiness'
-        ? '幸福'
-        : '平衡';
+  const genderLabel = agent.gender === 'M' ? t('agent.gender.male') : t('agent.gender.female');
+  const ageGroupLabel = t(`ageGroup.${agent.ageGroup}`);
+  const goalLabel = t(`agent.goal.${agent.goalType}`);
 
   const iqColor = agent.intelligence >= 115 ? '#4caf50'
     : agent.intelligence >= 85 ? '#ccd6f6'
@@ -48,10 +36,15 @@ export function AgentInspector({ agent, onClose }: Props) {
     ? `+$${agent.lastNetIncome.toFixed(1)}`
     : `-$${Math.abs(agent.lastNetIncome).toFixed(1)}`;
 
-  const causeLabel = agent.causeOfDeath === 'age' ? '因年老去世'
-    : agent.causeOfDeath === 'health' ? '因病去世'
-    : agent.causeOfDeath === 'left' ? '已離開小島'
-    : '此人已離開或死亡';
+  const causeLabel = agent.causeOfDeath === 'age' ? t('agent.causeOfDeath.age')
+    : agent.causeOfDeath === 'health' ? t('agent.causeOfDeath.health')
+    : agent.causeOfDeath === 'left' ? t('agent.causeOfDeath.left')
+    : t('agent.causeOfDeath.unknown');
+
+  const lifeBarText = t('agent.lifeBar')
+    .replace('{ageY}', String(ageYears))
+    .replace('{ageM}', String(ageMonths))
+    .replace('{maxY}', String(maxAgeYears));
 
   const dialogue = buildAgentDialogue({
     sector: agent.sector,
@@ -72,7 +65,7 @@ export function AgentInspector({ agent, onClose }: Props) {
             <span className={styles.genderIcon}>{genderIcon}</span>
             <span className={styles.name}>{agent.name}</span>
             <span className={`${styles.sectorBadge} ${styles[agent.sector]}`}>
-              {SECTOR_LABELS[agent.sector]}
+              {sectorLabel(agent.sector)}
             </span>
           </div>
           <button className={styles.closeBtn} onClick={onClose}>✕</button>
@@ -81,15 +74,13 @@ export function AgentInspector({ agent, onClose }: Props) {
         <div className={styles.dialogueBubble}>
           <span className={styles.moodEmoji}>{dialogue.moodEmoji}</span>
           <div className={styles.dialogueContent}>
-            <div className={styles.speech}>「{dialogue.speech}」</div>
+            <div className={styles.speech}>{dialogue.speech}</div>
             <div className={styles.thought}>{dialogue.thought}</div>
           </div>
         </div>
 
         <div className={styles.lifeBar}>
-          <div className={styles.lifeBarLabel}>
-            {ageYears}歲{ageMonths}月 / {maxAgeYears}歲
-          </div>
+          <div className={styles.lifeBarLabel}>{lifeBarText}</div>
           <div className={styles.lifeBarTrack}>
             <div
               className={styles.lifeBarFill}
@@ -105,37 +96,37 @@ export function AgentInspector({ agent, onClose }: Props) {
 
         <div className={styles.grid}>
           <div className={styles.stat}>
-            <div className={styles.statLabel}>性別 Gender</div>
+            <div className={styles.statLabel}>{t('agent.stat.gender')}</div>
             <div className={styles.statValue}>{genderIcon} {genderLabel}</div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statLabel}>年齡 Age</div>
-            <div className={styles.statValue}>{ageYears} 歲</div>
+            <div className={styles.statLabel}>{t('agent.stat.age')}</div>
+            <div className={styles.statValue}>{ageYears} {t('agent.ageSuffix')}</div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statLabel}>年齡層 Age Group</div>
+            <div className={styles.statLabel}>{t('agent.stat.ageGroup')}</div>
             <div className={styles.statValue}>{ageGroupLabel}</div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statLabel}>智力 IQ</div>
+            <div className={styles.statLabel}>{t('agent.stat.iq')}</div>
             <div className={styles.statValue} style={{ color: iqColor }}>{agent.intelligence}</div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statLabel}>運氣 Luck</div>
+            <div className={styles.statLabel}>{t('agent.stat.luck')}</div>
             <div className={styles.statValue} style={{ color: agent.baseLuck >= 0 ? '#4caf50' : '#f44336' }}>
               {luckDisplay}
             </div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statLabel}>金錢 Money</div>
+            <div className={styles.statLabel}>{t('agent.stat.money')}</div>
             <div className={styles.statValue}>${agent.money.toFixed(1)}</div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statLabel}>存款 Savings</div>
+            <div className={styles.statLabel}>{t('agent.stat.savings')}</div>
             <div className={styles.statValue}>${agent.savings.toFixed(1)}</div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statLabel}>淨收入 Net/Turn</div>
+            <div className={styles.statLabel}>{t('agent.stat.netIncome')}</div>
             <div
               className={styles.statValue}
               style={{ color: agent.lastNetIncome >= 0 ? '#4caf50' : '#ff7043' }}
@@ -144,36 +135,36 @@ export function AgentInspector({ agent, onClose }: Props) {
             </div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statLabel}>生產力 Productivity</div>
+            <div className={styles.statLabel}>{t('agent.stat.productivity')}</div>
             <div className={styles.statValue}>{agent.productivity.toFixed(2)}x</div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statLabel}>健康 Health</div>
+            <div className={styles.statLabel}>{t('agent.stat.health')}</div>
             <div className={styles.statValue}>{agent.health.toFixed(0)}%</div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statLabel}>滿意度 Satisfaction</div>
+            <div className={styles.statLabel}>{t('agent.stat.satisfaction')}</div>
             <div className={styles.statValue}>{agent.satisfaction.toFixed(0)}%</div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statLabel}>在職回合</div>
+            <div className={styles.statLabel}>{t('agent.stat.turnsInSector')}</div>
             <div className={styles.statValue}>{agent.turnsInSector}</div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statLabel}>家庭 Family</div>
+            <div className={styles.statLabel}>{t('agent.stat.family')}</div>
             <div className={styles.statValue}>#{agent.familyId}</div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statLabel}>目標 Goal</div>
+            <div className={styles.statLabel}>{t('agent.stat.goal')}</div>
             <div className={styles.statValue}>{goalLabel}</div>
           </div>
         </div>
 
         <div className={styles.section}>
-          <div className={styles.sectionTitle}>庫存 Inventory</div>
+          <div className={styles.sectionTitle}>{t('agent.section.inventory')}</div>
           {(['food', 'goods', 'services'] as const).map(sector => (
             <div key={sector} className={styles.inventoryRow}>
-              <span>{SECTOR_LABELS[sector]}</span>
+              <span>{sectorLabel(sector)}</span>
               <span>{agent.inventory[sector].toFixed(2)}</span>
             </div>
           ))}
@@ -181,7 +172,7 @@ export function AgentInspector({ agent, onClose }: Props) {
 
         {incomeData.length > 0 && (
           <div className={styles.section}>
-            <div className={styles.sectionTitle}>收入歷史 Income</div>
+            <div className={styles.sectionTitle}>{t('agent.section.incomeHistory')}</div>
             <div className={styles.chartContainer}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={incomeData}>
@@ -200,9 +191,9 @@ export function AgentInspector({ agent, onClose }: Props) {
         )}
 
         <div className={styles.section}>
-          <div className={styles.sectionTitle}>人生事件 Life Events</div>
+          <div className={styles.sectionTitle}>{t('agent.section.lifeEvents')}</div>
           {lifeEvents.length === 0 ? (
-            <div className={styles.lifeEventEmpty}>尚無事件紀錄</div>
+            <div className={styles.lifeEventEmpty}>{t('agent.lifeEvents.empty')}</div>
           ) : (
             <div className={styles.lifeEventList}>
               {lifeEvents.map((event, idx) => (

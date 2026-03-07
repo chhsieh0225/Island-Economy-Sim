@@ -1,17 +1,12 @@
 import { memo, useState, useMemo, useCallback } from 'react';
 import { ENCYCLOPEDIA, type EncyclopediaEntry } from '../../data/encyclopedia';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './EncyclopediaPanel.module.css';
-
-const CATEGORY_LABELS: Record<EncyclopediaEntry['category'], string> = {
-  model: '模型 Model',
-  concept: '概念 Concept',
-  indicator: '指標 Indicator',
-  policy: '政策 Policy',
-};
 
 const CATEGORY_ORDER: EncyclopediaEntry['category'][] = ['concept', 'model', 'indicator', 'policy'];
 
 function EntryCard({ entry, onNavigate }: { entry: EncyclopediaEntry; onNavigate: (id: string) => void }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -25,30 +20,30 @@ function EntryCard({ entry, onNavigate }: { entry: EncyclopediaEntry; onNavigate
       {expanded && (
         <div className={styles.cardBody}>
           <div className={styles.section}>
-            <div className={styles.sectionLabel}>直覺理解</div>
+            <div className={styles.sectionLabel}>{t('encyclopedia.section.intuition')}</div>
             <p className={styles.sectionText}>{entry.intuition}</p>
           </div>
 
           {entry.formula && (
             <div className={styles.section}>
-              <div className={styles.sectionLabel}>公式</div>
+              <div className={styles.sectionLabel}>{t('encyclopedia.section.formula')}</div>
               <code className={styles.formula}>{entry.formula}</code>
             </div>
           )}
 
           <div className={styles.section}>
-            <div className={styles.sectionLabel}>遊戲中的對應</div>
+            <div className={styles.sectionLabel}>{t('encyclopedia.section.gameConnection')}</div>
             <p className={styles.sectionText}>{entry.gameConnection}</p>
           </div>
 
           <div className={styles.section}>
-            <div className={styles.sectionLabel}>真實世界案例</div>
+            <div className={styles.sectionLabel}>{t('encyclopedia.section.realWorld')}</div>
             <p className={styles.sectionText}>{entry.realWorldExample}</p>
           </div>
 
           {entry.relatedIds.length > 0 && (
             <div className={styles.section}>
-              <div className={styles.sectionLabel}>相關條目</div>
+              <div className={styles.sectionLabel}>{t('encyclopedia.section.related')}</div>
               <div className={styles.relatedLinks}>
                 {entry.relatedIds.map(id => {
                   const related = ENCYCLOPEDIA.find(e => e.id === id);
@@ -73,6 +68,7 @@ function EntryCard({ entry, onNavigate }: { entry: EncyclopediaEntry; onNavigate
 }
 
 export const EncyclopediaPanel = memo(function EncyclopediaPanel() {
+  const { t } = useI18n();
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<EncyclopediaEntry['category'] | 'all'>('all');
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -124,7 +120,7 @@ export const EncyclopediaPanel = memo(function EncyclopediaPanel() {
       <div className={styles.toolbar}>
         <input
           className={styles.searchInput}
-          placeholder="搜尋 Search..."
+          placeholder={t('encyclopedia.search')}
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
@@ -133,7 +129,7 @@ export const EncyclopediaPanel = memo(function EncyclopediaPanel() {
             className={`${styles.catTab} ${activeCategory === 'all' ? styles.catTabActive : ''}`}
             onClick={() => setActiveCategory('all')}
           >
-            全部
+            {t('encyclopedia.category.all')}
           </button>
           {CATEGORY_ORDER.map(cat => (
             <button
@@ -141,7 +137,7 @@ export const EncyclopediaPanel = memo(function EncyclopediaPanel() {
               className={`${styles.catTab} ${activeCategory === cat ? styles.catTabActive : ''}`}
               onClick={() => setActiveCategory(cat)}
             >
-              {CATEGORY_LABELS[cat]}
+              {t(`encyclopedia.category.${cat}`)}
             </button>
           ))}
         </div>
@@ -149,11 +145,11 @@ export const EncyclopediaPanel = memo(function EncyclopediaPanel() {
 
       <div className={styles.entries}>
         {filtered.length === 0 && (
-          <div className={styles.empty}>沒有符合的條目</div>
+          <div className={styles.empty}>{t('encyclopedia.empty')}</div>
         )}
         {CATEGORY_ORDER.filter(cat => grouped.has(cat)).map(cat => (
           <div key={cat} className={styles.group}>
-            <div className={styles.groupLabel}>{CATEGORY_LABELS[cat]}</div>
+            <div className={styles.groupLabel}>{t(`encyclopedia.category.${cat}`)}</div>
             {grouped.get(cat)!.map(entry => (
               <div
                 key={entry.id}

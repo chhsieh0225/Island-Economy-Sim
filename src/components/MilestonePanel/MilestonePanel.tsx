@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { AgentState, MilestoneRecord } from '../../types';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './MilestonePanel.module.css';
 
 interface Props {
@@ -8,18 +9,8 @@ interface Props {
   onAgentClick: (agent: AgentState) => void;
 }
 
-function badgeLabel(kind: MilestoneRecord['kind']): string {
-  switch (kind) {
-    case 'wealth': return '財富';
-    case 'talent': return '天賦';
-    case 'longevity': return '長壽';
-    case 'career': return '職涯';
-    case 'family': return '家族';
-    case 'work': return '勞動';
-  }
-}
-
 export function MilestonePanel({ milestones, agents, onAgentClick }: Props) {
+  const { t } = useI18n();
   const agentMap = useMemo(() => {
     const map = new Map<number, AgentState>();
     for (const agent of agents) {
@@ -38,10 +29,10 @@ export function MilestonePanel({ milestones, agents, onAgentClick }: Props) {
 
   return (
     <div className={styles.panel}>
-      <div className={styles.title}>榮譽里程碑 Milestones</div>
+      <div className={styles.title}>{t('milestone.title')}</div>
 
       {milestones.length === 0 ? (
-        <div className={styles.empty}>尚未解鎖里程碑，讓小島再跑幾回合看看。</div>
+        <div className={styles.empty}>{t('milestone.empty')}</div>
       ) : (
         <div className={styles.list}>
           {milestones.map(milestone => {
@@ -52,10 +43,10 @@ export function MilestonePanel({ milestones, agents, onAgentClick }: Props) {
                 className={`${styles.card} ${clickable ? styles.clickable : styles.static}`}
                 onClick={() => handleClick(milestone)}
                 disabled={!clickable}
-                title={clickable ? '點擊查看居民詳情' : undefined}
+                title={clickable ? t('milestone.clickToView') : undefined}
               >
                 <div className={styles.row}>
-                  <span className={styles.badge}>{badgeLabel(milestone.kind)}</span>
+                  <span className={styles.badge}>{t(`milestone.badge.${milestone.kind}`)}</span>
                   <span className={styles.turn}>Turn {milestone.turn}</span>
                 </div>
                 <div className={styles.cardTitle}>{milestone.title}</div>

@@ -1,5 +1,6 @@
 import { memo, useState } from 'react';
 import type { NarrativeDisplay } from '../../stores/uiStore';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './NarrativeModal.module.css';
 
 const PORTRAIT_EMOJI: Record<string, string> = {
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export const NarrativeModal = memo(function NarrativeModal({ narrative, onDismiss }: Props) {
+  const { t } = useI18n();
   const [pageIdx, setPageIdx] = useState(0);
 
   if (narrative.kind === 'scenario') {
@@ -32,7 +34,7 @@ export const NarrativeModal = memo(function NarrativeModal({ narrative, onDismis
             <span>{challenge}</span>
           </div>
           <button className={styles.startBtn} onClick={onDismiss}>
-            &#x958B;&#x59CB;&#x904A;&#x6232; Start Game
+            {t('narrative.startGame')}
           </button>
         </div>
       </div>
@@ -76,20 +78,20 @@ export const NarrativeModal = memo(function NarrativeModal({ narrative, onDismis
               className={styles.navBtn}
               onClick={() => setPageIdx(p => p - 1)}
             >
-              &#x2190; &#x4E0A;&#x4E00;&#x9801;
+              {t('narrative.prevPage')}
             </button>
           )}
           <div className={styles.navSpacer} />
           {isLast ? (
             <button className={styles.startBtn} onClick={onDismiss}>
-              &#x7E7C;&#x7E8C; Continue
+              {t('narrative.continue')}
             </button>
           ) : (
             <button
               className={styles.navBtn}
               onClick={() => setPageIdx(p => p + 1)}
             >
-              &#x4E0B;&#x4E00;&#x9801; &#x2192;
+              {t('narrative.nextPage')}
             </button>
           )}
         </div>

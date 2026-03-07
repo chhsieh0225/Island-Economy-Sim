@@ -51,6 +51,92 @@
   line-height: 1.35;
 }
 
+/* ── Supply-Demand Balance ── */
+.sdBalance {
+  flex: 1 1 100%;
+  background: #1a2238;
+  border: 1px solid #2c3a5e;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.sdTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e7efff;
+  margin-bottom: 8px;
+}
+
+.sdGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.sdItem {
+  background: #111a2e;
+  border: 1px solid #26395e;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.sdLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #ced9f5;
+  margin-bottom: 6px;
+}
+
+.sdBar {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: #29355a;
+  overflow: hidden;
+}
+
+.sdBar > span:first-child {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.sdBarMid {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateX(-1px);
+}
+
+.sdGreen {
+  color: #50d890;
+  background: linear-gradient(90deg, #287a49, #50d890);
+}
+
+.sdYellow {
+  color: #ffd56a;
+  background: linear-gradient(90deg, #8e6d28, #ffd56a);
+}
+
+.sdRed {
+  color: #ff7d7d;
+  background: linear-gradient(90deg, #ba3a47, #ff7d7d);
+}
+
+.sdLabel .sdGreen,
+.sdLabel .sdYellow,
+.sdLabel .sdRed {
+  background: none;
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .objectives {
   flex: 1 1 100%;
   background: #1f2640;

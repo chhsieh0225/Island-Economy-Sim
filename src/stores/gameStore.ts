@@ -21,6 +21,7 @@ import { playSound } from '../audio/audioManager';
 import { checkNarrativeTriggers, type NarrativeContext } from '../data/narrative';
 import { useUiStore } from './uiStore';
 import { useTurnDiffStore } from './turnDiffStore';
+import { useStreakStore } from './streakStore';
 
 export type AutoPlaySpeed = 'slow' | 'medium' | 'fast' | null;
 
@@ -83,6 +84,7 @@ interface GameStoreState {
   saveCurrentGame: () => boolean;
   loadSavedGame: () => boolean;
   deleteSavedGame: () => void;
+  getPolicyLog: () => PolicyLogEntry[];
 }
 
 // Module-level engine singleton
@@ -202,7 +204,10 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     useNotificationStore.getState().pushMilestoneToasts(milestones);
     if (milestones.length > 0) playSound('milestone');
     const gameState = syncState(get().gameState);
-    useTurnDiffStore.getState().captureAfter(gameState, false);
+    const turnDiffState = useTurnDiffStore.getState();
+    turnDiffState.captureAfter(gameState, false);
+    const currentDiff = turnDiffState.currentDiff;
+    if (currentDiff) useStreakStore.getState().recordTurnDeltas(currentDiff.deltas);
     set({ gameState });
     playSound('turn_advance');
     checkAndShowNarrative(gameState);
@@ -293,6 +298,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     clearTileCache();
     initLearningTracking(engine.getState());
     useTurnDiffStore.getState().clear();
+    useStreakStore.getState().clear();
     set({ gameState: syncState() });
   },
 
@@ -307,7 +313,10 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       engine.advanceTurn();
       useNotificationStore.getState().pushMilestoneToasts(engine.newMilestones);
       const gameState = syncState(get().gameState);
-      useTurnDiffStore.getState().captureAfter(gameState, true);
+      const autoTurnDiffState = useTurnDiffStore.getState();
+      autoTurnDiffState.captureAfter(gameState, true);
+      const autoDiff = autoTurnDiffState.currentDiff;
+      if (autoDiff) useStreakStore.getState().recordTurnDeltas(autoDiff.deltas);
       set({ gameState });
       checkAndShowNarrative(gameState);
       autoSaveIfNeeded();
@@ -414,4 +423,6 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     deleteSave();
     set({ hasSavedGame: false });
   },
+
+  getPolicyLog: () => [...policyLog],
 }));

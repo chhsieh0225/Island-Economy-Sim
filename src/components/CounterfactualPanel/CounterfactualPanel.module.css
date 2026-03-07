@@ -1,0 +1,167 @@
+/* ── Counterfactual Panel ─────────────────────────────────────────────────── */
+.panel {
+  background: #111a2e;
+  border: 1px solid #2a3d65;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
+  animation: fadeIn 0.25s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e7efff;
+}
+
+.subtitle {
+  font-size: 11px;
+  color: #8892b0;
+  margin-top: 2px;
+}
+
+.closeBtn {
+  background: none;
+  border: 1px solid #2a3d65;
+  color: #8892b0;
+  font-size: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.closeBtn:hover {
+  border-color: #f44336;
+  color: #f44336;
+}
+
+.chartGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.chartCard {
+  background: #0f1524;
+  border: 1px solid #223352;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.chartLabel {
+  font-size: 11px;
+  color: #ced9f5;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.miniChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 40px;
+}
+
+.barGroup {
+  flex: 1;
+  display: flex;
+  gap: 1px;
+  align-items: flex-end;
+  height: 100%;
+}
+
+.barActual {
+  flex: 1;
+  background: #64ffda;
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+}
+
+.barBaseline {
+  flex: 1;
+  background: #556677;
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+  opacity: 0.6;
+}
+
+.legend {
+  display: flex;
+  gap: 12px;
+  font-size: 10px;
+  color: #8892b0;
+  margin-top: 4px;
+}
+
+.legendDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 3px;
+  vertical-align: middle;
+}
+
+.legendActual { background: #64ffda; }
+.legendBaseline { background: #556677; }
+
+/* ── Summary Table ─────────────────────────────────────────────────────── */
+.summary {
+  background: #0f1524;
+  border: 1px solid #223352;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.summaryTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: #ced9f5;
+  margin-bottom: 6px;
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #9fb3d9;
+  padding: 2px 0;
+}
+
+.summaryRow + .summaryRow {
+  border-top: 1px solid rgba(131, 155, 206, 0.12);
+}
+
+.positive { color: #50d890; }
+.negative { color: #ff7d7d; }
+
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #8892b0;
+  font-size: 12px;
+}
+
+@media (max-width: 480px) {
+  .chartGrid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useCallback } from 'react';
 import type { AutoPlaySpeed } from '../../stores/gameStore';
 import { useGameStore } from '../../stores/gameStore';
 import { useTurnDiffStore } from '../../stores/turnDiffStore';
+import { useStreakStore } from '../../stores/streakStore';
 import { useAudioStore } from '../../audio/audioManager';
 import type { GameState } from '../../types';
 import styles from './StickyControlBar.module.css';
@@ -104,15 +105,18 @@ export const StickyControlBar = memo(function StickyControlBar({
   const expanded = useTurnDiffStore(s => s.expanded);
   const setExpanded = useTurnDiffStore(s => s.setExpanded);
   const dismiss = useTurnDiffStore(s => s.dismiss);
+  const streakType = useStreakStore(s => s.type);
+  const streakCount = useStreakStore(s => s.count);
 
-  // Auto-dismiss summary after 5 seconds
+  // Auto-dismiss summary — longer delay for dramatic turns
   const timerRef = useRef<number | null>(null);
   useEffect(() => {
     if (expanded) {
-      timerRef.current = window.setTimeout(() => dismiss(), 5000);
+      const delay = diff?.isDramatic ? 8000 : 5000;
+      timerRef.current = window.setTimeout(() => dismiss(), delay);
       return () => { if (timerRef.current) clearTimeout(timerRef.current); };
     }
-  }, [expanded, diff?.timestamp, dismiss]);
+  }, [expanded, diff?.timestamp, diff?.isDramatic, dismiss]);
 
   const handleSpeedClick = useCallback((speed: 'slow' | 'medium' | 'fast') => {
     if (autoPlaySpeed === speed) {
@@ -169,38 +173,45 @@ export const StickyControlBar = memo(function StickyControlBar({
           <span className={styles.statValue}>{turn}</span>
         </span>
 
-        <span className={styles.statPill} onClick={() => scrollTo('dashboard-anchor')} title="GDP">
+        {streakType && streakCount >= 2 && (
+          <span className={`${styles.streakBadge} ${streakType === 'positive' ? styles.streakPositive : styles.streakNegative}`}>
+            {streakType === 'positive' ? '🔥' : '❄️'}
+            {streakType === 'positive' ? '+' : '-'}{streakCount}
+          </span>
+        )}
+
+        <span className={`${styles.statPill} ${diff?.dramaticMetrics.includes('gdp') ? styles.dramaticPill : ''}`} onClick={() => scrollTo('dashboard-anchor')} title="GDP">
           <span className={styles.statLabel}>GDP</span>
           <span className={styles.statValue}>${gdp.toFixed(0)}</span>
           {diff && <DeltaBadge value={diff.deltas.gdp} prefix="$" />}
         </span>
 
-        <span className={styles.statPill} onClick={() => scrollTo('dashboard-anchor')} title="Population">
+        <span className={`${styles.statPill} ${diff?.dramaticMetrics.includes('population') ? styles.dramaticPill : ''}`} onClick={() => scrollTo('dashboard-anchor')} title="Population">
           <span className={styles.statLabel}>POP</span>
           <span className={styles.statValue}>{pop}</span>
           {diff && <DeltaBadge value={diff.deltas.population} />}
         </span>
 
-        <span className={styles.statPill} onClick={() => scrollTo('dashboard-anchor')} title="Satisfaction">
+        <span className={`${styles.statPill} ${diff?.dramaticMetrics.includes('avgSatisfaction') ? styles.dramaticPill : ''}`} onClick={() => scrollTo('dashboard-anchor')} title="Satisfaction">
           <span className={styles.statLabel}>SAT</span>
           <span className={styles.statValue}>{sat.toFixed(0)}%</span>
           {diff && <DeltaBadge value={diff.deltas.avgSatisfaction} suffix="%" />}
         </span>
 
-        <span className={styles.statPill} onClick={() => scrollTo('dashboard-anchor')} title="Treasury">
+        <span className={`${styles.statPill} ${diff?.dramaticMetrics.includes('treasury') ? styles.dramaticPill : ''}`} onClick={() => scrollTo('dashboard-anchor')} title="Treasury">
           <span className={styles.statLabel}>$$$</span>
           <span className={styles.statValue}>${treasury.toFixed(0)}</span>
           {diff && <DeltaBadge value={diff.deltas.treasury} prefix="$" />}
         </span>
 
         {/* Toggle summary button */}
-        {diff && diff.events.length > 0 && (
+        {diff && (diff.events.length > 0 || diff.isDramatic) && (
           <button
-            className={styles.toggleSummary}
+            className={`${styles.toggleSummary} ${diff.isDramatic ? styles.dramaticToggle : ''}`}
             onClick={() => setExpanded(!expanded)}
             title={expanded ? '收合 Collapse' : '展開 Expand'}
           >
-            {expanded ? '▼ 收合' : `▲ ${diff.events.length} 事件`}
+            {expanded ? '▼ 收合' : diff.isDramatic ? `⚡ ${diff.events.length} 事件` : `▲ ${diff.events.length} 事件`}
           </button>
         )}
       </div>

@@ -133,6 +133,48 @@
 .deltaGiniUp { color: #f44336; }
 .deltaGiniDown { color: #4caf50; }
 
+/* ─── Dramatic Turn Pulse ──────────────────────────────────────────────── */
+.dramaticPill {
+  border-color: #f44336;
+  animation: dramaticPulse 1.2s ease-in-out 3;
+}
+
+@keyframes dramaticPulse {
+  0%, 100% { border-color: #f44336; box-shadow: 0 0 0 0 rgba(244, 67, 54, 0); }
+  50% { border-color: #ff7d7d; box-shadow: 0 0 8px 2px rgba(244, 67, 54, 0.35); }
+}
+
+.dramaticToggle {
+  border-color: #ff9800;
+  color: #ff9800;
+  animation: dramaticPulse 1.2s ease-in-out 3;
+}
+
+/* ─── Streak Badge ────────────────────────────────────────────────────── */
+.streakBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  animation: slideUp 0.25s ease-out;
+}
+
+.streakPositive {
+  background: rgba(76, 175, 80, 0.2);
+  color: #50d890;
+  border: 1px solid rgba(76, 175, 80, 0.4);
+}
+
+.streakNegative {
+  background: rgba(244, 67, 54, 0.2);
+  color: #ff7d7d;
+  border: 1px solid rgba(244, 67, 54, 0.4);
+}
+
 /* ─── Control Row ──────────────────────────────────────────────────────── */
 .controlRow {
   display: flex;

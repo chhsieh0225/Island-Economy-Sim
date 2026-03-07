@@ -349,6 +349,28 @@
   color: #88a1c4;
 }
 
+.whatIfBtn {
+  margin-top: 8px;
+  width: 100%;
+  border: 1px dashed #9c6cff;
+  border-radius: 6px;
+  background: #1e1440;
+  color: #c9afff;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.whatIfBtn:hover:not(:disabled) {
+  border-color: #b388ff;
+  background: #2a1d5e;
+  transform: translateY(-1px);
+}
+.whatIfBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .slider {

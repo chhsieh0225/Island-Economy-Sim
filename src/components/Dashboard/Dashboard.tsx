@@ -253,6 +253,41 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
         </div>
       )}
 
+      {(() => {
+        const sectors = getUnlockedSectors(state.economyStage);
+        const hasData = sectors.some(s => state.market.supply[s] > 0 || state.market.demand[s] > 0);
+        if (!hasData) return null;
+        return (
+          <div className={styles.sdBalance}>
+            <div className={styles.sdTitle}>供需平衡 Supply-Demand Balance</div>
+            <div className={styles.sdGrid}>
+              {sectors.map(sector => {
+                const supply = state.market.supply[sector];
+                const demand = state.market.demand[sector];
+                const ratio = demand > 0.01 ? supply / demand : supply > 0 ? 2 : 1;
+                const isBalanced = ratio >= 0.8 && ratio <= 1.2;
+                const isWarn = !isBalanced && ratio >= 0.5 && ratio <= 2.0;
+                const label = ratio < 0.8 ? '短缺' : ratio > 1.2 ? '過剩' : '平衡';
+                const colorClass = isBalanced ? styles.sdGreen : isWarn ? styles.sdYellow : styles.sdRed;
+                const barPct = Math.max(4, Math.min(100, ratio * 50));
+                return (
+                  <div key={sector} className={styles.sdItem}>
+                    <div className={styles.sdLabel}>
+                      <span>{SECTOR_LABELS[sector]}</span>
+                      <span className={colorClass}>{ratio.toFixed(2)} {label}</span>
+                    </div>
+                    <div className={styles.sdBar}>
+                      <span className={colorClass} style={{ width: `${barPct}%` }} />
+                      <span className={styles.sdBarMid} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       <div className={styles.objectives}>
         <div className={styles.objectivesTitle}>短中期任務 Objectives</div>
         <div className={styles.objectiveList}>

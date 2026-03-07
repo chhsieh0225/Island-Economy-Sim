@@ -1,4 +1,4 @@
-import { useMemo, memo } from 'react';
+import { useMemo, memo, useCallback } from 'react';
 import { CONFIG } from '../../config';
 import type {
   ActiveRandomEvent,
@@ -10,11 +10,16 @@ import type {
 } from '../../types';
 import { Tooltip } from '../Tooltip/Tooltip';
 import { POLICY_TOOLTIPS } from '../../data/tooltipContent';
-import { buildPolicyExperimentCards } from '../../engine/modules/policyExperimentModule';
+import { buildPolicyExperimentCards, type PolicyExperimentCard } from '../../engine/modules/policyExperimentModule';
 import {
   buildPolicyRecommendation,
   type PolicyRecommendationAction,
 } from '../../engine/modules/policyRecommendationModule';
+import { useGameStore } from '../../stores/gameStore';
+import { useCounterfactualStore } from '../../stores/counterfactualStore';
+import type { PolicyAction } from '../../engine/modules/saveLoadModule';
+import type { CounterfactualRequest } from '../../engine/modules/counterfactualModule';
+import { CounterfactualPanel } from '../CounterfactualPanel/CounterfactualPanel';
 import styles from './PolicyPanel.module.css';
 
 interface Props {
@@ -266,6 +271,53 @@ export const PolicyPanel = memo(function PolicyPanel({
         return;
     }
   };
+
+  const gameSeed = useGameStore(s => s.gameState.seed);
+  const gameScenarioId = useGameStore(s => s.gameState.scenarioId);
+  const calibrationMode = useGameStore(s => s.economicCalibrationMode);
+  const getPolicyLog = useGameStore(s => s.getPolicyLog);
+  const runComparison = useCounterfactualStore(s => s.runComparison);
+  const cfResult = useCounterfactualStore(s => s.result);
+  const cfLoading = useCounterfactualStore(s => s.loading);
+
+  const handleWhatIf = useCallback((card: PolicyExperimentCard) => {
+    const policyLog = getPolicyLog();
+    // Reconstruct the PolicyAction from card fields
+    let omittedAction: PolicyAction;
+    switch (card.type) {
+      case 'tax':
+        omittedAction = { type: 'taxRate', value: card.value as number };
+        break;
+      case 'subsidy':
+        omittedAction = { type: 'subsidy', sector: card.sector!, value: card.value as number };
+        break;
+      case 'welfare':
+        omittedAction = { type: 'welfare', enabled: card.value as boolean };
+        break;
+      case 'publicWorks':
+        omittedAction = { type: 'publicWorks', active: card.value as boolean };
+        break;
+      case 'policyRate':
+        omittedAction = { type: 'policyRate', value: card.value as number };
+        break;
+      case 'liquiditySupport':
+        omittedAction = { type: 'liquiditySupport', active: card.value as boolean };
+        break;
+      default:
+        return;
+    }
+
+    const request: CounterfactualRequest = {
+      seed: gameSeed,
+      scenarioId: gameScenarioId,
+      calibrationProfileId: calibrationMode,
+      policyLog,
+      policyTurn: card.applyTurn,
+      omittedAction,
+      forecastTurns: 5,
+    };
+    runComparison(request, card.summary);
+  }, [gameSeed, gameScenarioId, calibrationMode, getPolicyLog, runComparison]);
 
   return (
     <div className={styles.panel}>
@@ -568,11 +620,22 @@ export const PolicyPanel = memo(function PolicyPanel({
                         目前訊號偏中性，建議先觀察下一個窗口。
                       </div>
                     )}
+                    {card.status === 'complete' && (
+                      <button
+                        className={styles.whatIfBtn}
+                        onClick={() => handleWhatIf(card)}
+                        disabled={cfLoading}
+                      >
+                        {cfLoading ? '模擬中…' : '假如不做？What If?'}
+                      </button>
+                    )}
                   </div>
                 );
               })}
             </div>
           )}
+
+          {cfResult && <CounterfactualPanel />}
 
           <div className={styles.sectionTitle}>待生效政策 Pending</div>
           {pendingPolicies.length === 0 ? (

@@ -24,6 +24,10 @@ export interface TurnDiff {
   births: number;
   deaths: number;
   timestamp: number;
+  /** Whether this turn had dramatic metric changes */
+  isDramatic: boolean;
+  /** Which metrics triggered the dramatic flag */
+  dramaticMetrics: (keyof TurnDeltas)[];
 }
 
 interface TurnDiffState {
@@ -81,6 +85,17 @@ export const useTurnDiffStore = create<TurnDiffState>((set, get) => ({
     // Filter events from this turn only
     const turnEvents = state.events.filter(e => e.turn === state.turn);
 
+    // Detect dramatic changes
+    const dramaticMetrics: (keyof TurnDeltas)[] = [];
+    if (prev) {
+      if (prev.gdp > 0 && Math.abs(deltas.gdp / prev.gdp) >= 0.15) dramaticMetrics.push('gdp');
+      if (Math.abs(deltas.population) >= 5) dramaticMetrics.push('population');
+      if (Math.abs(deltas.avgSatisfaction) >= 10) dramaticMetrics.push('avgSatisfaction');
+      if (Math.abs(deltas.avgHealth) >= 10) dramaticMetrics.push('avgHealth');
+      if (Math.abs(deltas.giniCoefficient) >= 0.05) dramaticMetrics.push('giniCoefficient');
+    }
+    const isDramatic = dramaticMetrics.length > 0;
+
     const diff: TurnDiff = {
       turn: state.turn,
       deltas,
@@ -88,13 +103,15 @@ export const useTurnDiffStore = create<TurnDiffState>((set, get) => ({
       births: curr.births,
       deaths: curr.deaths,
       timestamp: Date.now(),
+      isDramatic,
+      dramaticMetrics,
     };
 
     set({
       currentDiff: diff,
       prevSnapshot: curr,
-      // Only auto-expand in manual play mode
-      expanded: !isAutoPlay && turnEvents.length > 0,
+      // Auto-expand on dramatic turns (even during autoplay) or on events in manual mode
+      expanded: isDramatic || (!isAutoPlay && turnEvents.length > 0),
     });
   },
 

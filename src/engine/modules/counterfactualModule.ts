@@ -16,11 +16,13 @@ export interface CounterfactualRequest {
   scenarioId: ScenarioId;
   calibrationProfileId: EconomicCalibrationProfileId;
   policyLog: PolicyLogEntry[];
-  /** The turn when the policy under test was applied */
-  policyTurn: number;
+  /** The turn the player *requested* the policy (matches policyLog.turn) */
+  requestTurn: number;
+  /** The turn the policy *took effect* (snapshot window starts here) */
+  applyTurn: number;
   /** The action to omit in the baseline simulation */
   omittedAction: PolicyAction;
-  /** How many turns after policyTurn to simulate (default 5) */
+  /** How many turns after applyTurn to simulate (default 5) */
   forecastTurns?: number;
 }
 
@@ -76,13 +78,26 @@ function replayEngine(
   targetTurn: number,
 ): GameEngine {
   const eng = new GameEngine(seed, scenarioId, calibrationProfileId);
-  for (let t = 1; t <= targetTurn; t++) {
-    // Apply policies for this turn before advancing
+  for (let t = 0; t < targetTurn; t++) {
+    // Apply policies that were requested at turn t (before advancing to t+1)
     const turnPolicies = policyLog.filter(e => e.turn === t);
     for (const entry of turnPolicies) {
       applyPolicyAction(eng, entry.action);
     }
     eng.advanceTurn();
+
+    // Auto-resolve pending decisions to keep the replay moving.
+    // If the policyLog contains a decision entry for this turn it was already
+    // applied above via applyPolicyAction → resolveDecision. Otherwise pick
+    // the first available choice so the engine doesn't block.
+    if (eng.pendingDecision) {
+      const hasLoggedDecision = turnPolicies.some(e => e.action.type === 'decision');
+      if (!hasLoggedDecision) {
+        eng.resolveDecision(eng.pendingDecision.choices[0].id);
+      }
+    }
+
+    if (eng.gameOver) break;
   }
   return eng;
 }
@@ -93,17 +108,18 @@ export function runCounterfactual(request: CounterfactualRequest): Counterfactua
     scenarioId,
     calibrationProfileId,
     policyLog,
-    policyTurn,
+    requestTurn,
+    applyTurn,
     omittedAction,
     forecastTurns = 5,
   } = request;
 
-  const endTurn = policyTurn + forecastTurns;
+  const endTurn = applyTurn + forecastTurns;
 
-  // Build baseline policy log (without the omitted action at policyTurn)
+  // Build baseline policy log (without the omitted action at the request turn)
   let omitted = false;
   const baselinePolicyLog = policyLog.filter(entry => {
-    if (!omitted && entry.turn === policyTurn && actionsMatch(entry.action, omittedAction)) {
+    if (!omitted && entry.turn === requestTurn && actionsMatch(entry.action, omittedAction)) {
       omitted = true;
       return false;
     }
@@ -114,9 +130,9 @@ export function runCounterfactual(request: CounterfactualRequest): Counterfactua
   const actualEngine = replayEngine(seed, scenarioId, calibrationProfileId, policyLog, endTurn);
   const baselineEngine = replayEngine(seed, scenarioId, calibrationProfileId, baselinePolicyLog, endTurn);
 
-  // Extract snapshots from policyTurn to endTurn
-  const actualSnaps = actualEngine.statistics.history.filter(s => s.turn >= policyTurn && s.turn <= endTurn);
-  const baselineSnaps = baselineEngine.statistics.history.filter(s => s.turn >= policyTurn && s.turn <= endTurn);
+  // Extract snapshots from applyTurn to endTurn
+  const actualSnaps = actualEngine.statistics.history.filter(s => s.turn >= applyTurn && s.turn <= endTurn);
+  const baselineSnaps = baselineEngine.statistics.history.filter(s => s.turn >= applyTurn && s.turn <= endTurn);
 
   // Compute divergence
   const divergence: DivergencePoint[] = [];

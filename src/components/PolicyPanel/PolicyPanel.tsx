@@ -312,7 +312,8 @@ export const PolicyPanel = memo(function PolicyPanel({
       scenarioId: gameScenarioId,
       calibrationProfileId: calibrationMode,
       policyLog,
-      policyTurn: card.applyTurn,
+      requestTurn: card.requestedTurn,
+      applyTurn: card.applyTurn,
       omittedAction,
       forecastTurns: 5,
     };

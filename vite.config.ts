@@ -8,8 +8,23 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          recharts: ['recharts'],
+        manualChunks(id) {
+          // ── Vendor: React runtime (rarely changes → long cache) ───
+          if (id.includes('node_modules/react-dom') ||
+              id.includes('node_modules/react/')    ||
+              id.includes('node_modules/scheduler')) {
+            return 'react-vendor';
+          }
+          // ── Charts library ───────────────────────────────────────
+          if (id.includes('node_modules/recharts') ||
+              id.includes('node_modules/d3-')      ||
+              id.includes('node_modules/victory-vendor')) {
+            return 'recharts';
+          }
+          // ── Game engine core (pure logic, no React) ──────────────
+          if (id.includes('/src/engine/')) {
+            return 'game-engine';
+          }
         },
       },
     },

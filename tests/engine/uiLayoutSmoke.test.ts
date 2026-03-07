@@ -9,7 +9,8 @@ function readProjectFile(relativePath: string): string {
 
 describe('uiLayoutSmoke', () => {
   it('heavy right-column panels are lazy-loaded', () => {
-    const appTsx = readProjectFile('src/App.tsx');
+    // Game UI lives in GameView.tsx (lazy-loaded from App.tsx)
+    const gameViewTsx = readProjectFile('src/GameView.tsx');
 
     const lazyPanels = [
       'MarketPanel',
@@ -19,16 +20,21 @@ describe('uiLayoutSmoke', () => {
     ] as const;
 
     for (const panel of lazyPanels) {
-      expect(appTsx).toMatch(
+      expect(gameViewTsx).toMatch(
         new RegExp(`const\\s+${panel}\\s*=\\s*lazy\\(`),
       );
-      expect(appTsx).toMatch(
+      expect(gameViewTsx).toMatch(
         new RegExp(`import\\('\\./components/${panel}/${panel}'\\)`),
       );
-      expect(appTsx).not.toMatch(
+      expect(gameViewTsx).not.toMatch(
         new RegExp(`^import\\s+\\{\\s*${panel}\\s*\\}\\s+from\\s+'\\./components/${panel}/${panel}';`, 'm'),
       );
     }
+
+    // GameView itself is lazy-loaded from App.tsx
+    const appTsx = readProjectFile('src/App.tsx');
+    expect(appTsx).toMatch(/const\s+GameView\s*=\s*lazy\(/);
+    expect(appTsx).toMatch(/import\('\.\/GameView'\)/);
   });
 
   it('responsive breakpoints and mobile-safe overflow are present', () => {
@@ -65,13 +71,13 @@ describe('uiLayoutSmoke', () => {
   });
 
   it('feature clicks trigger transient highlight pulse', () => {
-    const appTsx = readProjectFile('src/App.tsx');
+    const gameViewTsx = readProjectFile('src/GameView.tsx');
     const islandMap = readProjectFile('src/components/IslandMap/IslandMap.tsx');
     const uiStore = readProjectFile('src/stores/uiStore.ts');
 
     expect(uiStore).toMatch(/FEATURE_HIGHLIGHT_MS = 1700/);
-    expect(appTsx).toMatch(/highlightFeature=\{featureHighlight\?\.feature \?\? null\}/);
-    expect(appTsx).toMatch(/highlightUntilMs=\{featureHighlight\?\.untilMs \?\? null\}/);
+    expect(gameViewTsx).toMatch(/highlightFeature=\{featureHighlight\?\.feature \?\? null\}/);
+    expect(gameViewTsx).toMatch(/highlightUntilMs=\{featureHighlight\?\.untilMs \?\? null\}/);
     expect(islandMap).toMatch(/FEATURE_HIGHLIGHT_MS = 1700/);
     expect(islandMap).toMatch(/drawFeatureHighlight\(/);
   });

@@ -22,6 +22,9 @@ import { checkNarrativeTriggers, type NarrativeContext } from '../data/narrative
 import { useUiStore } from './uiStore';
 import { useTurnDiffStore } from './turnDiffStore';
 import { useStreakStore, type StreakMilestone } from './streakStore';
+import { useAdvisorStore } from './advisorStore';
+import { generateAdvisorSuggestions } from '../engine/modules/advisorModule';
+import { te, teSector } from '../engine/engineI18n';
 
 export type AutoPlaySpeed = 'slow' | 'medium' | 'fast' | null;
 
@@ -245,6 +248,10 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     playSound('turn_advance');
     checkAndShowNarrative(gameState);
     autoSaveIfNeeded();
+    // Policy advisor: generate suggestions for the new state
+    const advisorSt = useAdvisorStore.getState();
+    advisorSt.resetDismissals();
+    advisorSt.setSuggestions(generateAdvisorSuggestions(gameState));
     if (engine.gameOver || engine.pendingDecision) {
       stopAutoPlayInternal(s => set(s));
     }
@@ -263,7 +270,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     engine.setTaxRate(rate);
     logPolicy({ type: 'taxRate', value: rate });
     playSound('policy_set');
-    useNotificationStore.getState().pushPolicyToast(`稅率已調整至 ${(rate * 100).toFixed(0)}% — 下回合生效`);
+    useNotificationStore.getState().pushPolicyToast(te('toast.taxRate', { rate: (rate * 100).toFixed(0) }));
     set({ gameState: syncState(get().gameState) });
   },
 
@@ -271,8 +278,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     engine.setTaxMode(mode);
     logPolicy({ type: 'taxMode', mode });
     playSound('policy_set');
-    const label = mode === 'progressive' ? '累進稅' : '統一稅';
-    useNotificationStore.getState().pushPolicyToast(`稅制切換為${label} — 下回合生效`);
+    useNotificationStore.getState().pushPolicyToast(te(mode === 'progressive' ? 'toast.taxMode.prog' : 'toast.taxMode.flat'));
     set({ gameState: syncState(get().gameState) });
   },
 
@@ -280,8 +286,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     engine.setSubsidy(sector, amount);
     logPolicy({ type: 'subsidy', sector, value: amount });
     playSound('policy_set');
-    const label = sector === 'food' ? '食物' : sector === 'goods' ? '商品' : '服務';
-    useNotificationStore.getState().pushPolicyToast(`${label}補貼已調整至 ${amount.toFixed(0)}% — 下回合生效`);
+    useNotificationStore.getState().pushPolicyToast(te('toast.subsidy', { sector: teSector(sector), amount: amount.toFixed(0) }));
     set({ gameState: syncState(get().gameState) });
   },
 
@@ -289,7 +294,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     engine.setWelfare(enabled);
     logPolicy({ type: 'welfare', enabled });
     playSound('policy_set');
-    useNotificationStore.getState().pushPolicyToast(enabled ? '福利已啟用 — 下回合生效' : '福利已停用 — 下回合生效');
+    useNotificationStore.getState().pushPolicyToast(te(enabled ? 'toast.welfare.on' : 'toast.welfare.off'));
     set({ gameState: syncState(get().gameState) });
   },
 
@@ -297,7 +302,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     engine.setPublicWorks(active);
     logPolicy({ type: 'publicWorks', active });
     playSound('policy_set');
-    useNotificationStore.getState().pushPolicyToast(active ? '公共建設已啟用' : '公共建設已停用');
+    useNotificationStore.getState().pushPolicyToast(te(active ? 'toast.publicWorks.on' : 'toast.publicWorks.off'));
     set({ gameState: syncState(get().gameState) });
   },
 
@@ -305,7 +310,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     engine.setPolicyRate(rate);
     logPolicy({ type: 'policyRate', value: rate });
     playSound('policy_set');
-    useNotificationStore.getState().pushPolicyToast(`政策利率已調整至 ${(rate * 100).toFixed(1)}%`);
+    useNotificationStore.getState().pushPolicyToast(te('toast.policyRate', { rate: (rate * 100).toFixed(1) }));
     set({ gameState: syncState(get().gameState) });
   },
 
@@ -313,7 +318,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     engine.setLiquiditySupport(active);
     logPolicy({ type: 'liquiditySupport', active });
     playSound('policy_set');
-    useNotificationStore.getState().pushPolicyToast(active ? '流動性支援已啟用' : '流動性支援已停用');
+    useNotificationStore.getState().pushPolicyToast(te(active ? 'toast.liquidity.on' : 'toast.liquidity.off'));
     set({ gameState: syncState(get().gameState) });
   },
 
@@ -321,7 +326,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     engine.setStockpile(enabled);
     logPolicy({ type: 'stockpile', enabled });
     playSound('policy_set');
-    useNotificationStore.getState().pushPolicyToast(enabled ? '戰略儲備已啟用' : '戰略儲備已停用');
+    useNotificationStore.getState().pushPolicyToast(te(enabled ? 'toast.stockpile.on' : 'toast.stockpile.off'));
     set({ gameState: syncState(get().gameState) });
   },
 
@@ -349,6 +354,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     initLearningTracking(engine.getState());
     useTurnDiffStore.getState().clear();
     useStreakStore.getState().clear();
+    useAdvisorStore.getState().setSuggestions([]);
     set({ gameState: syncState() });
   },
 
@@ -373,6 +379,10 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       set({ gameState });
       checkAndShowNarrative(gameState);
       autoSaveIfNeeded();
+      // Policy advisor: update suggestions during auto-play
+      const autoAdvisorSt = useAdvisorStore.getState();
+      autoAdvisorSt.resetDismissals();
+      autoAdvisorSt.setSuggestions(generateAdvisorSuggestions(gameState));
       if (engine.gameOver || engine.pendingDecision) {
         stopAutoPlayInternal(s => set(s));
       }
@@ -398,7 +408,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const ok = engine.requestBuildInfrastructure(type);
     if (ok) {
       playSound('policy_set');
-      useNotificationStore.getState().pushPolicyToast(`開始建設 — 已扣除國庫經費`);
+      useNotificationStore.getState().pushPolicyToast(te('toast.publicWorks.on'));
       set({ gameState: syncState(get().gameState) });
     }
     return ok;

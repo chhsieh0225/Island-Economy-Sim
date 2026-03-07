@@ -380,6 +380,36 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
                 <span>{t('dashboard.causal.publicWorks')}</span>
                 <span className={styles.causalDown}>-${causal.policy.publicWorksCost.toFixed(0)}</span>
               </div>
+              {causal.policy.liquidityInjected > 0 && (
+                <div className={styles.causalDriver}>
+                  <span>{t('dashboard.causal.liquidity')}</span>
+                  <span className={styles.causalDown}>-${causal.policy.liquidityInjected.toFixed(0)}</span>
+                </div>
+              )}
+              {causal.policy.autoStabilizerSpent > 0 && (
+                <div className={styles.causalDriver}>
+                  <span>{t('dashboard.causal.autoStabilizer')}</span>
+                  <span className={styles.causalDown}>-${causal.policy.autoStabilizerSpent.toFixed(0)}</span>
+                </div>
+              )}
+              {causal.policy.stockpileBuySpent > 0 && (
+                <div className={styles.causalDriver}>
+                  <span>{t('dashboard.causal.stockpileBuy')}</span>
+                  <span className={styles.causalDown}>-${causal.policy.stockpileBuySpent.toFixed(0)}</span>
+                </div>
+              )}
+              {causal.policy.stockpileSellRevenue > 0 && (
+                <div className={styles.causalDriver}>
+                  <span>{t('dashboard.causal.stockpileSell')}</span>
+                  <span className={styles.causalUp}>+${causal.policy.stockpileSellRevenue.toFixed(0)}</span>
+                </div>
+              )}
+              {causal.policy.stockpileMaintenance > 0 && (
+                <div className={styles.causalDriver}>
+                  <span>{t('dashboard.causal.stockpileMaint')}</span>
+                  <span className={styles.causalDown}>-${causal.policy.stockpileMaintenance.toFixed(0)}</span>
+                </div>
+              )}
               <div className={styles.causalDriver}>
                 <span>{t('dashboard.causal.perCapitaCash')}</span>
                 <span className={causal.policy.perCapitaCashDelta >= 0 ? styles.causalUp : styles.causalDown}>
@@ -406,6 +436,11 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
                     {t('dashboard.causal.policyPerformance')}: {t('dashboard.causal.taxRevenue')} +${s.causalReplay.policy.taxCollected.toFixed(0)}
                     {t('common.listSeparator')}{t('dashboard.causal.welfareSpend')} -${s.causalReplay.policy.welfarePaid.toFixed(0)} ({s.causalReplay.policy.welfareRecipients} {t('dashboard.causal.persons')})
                     {t('common.listSeparator')}{t('dashboard.causal.pwSpend')} -${s.causalReplay.policy.publicWorksCost.toFixed(0)}
+                    {s.causalReplay.policy.liquidityInjected > 0 && <>{t('common.listSeparator')}{t('dashboard.causal.liquiditySpend')} -${s.causalReplay.policy.liquidityInjected.toFixed(0)}</>}
+                    {s.causalReplay.policy.autoStabilizerSpent > 0 && <>{t('common.listSeparator')}{t('dashboard.causal.stabilizerSpend')} -${s.causalReplay.policy.autoStabilizerSpent.toFixed(0)}</>}
+                    {s.causalReplay.policy.stockpileBuySpent > 0 && <>{t('common.listSeparator')}{t('dashboard.causal.stockpileBuySpend')} -${s.causalReplay.policy.stockpileBuySpent.toFixed(0)}</>}
+                    {s.causalReplay.policy.stockpileSellRevenue > 0 && <>{t('common.listSeparator')}{t('dashboard.causal.stockpileSellRevenue')} +${s.causalReplay.policy.stockpileSellRevenue.toFixed(0)}</>}
+                    {s.causalReplay.policy.stockpileMaintenance > 0 && <>{t('common.listSeparator')}{t('dashboard.causal.stockpileMaintSpend')} -${s.causalReplay.policy.stockpileMaintenance.toFixed(0)}</>}
                     {t('common.listSeparator')}{t('dashboard.causal.cashDelta')} {signed(s.causalReplay.policy.perCapitaCashDelta, 2)}
                     {t('common.listSeparator')}{t('dashboard.causal.treasuryDelta')} {signed(s.causalReplay.policy.treasuryDelta, 1)}
                   </div>

@@ -1,6 +1,7 @@
 import type { CausalDriver, TurnCausalReplay } from '../../types';
 import type { ConsumptionPhaseSummary } from '../phases/consumptionPhase';
 import type { DemographyPhaseSummary } from '../phases/demographyPhase';
+import { te } from '../engineI18n';
 
 interface GovernmentPhaseSummary {
   taxCollected: number;
@@ -43,7 +44,7 @@ function perCapitaDelta(totalDelta: number, startPopulation: number): number {
 function nonZeroDrivers(drivers: CausalDriver[]): CausalDriver[] {
   const visible = drivers.filter(driver => Math.abs(driver.value) >= 0.01);
   if (visible.length > 0) return visible;
-  return [{ id: 'flat', label: '本回合變化很小', value: 0 }];
+  return [{ id: 'flat', label: te('engine.causal.flat'), value: 0 }];
 }
 
 export function buildZeroCausalReplay(): TurnCausalReplay {
@@ -51,17 +52,17 @@ export function buildZeroCausalReplay(): TurnCausalReplay {
     satisfaction: {
       net: 0,
       unit: 'point',
-      drivers: [{ id: 'flat', label: '本回合無顯著變化', value: 0 }],
+      drivers: [{ id: 'flat', label: te('engine.causal.noChange'), value: 0 }],
     },
     health: {
       net: 0,
       unit: 'point',
-      drivers: [{ id: 'flat', label: '本回合無顯著變化', value: 0 }],
+      drivers: [{ id: 'flat', label: te('engine.causal.noChange'), value: 0 }],
     },
     departures: {
       net: 0,
       unit: 'count',
-      drivers: [{ id: 'flat', label: '本回合無人口流出', value: 0 }],
+      drivers: [{ id: 'flat', label: te('engine.causal.noDeparture'), value: 0 }],
     },
     policy: {
       taxCollected: 0,
@@ -115,22 +116,22 @@ export function buildTurnCausalReplay({
       drivers: nonZeroDrivers([
         {
           id: 'needs',
-          label: `需求狀態（缺口 ${consumptionSummary.unmetNeedCount}）`,
+          label: te('engine.causal.sat.needs', { count: consumptionSummary.unmetNeedCount }),
           value: roundMetric(satNeeds),
         },
         {
           id: 'events',
-          label: '事件衝擊',
+          label: te('engine.causal.sat.events'),
           value: roundMetric(satEvents),
         },
         {
           id: 'finance',
-          label: '收入與存款安全感',
+          label: te('engine.causal.sat.finance'),
           value: roundMetric(satFinance),
         },
         {
           id: 'residual',
-          label: '其他與人口組成',
+          label: te('engine.causal.sat.residual'),
           value: roundMetric(satResidual),
         },
       ]),
@@ -141,22 +142,22 @@ export function buildTurnCausalReplay({
       drivers: nonZeroDrivers([
         {
           id: 'needs',
-          label: `需求與照護（缺口 ${consumptionSummary.unmetNeedCount}）`,
+          label: te('engine.causal.health.needs', { count: consumptionSummary.unmetNeedCount }),
           value: roundMetric(healthNeeds),
         },
         {
           id: 'events',
-          label: '事件衝擊',
+          label: te('engine.causal.health.events'),
           value: roundMetric(healthEvents),
         },
         {
           id: 'aging',
-          label: '老化效應',
+          label: te('engine.causal.health.aging'),
           value: roundMetric(healthAging),
         },
         {
           id: 'residual',
-          label: '其他與人口組成',
+          label: te('engine.causal.health.residual'),
           value: roundMetric(healthResidual),
         },
       ]),
@@ -167,22 +168,22 @@ export function buildTurnCausalReplay({
       drivers: nonZeroDrivers([
         {
           id: 'left',
-          label: '不滿離島',
+          label: te('engine.causal.dep.left'),
           value: demographics.deathByCause.left,
         },
         {
           id: 'health',
-          label: '健康死亡',
+          label: te('engine.causal.dep.health'),
           value: demographics.deathByCause.health,
         },
         {
           id: 'age',
-          label: '老化死亡',
+          label: te('engine.causal.dep.age'),
           value: demographics.deathByCause.age,
         },
         {
           id: 'births',
-          label: '新生加入',
+          label: te('engine.causal.dep.births'),
           value: -demographics.births,
         },
       ]),

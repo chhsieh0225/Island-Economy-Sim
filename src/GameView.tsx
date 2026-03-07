@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useState, useEffect, useRef } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useGameStore } from './stores/gameStore';
 import { useUiStore } from './stores/uiStore';
 import { useNotificationStore } from './stores/notificationStore';
@@ -16,6 +16,7 @@ import { MapFeaturePanel } from './components/MapFeaturePanel/MapFeaturePanel';
 import { StickyControlBar } from './components/StickyControlBar/StickyControlBar';
 import { NarrativeModal } from './components/NarrativeModal/NarrativeModal';
 import { Toast } from './components/Toast/Toast';
+import { AdvisorBubble } from './components/AdvisorBubble/AdvisorBubble';
 import { TutorialPanel } from './components/TutorialPanel/TutorialPanel';
 import { TutorialModal } from './components/TutorialModal/TutorialModal';
 import { TUTORIAL_LESSONS } from './data/tutorialLessons';
@@ -209,10 +210,10 @@ export default function GameView() {
     setActiveDrawer('stats');
   }, []);
 
-  // ─── Get tutorial state for rendering ────────────────────────────────
-  const isTutorial = appMode === 'tutorial' && tutorialActive;
-  const currentLesson = isTutorial ? TUTORIAL_LESSONS[currentLessonIndex] : null;
-  const enabledControls = isTutorial ? getEnabledControls() : undefined;
+  // ─── Get tutorial state for rendering (memoized) ────────────────────
+  const isTutorial = useMemo(() => appMode === 'tutorial' && tutorialActive, [appMode, tutorialActive]);
+  const currentLesson = useMemo(() => isTutorial ? TUTORIAL_LESSONS[currentLessonIndex] : null, [isTutorial, currentLessonIndex]);
+  const enabledControls = useMemo(() => isTutorial ? getEnabledControls() : undefined, [isTutorial, getEnabledControls]);
 
   // ─── Drawer title lookup ─────────────────────────────────────────────
   function getDrawerTitle(drawer: DrawerType | null): string {
@@ -324,6 +325,11 @@ export default function GameView() {
           locale={locale}
           onExitTutorial={handleExitTutorial}
         />
+      )}
+
+      {/* Policy Advisor — floating bottom-left */}
+      {!isTutorial && !gameState.gameOver && (
+        <AdvisorBubble />
       )}
 
       {/* Bottom control bar — always visible */}

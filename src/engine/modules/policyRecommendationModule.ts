@@ -1,6 +1,7 @@
 import { CONFIG } from '../../config';
 import type { GovernmentState, SectorType } from '../../types';
 import type { PolicyExperimentCard } from './policyExperimentModule';
+import { te } from '../engineI18n';
 
 export type PolicyRecommendationAction =
   | { type: 'setTaxRate'; value: number }
@@ -65,7 +66,12 @@ function formatSignedRange(value: number, digits: number, suffix = ''): string {
 }
 
 function formatImpactHint(estimate: ImpactEstimate): string {
-  return `預估(延遲 ${CONFIG.POLICY_DELAY_TURNS} 回合後，生效 1-3 回合)：民心 ${formatSignedRange(estimate.satisfaction, 1)} / 國庫 ${formatSignedRange(estimate.treasury, 0)} / 成長 ${formatSignedRange(estimate.growth, 2, '%')}`;
+  return te('polRec.impactHint', {
+    delay: CONFIG.POLICY_DELAY_TURNS,
+    sat: formatSignedRange(estimate.satisfaction, 1),
+    treasury: formatSignedRange(estimate.treasury, 0),
+    growth: formatSignedRange(estimate.growth, 2, '%'),
+  });
 }
 
 function estimateImpactHint(
@@ -152,7 +158,7 @@ export function buildPolicyRecommendation(
       const target = clampRate(government.taxRate - 0.02);
       if (target < government.taxRate - 1e-6) {
         return {
-          reason: '觀察窗內民心或人口轉弱，先小幅降稅舒緩需求壓力。',
+          reason: te('polRec.satDrop.tax'),
           action: { type: 'setTaxRate', value: target },
           impactHint: estimateImpactHint({ type: 'setTaxRate', value: target }, government, card),
         };
@@ -164,7 +170,7 @@ export function buildPolicyRecommendation(
       const target = Math.min(100, government.subsidies[sector] + 5);
       if (target > government.subsidies[sector] + 1e-6) {
         return {
-          reason: '觀察窗內民生變差，先提高該產業補貼，補供給缺口。',
+          reason: te('polRec.satDrop.subsidy'),
           action: { type: 'setSubsidy', sector, value: target },
           impactHint: estimateImpactHint({ type: 'setSubsidy', sector, value: target }, government, card),
         };
@@ -173,7 +179,7 @@ export function buildPolicyRecommendation(
 
     if (!government.welfareEnabled) {
       return {
-        reason: '民生壓力偏高，建議先開啟福利緩和底層購買力。',
+        reason: te('polRec.satDrop.welfare'),
         action: { type: 'setWelfare', value: true },
         impactHint: estimateImpactHint({ type: 'setWelfare', value: true }, government, card),
       };
@@ -184,7 +190,7 @@ export function buildPolicyRecommendation(
     const target = clampRate(government.taxRate + 0.02);
     if (target > government.taxRate + 1e-6) {
       return {
-        reason: '觀察窗內國庫惡化明顯，建議小幅升稅回補財政。',
+        reason: te('polRec.treasuryStress'),
         action: { type: 'setTaxRate', value: target },
         impactHint: estimateImpactHint({ type: 'setTaxRate', value: target }, government, card),
       };
@@ -194,7 +200,7 @@ export function buildPolicyRecommendation(
   if (gdpDrop) {
     if (!government.publicWorksActive) {
       return {
-        reason: '觀察窗內成長放緩，先啟用公共建設拉動總體生產力。',
+        reason: te('polRec.gdpDrop.publicWorks'),
         action: { type: 'setPublicWorks', value: true },
         impactHint: estimateImpactHint({ type: 'setPublicWorks', value: true }, government, card),
       };
@@ -202,7 +208,7 @@ export function buildPolicyRecommendation(
     const target = Math.min(100, government.subsidies.goods + 5);
     if (target > government.subsidies.goods + 1e-6) {
       return {
-        reason: '成長仍偏弱，建議提高商品補貼擴大中間財供應。',
+        reason: te('polRec.gdpDrop.subsidy'),
         action: { type: 'setSubsidy', sector: 'goods', value: target },
         impactHint: estimateImpactHint({ type: 'setSubsidy', sector: 'goods', value: target }, government, card),
       };

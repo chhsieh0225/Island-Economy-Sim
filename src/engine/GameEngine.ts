@@ -1,4 +1,5 @@
 import { CONFIG } from '../config';
+import { te, teSector } from './engineI18n';
 import type {
   SectorType,
   GameState,
@@ -167,7 +168,7 @@ export class GameEngine {
           familyId,
           getEconomicCalibration: () => this.getEconomicCalibration(),
         });
-        agent.addLifeEvent(0, 'join', `加入小島，就業於${this.sectorLabel(sector)}。`, 'positive');
+        agent.addLifeEvent(0, 'join', te('engine.join', { sector: teSector(sector) }), 'positive');
         this.agents.push(agent);
       }
       familyId++;
@@ -438,7 +439,7 @@ export class GameEngine {
     const taxCollected = this.government.collectTaxes(agents);
     if (taxCollected > 0) {
       const newTreasuryTax = this.government.treasury;
-      this.addEvent('info', `📋 稅率 ${(rate * 100).toFixed(0)}% 生效 → 本回合稅收 $${taxCollected.toFixed(0)}（國庫 $${prevTreasuryTax.toFixed(0)} → $${newTreasuryTax.toFixed(0)}）`);
+      this.addEvent('info', te('engine.taxCollected', { rate: (rate * 100).toFixed(0), amount: taxCollected.toFixed(0), before: prevTreasuryTax.toFixed(0), after: newTreasuryTax.toFixed(0) }));
     }
 
     const prevTreasuryWelfare = this.government.treasury;
@@ -447,17 +448,17 @@ export class GameEngine {
     const welfareRecipients = welfareResult.recipients;
     if (welfareSpent > 0) {
       const afterTreasuryWelfare = this.government.treasury;
-      this.addEvent('info', `📋 福利發放 → ${welfareRecipients} 人獲補助（國庫 $${prevTreasuryWelfare.toFixed(0)} → $${afterTreasuryWelfare.toFixed(0)}）`);
+      this.addEvent('info', te('engine.welfarePaid', { count: welfareRecipients, before: prevTreasuryWelfare.toFixed(0), after: afterTreasuryWelfare.toFixed(0) }));
     }
 
     const prevTreasuryPW = this.government.treasury;
     const pwPaid = this.government.payPublicWorks();
     const publicWorksSpent = pwPaid ? CONFIG.PUBLIC_WORKS_COST_PER_TURN : 0;
     if (pwPaid) {
-      this.addEvent('info', `📋 公共建設支出 $${CONFIG.PUBLIC_WORKS_COST_PER_TURN} → 全體生產力 +10%`);
+      this.addEvent('info', te('engine.publicWorks', { cost: CONFIG.PUBLIC_WORKS_COST_PER_TURN }));
     } else if (this.government.publicWorksActive === false && prevTreasuryPW < CONFIG.PUBLIC_WORKS_COST_PER_TURN && prevTreasuryPW > 0) {
       // Public works was auto-disabled due to insufficient funds
-      this.addEvent('warning', `公共建設因國庫不足（$${prevTreasuryPW.toFixed(0)} < $${CONFIG.PUBLIC_WORKS_COST_PER_TURN}）自動停用。`);
+      this.addEvent('warning', te('engine.publicWorksDisabled', { treasury: prevTreasuryPW.toFixed(0), cost: CONFIG.PUBLIC_WORKS_COST_PER_TURN }));
     }
 
     const prevTreasuryLiquidity = this.government.treasury;
@@ -481,10 +482,10 @@ export class GameEngine {
       if (liquidityInjected > 0) {
         this.addEvent(
           'info',
-          `📋 流動性支持 → ${liquidityRecipients} 人獲得注入（國庫 $${prevTreasuryLiquidity.toFixed(0)} → $${this.government.treasury.toFixed(0)}）`,
+          te('engine.liquidityInjected', { count: liquidityRecipients, before: prevTreasuryLiquidity.toFixed(0), after: this.government.treasury.toFixed(0) }),
         );
       } else if (prevTreasuryLiquidity <= 0.1) {
-        this.addEvent('warning', '流動性支持啟用中，但國庫不足，無法注入現金。');
+        this.addEvent('warning', te('engine.liquidityBroke'));
       }
     }
 
@@ -492,7 +493,7 @@ export class GameEngine {
     const autoStabilizerResult = this.government.distributeEmergencyWelfare(agents);
     const autoStabilizerSpent = autoStabilizerResult.totalSpent;
     if (autoStabilizerSpent > 0) {
-      this.addEvent('info', `📋 自動穩定機制啟動 → ${autoStabilizerResult.recipients} 人獲緊急補助 $${autoStabilizerSpent.toFixed(0)}`);
+      this.addEvent('info', te('engine.autoStabilizer', { count: autoStabilizerResult.recipients, amount: autoStabilizerSpent.toFixed(0) }));
     }
 
     // Strategic stockpile: compute trade amounts, maintenance & spoilage
@@ -509,10 +510,10 @@ export class GameEngine {
     this.government.applySpoilage();
 
     if (stockpileBuySpent > 0.1) {
-      this.addEvent('info', `📋 戰略儲備收購 → 支出 $${stockpileBuySpent.toFixed(0)}`);
+      this.addEvent('info', te('engine.stockpileBuy', { amount: stockpileBuySpent.toFixed(0) }));
     }
     if (stockpileSellRevenue > 0.1) {
-      this.addEvent('info', `📋 戰略儲備釋出 → 收入 $${stockpileSellRevenue.toFixed(0)}`);
+      this.addEvent('info', te('engine.stockpileSell', { amount: stockpileSellRevenue.toFixed(0) }));
     }
     if (stockpileMaintenance > 0 && this.government.stockpileEnabled) {
       // Only log if still enabled (not auto-disabled due to insufficient funds)
@@ -556,8 +557,8 @@ export class GameEngine {
       if (switchTo) {
         const oldSector = agent.sector;
         agent.switchJob(switchTo);
-        agent.addLifeEvent(this.turn, 'job', `從${this.sectorLabel(oldSector)}轉職到${this.sectorLabel(switchTo)}。`, 'info');
-        this.addEvent('info', `${agent.name} 從${this.sectorLabel(oldSector)}轉職到${this.sectorLabel(switchTo)}。`);
+        agent.addLifeEvent(this.turn, 'job', te('engine.jobSwitch', { from: teSector(oldSector), to: teSector(switchTo) }), 'info');
+        this.addEvent('info', te('engine.jobSwitchLog', { name: agent.name, from: teSector(oldSector), to: teSector(switchTo) }));
       }
     }
   }
@@ -598,9 +599,9 @@ export class GameEngine {
       getEconomicCalibration: () => this.getEconomicCalibration(),
     });
     if (bornOnIsland) {
-      agent.addLifeEvent(this.turn, 'join', `在小島出生，目前由家戶照顧中（${Math.floor(ageTurns / 12)} 歲）。`, 'positive');
+      agent.addLifeEvent(this.turn, 'join', te('engine.born', { age: Math.floor(ageTurns / 12) }), 'positive');
     } else {
-      agent.addLifeEvent(this.turn, 'join', `加入小島，就業於${this.sectorLabel(sector)}。`, 'positive');
+      agent.addLifeEvent(this.turn, 'join', te('engine.join', { sector: teSector(sector) }), 'positive');
     }
     return agent;
   }
@@ -671,7 +672,7 @@ export class GameEngine {
     if (!choice) return false;
 
     this.applyDecisionChoice(choice);
-    this.addEvent('info', `市政抉擇：你選擇了「${choice.label}」。`);
+    this.addEvent('info', te('engine.decisionChosen', { choice: choice.label }));
     this.pendingDecision = null;
     this.markStateDirty(
       'agents',
@@ -765,7 +766,7 @@ export class GameEngine {
     this.policyTimeline = result.policyTimeline;
     this.addEvent(
       'info',
-      `${result.updatedExisting ? '政策更新' : '政策排程'}：${change.summary}（將於 ${result.scheduledPolicy.applyTurn} 回合生效）`,
+      te(result.updatedExisting ? 'engine.policyUpdated' : 'engine.policyScheduled', { summary: change.summary, turn: result.scheduledPolicy.applyTurn }),
     );
     this.markStateDirty('pendingPolicies', 'policyTimeline', 'events');
   }
@@ -806,11 +807,11 @@ export class GameEngine {
 
   private getGameOverMessage(reason: GameOverReason): string {
     switch (reason) {
-      case 'all_dead': return '所有居民都已死亡或離開，小島荒廢了。';
-      case 'gdp_victory': return '經濟繁榮！GDP 累計達到勝利門檻！';
-      case 'treasury_victory': return '國庫充盈！達到財政勝利門檻！';
-      case 'max_turns': return '50 年過去了，讓我們回顧小島的發展歷程。';
-      case 'player_exit': return '市長決定離開小島。';
+      case 'all_dead': return te('engine.gameover.allDead');
+      case 'gdp_victory': return te('engine.gameover.gdpVictory');
+      case 'treasury_victory': return te('engine.gameover.treasuryVictory');
+      case 'max_turns': return te('engine.gameover.maxTurns');
+      case 'player_exit': return te('engine.gameover.playerExit');
     }
   }
 
@@ -822,15 +823,6 @@ export class GameEngine {
     this.markStateDirty('events');
   }
 
-  private sectorLabel(sector: SectorType): string {
-    const labels: Record<SectorType, string> = {
-      food: '食物業',
-      goods: '商品業',
-      services: '服務業',
-    };
-    return labels[sector];
-  }
-
   setTaxMode(mode: 'flat' | 'progressive'): void {
     const existing = this.pendingPolicies.find(p => p.type === 'taxMode');
     if (existing && existing.value === mode) return;
@@ -839,7 +831,7 @@ export class GameEngine {
     this.queuePolicy({
       type: 'taxMode',
       value: mode,
-      summary: `稅制切換為${mode === 'progressive' ? '累進稅' : '統一稅'}`,
+      summary: te('engine.policy.taxMode', { mode: te(mode === 'progressive' ? 'engine.policy.taxMode.progressive' : 'engine.policy.taxMode.flat') }),
       sideEffects: getPolicySideEffectsModule('taxMode', mode),
     });
   }
@@ -853,7 +845,7 @@ export class GameEngine {
     this.queuePolicy({
       type: 'tax',
       value: clamped,
-      summary: `稅率調整至 ${(clamped * 100).toFixed(0)}%`,
+      summary: te('engine.policy.taxRate', { rate: (clamped * 100).toFixed(0) }),
       sideEffects: getPolicySideEffectsModule('tax', clamped),
     });
   }
@@ -868,7 +860,7 @@ export class GameEngine {
       type: 'subsidy',
       value: clamped,
       sector,
-      summary: `${this.sectorLabel(sector)}補貼調整至 ${clamped.toFixed(0)}%`,
+      summary: te('engine.policy.subsidy', { sector: teSector(sector), rate: clamped.toFixed(0) }),
       sideEffects: getPolicySideEffectsModule('subsidy', clamped),
     });
   }
@@ -881,7 +873,7 @@ export class GameEngine {
     this.queuePolicy({
       type: 'welfare',
       value: enabled,
-      summary: `社會福利 ${enabled ? '啟用' : '停用'}`,
+      summary: te('engine.policy.welfare', { state: te(enabled ? 'engine.enabled' : 'engine.disabled') }),
       sideEffects: getPolicySideEffectsModule('welfare', enabled),
     });
   }
@@ -894,7 +886,7 @@ export class GameEngine {
     this.queuePolicy({
       type: 'publicWorks',
       value: active,
-      summary: `公共建設 ${active ? '啟用' : '停用'}`,
+      summary: te('engine.policy.publicWorks', { state: te(active ? 'engine.enabled' : 'engine.disabled') }),
       sideEffects: getPolicySideEffectsModule('publicWorks', active),
     });
   }
@@ -908,7 +900,7 @@ export class GameEngine {
     this.queuePolicy({
       type: 'policyRate',
       value: clamped,
-      summary: `政策利率調整至 ${(clamped * 100).toFixed(2)}%`,
+      summary: te('engine.policy.policyRate', { rate: (clamped * 100).toFixed(2) }),
       sideEffects: getPolicySideEffectsModule('policyRate', clamped),
     });
   }
@@ -921,7 +913,7 @@ export class GameEngine {
     this.queuePolicy({
       type: 'liquiditySupport',
       value: active,
-      summary: `流動性支持 ${active ? '啟用' : '停用'}`,
+      summary: te('engine.policy.liquidity', { state: te(active ? 'engine.enabled' : 'engine.disabled') }),
       sideEffects: getPolicySideEffectsModule('liquiditySupport', active),
     });
   }
@@ -934,7 +926,7 @@ export class GameEngine {
     this.queuePolicy({
       type: 'stockpile',
       value: enabled,
-      summary: `戰略儲備 ${enabled ? '啟用' : '停用'}`,
+      summary: te('engine.policy.stockpile', { state: te(enabled ? 'engine.enabled' : 'engine.disabled') }),
       sideEffects: getPolicySideEffectsModule('stockpile', enabled),
     });
   }

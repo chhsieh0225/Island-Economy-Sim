@@ -4,6 +4,7 @@ import { CONFIG } from '../config';
 import type { Agent } from './Agent';
 import type { Market } from './Market';
 import type { Government } from './Government';
+import { te } from './engineI18n';
 
 export class Statistics {
   history: TurnSnapshot[] = [];
@@ -78,17 +79,17 @@ export class Statistics {
         satisfaction: {
           net: 0,
           unit: 'point',
-          drivers: [{ id: 'flat', label: '本回合無顯著變化', value: 0 }],
+          drivers: [{ id: 'flat', label: te('engine.causal.noChange'), value: 0 }],
         },
         health: {
           net: 0,
           unit: 'point',
-          drivers: [{ id: 'flat', label: '本回合無顯著變化', value: 0 }],
+          drivers: [{ id: 'flat', label: te('engine.causal.noChange'), value: 0 }],
         },
         departures: {
           net: 0,
           unit: 'count',
-          drivers: [{ id: 'flat', label: '本回合無人口流出', value: 0 }],
+          drivers: [{ id: 'flat', label: te('engine.causal.noDeparture'), value: 0 }],
         },
         policy: {
           taxCollected: 0,

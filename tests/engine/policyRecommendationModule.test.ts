@@ -46,7 +46,7 @@ describe('policyRecommendationModule', () => {
     if (!recommendation) return;
     expect(recommendation.action.type).toBe('setTaxRate');
     expect(recommendation.action.value).toBe(0.2);
-    expect(recommendation.impactHint).toMatch(/預估\(延遲 1 回合後，生效 1-3 回合\)/);
+    expect(recommendation.impactHint).toMatch(/預估（延遲 1 回合後，生效 1-3 回合）/);
     expect(recommendation.impactHint).toMatch(/民心 \+/);
     expect(recommendation.impactHint).toMatch(/國庫 -/);
   });

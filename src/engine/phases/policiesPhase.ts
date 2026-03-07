@@ -1,5 +1,6 @@
 import type { GameEvent, PendingPolicyChange } from '../../types';
 import type { Government } from '../Government';
+import { te } from '../engineI18n';
 
 interface ApplyPendingPoliciesInput {
   turn: number;
@@ -59,7 +60,7 @@ export function applyPendingPoliciesPhase({
     }
 
     markPolicyApplied(policy);
-    addEvent('positive', `政策生效：${policy.summary}`);
+    addEvent('positive', te('engine.policyApplied', { summary: policy.summary }));
   }
 
   return future;

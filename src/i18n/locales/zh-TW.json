@@ -75,6 +75,7 @@
   "dashboard.sdShortage": "短缺",
   "dashboard.sdSurplus": "過剩",
   "dashboard.sdBalanced": "平衡",
+  "dashboard.sdEventBoost": "⬆ 事件",
 
   "alert.critical.title": "民心警報：紅色",
   "alert.warning.title": "民心警報：橙色",

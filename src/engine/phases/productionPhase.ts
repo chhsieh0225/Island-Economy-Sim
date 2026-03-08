@@ -137,6 +137,24 @@ export function runProductionPhase({
   }
 }
 
+/**
+ * Compute the effective per-sector demand multiplier from active random events.
+ * Currently only `servicesDemandBoost` exists, but the pattern is extensible.
+ * Used by the market posting phase AND by shortage-detection callsites
+ * (Dashboard, Advisor, NarrativeContext) to "deflate" demand back to base levels.
+ */
+export function getEventDemandMultipliers(
+  activeRandomEvents: ActiveRandomEvent[],
+): Partial<Record<SectorType, number>> {
+  const mults: Partial<Record<SectorType, number>> = {};
+  for (const event of activeRandomEvents) {
+    if (event.def.effects.servicesDemandBoost) {
+      mults.services = (mults.services ?? 1) * event.def.effects.servicesDemandBoost;
+    }
+  }
+  return mults;
+}
+
 export function runMarketPostingPhase({
   agents,
   activeRandomEvents,
@@ -144,11 +162,11 @@ export function runMarketPostingPhase({
   demandMultipliers,
   allowedSectors,
 }: MarketPostingPhaseInput): void {
+  const eventMults = getEventDemandMultipliers(activeRandomEvents);
   const demandModifiers: Partial<Record<SectorType, number>> = { ...(demandMultipliers ?? {}) };
-  for (const event of activeRandomEvents) {
-    if (event.def.effects.servicesDemandBoost) {
-      demandModifiers.services = (demandModifiers.services ?? 1) * event.def.effects.servicesDemandBoost;
-    }
+  for (const [sector, mult] of Object.entries(eventMults)) {
+    const key = sector as SectorType;
+    demandModifiers[key] = (demandModifiers[key] ?? 1) * mult;
   }
 
   for (const agent of agents) {

@@ -1,4 +1,5 @@
 import { CONFIG } from '../../config';
+import { getEventDemandMultipliers } from '../phases/productionPhase';
 import { getUnlockedSectorsForStage } from './progressionModule';
 import type { GameState, SectorType } from '../../types';
 
@@ -48,10 +49,14 @@ function clampRate(rate: number): number {
 
 function checkShortages(state: GameState): AdvisorSuggestion | null {
   const sectors = getUnlockedSectorsForStage(state.economyStage);
+  // Deflate demand by event-driven multipliers so temporary boosts
+  // (e.g. festival servicesDemandBoost) don't trigger false critical alerts.
+  const eventMults = getEventDemandMultipliers(state.activeRandomEvents);
   const shortages = sectors.filter(s => {
     const demand = state.market.demand[s];
     const supply = state.market.supply[s];
-    return demand > 0.01 && supply < demand * 0.80;
+    const baseDemand = demand / (eventMults[s] ?? 1);
+    return baseDemand > 0.01 && supply < baseDemand * CONFIG.SHORTAGE_THRESHOLD;
   });
   if (shortages.length === 0) return null;
 

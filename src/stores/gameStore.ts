@@ -3,6 +3,7 @@ import { GameEngine } from '../engine/GameEngine';
 import { computeScore } from '../engine/Scoring';
 import { clearTileCache } from '../components/IslandMap/islandRenderer';
 import { CONFIG } from '../config';
+import { getEventDemandMultipliers } from '../engine/phases/productionPhase';
 import { DEFAULT_SCENARIO, getScenarioById } from '../data/scenarios';
 import { useNotificationStore, initLearningTracking } from './notificationStore';
 import {
@@ -128,10 +129,11 @@ function buildNarrativeContext(state: GameState): NarrativeContext {
     gov.publicWorksActive;
 
   // Compute food coverage using market supply/demand ratio (same as Dashboard).
-  // Previously used per-agent inventory check (food >= 0.8), but that requires
-  // ~2.6 units at turn start due to spoilage, diverging from market indicators.
-  const foodDemand = latest?.market.demand.food ?? state.market.demand.food;
+  // Deflate demand by event-driven multipliers so temporary boosts don't skew coverage.
+  const eventMults = getEventDemandMultipliers(state.activeRandomEvents);
+  const rawFoodDemand = latest?.market.demand.food ?? state.market.demand.food;
   const foodSupply = latest?.market.supply.food ?? state.market.supply.food;
+  const foodDemand = rawFoodDemand / (eventMults.food ?? 1);
   const foodCoverage = foodDemand > 0.01 ? Math.min(1, foodSupply / foodDemand) : 1;
 
   const aliveCount = latest?.population ?? state.agents.filter(a => a.alive).length;

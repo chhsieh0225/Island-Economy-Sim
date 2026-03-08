@@ -75,6 +75,7 @@
   "dashboard.sdShortage": "Shortage",
   "dashboard.sdSurplus": "Surplus",
   "dashboard.sdBalanced": "Balanced",
+  "dashboard.sdEventBoost": "⬆ Event",
 
   "alert.critical.title": "Alert: Critical (Red)",
   "alert.warning.title": "Alert: Warning (Orange)",

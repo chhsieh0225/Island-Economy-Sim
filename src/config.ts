@@ -111,6 +111,9 @@ export const CONFIG = {
   // History
   MAX_HISTORY_LENGTH: 200,
 
+  // Shortage detection — supply / baseDemand below this ratio = shortage
+  SHORTAGE_THRESHOLD: 0.80,
+
   // Event pacing
   RANDOM_EVENT_PROBABILITY_MULTIPLIER: 0.5,
   RANDOM_EVENT_COOLDOWN_TURNS: 2,

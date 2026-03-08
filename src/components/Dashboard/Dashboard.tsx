@@ -1,6 +1,7 @@
 import { memo, useState } from 'react';
 import type { EconomyStage, GameState, SectorType, TurnCausalReplay } from '../../types';
 import { CONFIG } from '../../config';
+import { getEventDemandMultipliers } from '../../engine/phases/productionPhase';
 import { Tooltip } from '../Tooltip/Tooltip';
 import { DASHBOARD_TOOLTIPS } from '../../data/tooltipContent';
 import { useI18n } from '../../i18n/useI18n';
@@ -57,11 +58,15 @@ function buildSentimentAlert(state: GameState, t: (key: string) => string): Sent
   const nearLeaveRate = nearLeaveCount / alive.length;
 
   const unlockedSectors = getUnlockedSectors(state.economyStage);
+  // Deflate demand by event-driven multipliers so temporary demand spikes
+  // (e.g. festival servicesDemandBoost 1.3×) don't trigger false shortage alerts.
+  const eventMults = getEventDemandMultipliers(state.activeRandomEvents);
   const shortages = unlockedSectors.filter(sector => {
     const demand = state.market.demand[sector];
     const supply = state.market.supply[sector];
     if (demand <= 0.01) return false;
-    return supply < demand * 0.82;
+    const baseDemand = demand / (eventMults[sector] ?? 1);
+    return supply < baseDemand * CONFIG.SHORTAGE_THRESHOLD;
   });
 
   const actions: string[] = [];
@@ -249,6 +254,7 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
         const sectors = getUnlockedSectors(state.economyStage);
         const hasData = sectors.some(s => state.market.supply[s] > 0 || state.market.demand[s] > 0);
         if (!hasData) return null;
+        const sdEventMults = getEventDemandMultipliers(state.activeRandomEvents);
         return (
           <div className={styles.sdBalance}>
             <div className={styles.sdTitle}>{t('dashboard.sdBalance')}</div>
@@ -256,21 +262,27 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
               {sectors.map(sector => {
                 const supply = state.market.supply[sector];
                 const demand = state.market.demand[sector];
-                const ratio = demand > 0.01 ? supply / demand : supply > 0 ? 2 : 1;
-                const isBalanced = ratio >= 0.8 && ratio <= 1.2;
-                const isWarn = !isBalanced && ratio >= 0.5 && ratio <= 2.0;
-                const label = ratio < 0.8
+                const eventMult = sdEventMults[sector] ?? 1;
+                // Use base demand (excluding event-driven inflation) for status judgment
+                const baseDemand = demand / eventMult;
+                const baseRatio = baseDemand > 0.01 ? supply / baseDemand : supply > 0 ? 2 : 1;
+                // Display the raw ratio so players see what's actually happening in the market
+                const displayRatio = demand > 0.01 ? supply / demand : supply > 0 ? 2 : 1;
+                const isBalanced = baseRatio >= 0.8 && baseRatio <= 1.2;
+                const isWarn = !isBalanced && baseRatio >= 0.5 && baseRatio <= 2.0;
+                const label = baseRatio < 0.8
                   ? t('dashboard.sdShortage')
-                  : ratio > 1.2
+                  : baseRatio > 1.2
                     ? t('dashboard.sdSurplus')
                     : t('dashboard.sdBalanced');
                 const colorClass = isBalanced ? styles.sdGreen : isWarn ? styles.sdYellow : styles.sdRed;
-                const barPct = Math.max(4, Math.min(100, ratio * 50));
+                const barPct = Math.max(4, Math.min(100, displayRatio * 50));
+                const boostTag = eventMult > 1.01 ? ` ${t('dashboard.sdEventBoost')}` : '';
                 return (
                   <div key={sector} className={styles.sdItem}>
                     <div className={styles.sdLabel}>
                       <span>{t(`sector.${sector}`)}</span>
-                      <span className={colorClass}>{ratio.toFixed(2)} {label}</span>
+                      <span className={colorClass}>{displayRatio.toFixed(2)} {label}{boostTag}</span>
                     </div>
                     <div className={styles.sdBar}>
                       <span className={colorClass} style={{ width: `${barPct}%` }} />

@@ -799,6 +799,11 @@
   "roster.causeOfDeath.unknown": "離世",
 
   "infra.build": "建設",
+  "infra.title": "基礎建設",
+  "infra.hint": "投資國庫建設島嶼設施，完工後永久生效。",
+  "infra.operational": "運作",
+  "infra.building": "建設中",
+  "infra.turns": "{n} 回合",
 
   "errorBoundary.blockError": "此區塊發生錯誤",
   "errorBoundary.retry": "重試",

@@ -799,6 +799,11 @@
   "roster.causeOfDeath.unknown": "Deceased",
 
   "infra.build": "Build",
+  "infra.title": "Infrastructure",
+  "infra.hint": "Invest treasury to build island facilities. Effects are permanent once completed.",
+  "infra.operational": "Active",
+  "infra.building": "Building",
+  "infra.turns": "{n} turns",
 
   "errorBoundary.blockError": "An error occurred in this section",
   "errorBoundary.retry": "Retry",

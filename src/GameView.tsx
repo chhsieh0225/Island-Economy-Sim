@@ -12,6 +12,7 @@ import { SettingsDrawer } from './components/SettingsDrawer/SettingsDrawer';
 import { EventsDrawer } from './components/EventsDrawer/EventsDrawer';
 import { Dashboard } from './components/Dashboard/Dashboard';
 import { PolicyPanel } from './components/PolicyPanel/PolicyPanel';
+import { InfrastructurePanel } from './components/InfrastructurePanel/InfrastructurePanel';
 import { MapFeaturePanel } from './components/MapFeaturePanel/MapFeaturePanel';
 import { StickyControlBar } from './components/StickyControlBar/StickyControlBar';
 import { NarrativeModal } from './components/NarrativeModal/NarrativeModal';
@@ -258,23 +259,31 @@ export default function GameView() {
               <Dashboard state={gameState} />
             )}
             {activeDrawer === 'policy' && (
-              <PolicyPanel
-                turn={gameState.turn}
-                government={gameState.government}
-                statistics={gameState.statistics}
-                activeRandomEvents={gameState.activeRandomEvents}
-                pendingPolicies={gameState.pendingPolicies}
-                policyTimeline={gameState.policyTimeline}
-                onSetTaxRate={setTaxRate}
-                onSetTaxMode={setTaxMode}
-                onSetSubsidy={setSubsidy}
-                onSetWelfare={setWelfare}
-                onSetPublicWorks={setPublicWorks}
-                onSetPolicyRate={setPolicyRate}
-                onSetLiquiditySupport={setLiquiditySupport}
-                onSetStockpile={setStockpile}
-                enabledSections={isTutorial ? enabledControls : undefined}
-              />
+              <>
+                <PolicyPanel
+                  turn={gameState.turn}
+                  government={gameState.government}
+                  statistics={gameState.statistics}
+                  activeRandomEvents={gameState.activeRandomEvents}
+                  pendingPolicies={gameState.pendingPolicies}
+                  policyTimeline={gameState.policyTimeline}
+                  onSetTaxRate={setTaxRate}
+                  onSetTaxMode={setTaxMode}
+                  onSetSubsidy={setSubsidy}
+                  onSetWelfare={setWelfare}
+                  onSetPublicWorks={setPublicWorks}
+                  onSetPolicyRate={setPolicyRate}
+                  onSetLiquiditySupport={setLiquiditySupport}
+                  onSetStockpile={setStockpile}
+                  enabledSections={isTutorial ? enabledControls : undefined}
+                />
+                {!isTutorial && (
+                  <InfrastructurePanel
+                    treasury={gameState.government.treasury}
+                    infrastructure={gameState.infrastructure}
+                  />
+                )}
+              </>
             )}
             {activeDrawer === 'market' && (
               <MarketPanel market={gameState.market} terrain={gameState.terrain} />

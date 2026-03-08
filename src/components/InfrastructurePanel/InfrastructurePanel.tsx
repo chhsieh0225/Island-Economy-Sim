@@ -33,7 +33,7 @@ export const InfrastructurePanel = memo(function InfrastructurePanel({
   return (
     <div className={styles.panel}>
       <button className={styles.header} onClick={() => setCollapsed(!collapsed)}>
-        <span className={styles.headerTitle}>基礎建設 Infrastructure</span>
+        <span className={styles.headerTitle}>{t('infra.title')}</span>
         <span className={styles.headerCount}>
           {infrastructure.length > 0 && `${infrastructure.filter(i => i.buildTurnsLeft === 0).length}/${infrastructure.length}`}
         </span>
@@ -43,7 +43,7 @@ export const InfrastructurePanel = memo(function InfrastructurePanel({
       {!collapsed && (
         <div className={styles.body}>
           <div className={styles.hint}>
-            投資國庫建設島嶼設施，完工後永久生效。
+            {t('infra.hint')}
           </div>
 
           {INFRASTRUCTURE_DEFS.map(def => {
@@ -55,21 +55,21 @@ export const InfrastructurePanel = memo(function InfrastructurePanel({
             return (
               <div key={def.type} className={styles.item}>
                 <div className={styles.itemHeader}>
-                  <span className={styles.itemName}>{def.label} {def.labelEn}</span>
+                  <span className={styles.itemName}>{t(`infra.${def.type}`)}</span>
                   <span className={styles.itemCount}>
                     {active > 0 && (
                       <>
-                        {operational > 0 && <span className={styles.opBadge}>{operational} 運作</span>}
-                        {building > 0 && <span className={styles.buildBadge}>{building} 建設中</span>}
+                        {operational > 0 && <span className={styles.opBadge}>{operational} {t('infra.operational')}</span>}
+                        {building > 0 && <span className={styles.buildBadge}>{building} {t('infra.building')}</span>}
                       </>
                     )}
                     <span className={styles.maxLabel}>{active}/{def.maxCount}</span>
                   </span>
                 </div>
-                <div className={styles.itemDesc}>{def.description}</div>
+                <div className={styles.itemDesc}>{t(`infra.${def.type}.desc`)}</div>
                 <div className={styles.itemFooter}>
                   <span className={styles.cost}>$ {def.cost}</span>
-                  <span className={styles.buildTime}>{def.buildTurns} 回合</span>
+                  <span className={styles.buildTime}>{t('infra.turns').replace('{n}', String(def.buildTurns))}</span>
                   <button
                     className={styles.buildBtn}
                     disabled={!check.ok}

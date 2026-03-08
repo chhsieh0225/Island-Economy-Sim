@@ -49,6 +49,11 @@ export class Statistics {
     const laborProductivity = employed > 0 ? gdp / employed : 0;
     const dependencyRatio = (children + seniors) / Math.max(1, primeWorkingAge);
 
+    // Money supply = all alive agents' liquid assets + government treasury
+    const moneySupply = Math.round(
+      (alive.reduce((s, a) => s + a.money + a.savings, 0) + government.treasury) * 100,
+    ) / 100;
+
     const snapshot: TurnSnapshot = {
       turn,
       population,
@@ -75,6 +80,7 @@ export class Statistics {
       fertilityRate: Math.round(fertilityRate * 1000) / 1000,
       laborProductivity: Math.round(laborProductivity * 100) / 100,
       dependencyRatio: Math.round(dependencyRatio * 1000) / 1000,
+      moneySupply,
       causalReplay: causalReplay ?? {
         satisfaction: {
           net: 0,
@@ -92,6 +98,7 @@ export class Statistics {
           drivers: [{ id: 'flat', label: te('engine.causal.noDeparture'), value: 0 }],
         },
         policy: {
+          fiscalInjection: 0,
           taxCollected: 0,
           welfarePaid: 0,
           welfareRecipients: 0,

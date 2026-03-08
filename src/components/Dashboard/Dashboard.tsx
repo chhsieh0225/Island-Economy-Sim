@@ -221,6 +221,7 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
   const fertilityRate = latest?.fertilityRate ?? 0;
   const laborProductivity = latest?.laborProductivity ?? 0;
   const dependencyRatio = latest?.dependencyRatio ?? 0;
+  const moneySupply = latest?.moneySupply ?? 0;
   const causal = latest?.causalReplay ?? null;
   const alert = buildSentimentAlert(state, t);
   const objectives = buildObjectives(state, t);
@@ -536,6 +537,15 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
           <div className={styles.stat}>
             <span className={styles.label}>{t('dashboard.bank')}</span>
             <div className={styles.value}>${totalSavings.toFixed(0)}</div>
+          </div>
+          <div className={styles.stat}>
+            <Tooltip content={t('tooltip.moneySupply')} detail="">
+              <span className={styles.label}>{t('dashboard.moneySupply')}</span>
+            </Tooltip>
+            <div className={styles.value}>
+              ${moneySupply.toFixed(0)}
+              {prev && trend(moneySupply, prev.moneySupply)}
+            </div>
           </div>
           <div className={styles.stat}>
             <Tooltip content={DASHBOARD_TOOLTIPS.avgAge.content} detail={DASHBOARD_TOOLTIPS.avgAge.detail}>

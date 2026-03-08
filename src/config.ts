@@ -73,6 +73,7 @@ export const CONFIG = {
   LEAVE_MAX_SHARE_PER_TURN: 0.12,
 
   // Government
+  FISCAL_INJECTION_PER_CAPITA: 1.5,  // new money created per capita per turn (simplified money creation)
   DEFAULT_TAX_RATE: 0.10,
   MAX_TAX_RATE: 0.50,
   POLICY_DELAY_TURNS: 1,
@@ -130,6 +131,7 @@ export const CONFIG = {
   } as Record<string, number>,
 
   // Demographics
+  NEWBORN_INITIAL_MONEY: 10,  // newborns start with far less than initial adults (family support fills the gap)
   BIRTH_BASE_PROBABILITY: 0.08,
   BIRTH_CAPACITY_FACTOR: 200,
   /** Average satisfaction that gives a 1× fertility multiplier; below → penalty, above → bonus */

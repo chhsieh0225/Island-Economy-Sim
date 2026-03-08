@@ -17,6 +17,7 @@ interface GovernmentPhaseSummary {
   policyRate: number;
   treasuryDelta: number;
   perCapitaCashDelta: number;
+  fiscalInjection: number;
 }
 
 export interface BuildTurnCausalReplayInput {
@@ -65,6 +66,7 @@ export function buildZeroCausalReplay(): TurnCausalReplay {
       drivers: [{ id: 'flat', label: te('engine.causal.noDeparture'), value: 0 }],
     },
     policy: {
+      fiscalInjection: 0,
       taxCollected: 0,
       welfarePaid: 0,
       welfareRecipients: 0,
@@ -189,6 +191,7 @@ export function buildTurnCausalReplay({
       ]),
     },
     policy: {
+      fiscalInjection: roundMetric(governmentSummary.fiscalInjection),
       taxCollected: roundMetric(governmentSummary.taxCollected),
       welfarePaid: roundMetric(governmentSummary.welfareSpent),
       welfareRecipients: governmentSummary.welfareRecipients,

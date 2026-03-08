@@ -3,6 +3,7 @@ import type { ConsumptionPhaseSummary } from '../phases/consumptionPhase';
 import type { DemographyPhaseSummary } from '../phases/demographyPhase';
 
 export interface TurnGovernmentSummary {
+  fiscalInjection: number;
   taxCollected: number;
   welfareSpent: number;
   welfareRecipients: number;

@@ -17,6 +17,18 @@ export function runGovernmentPhase(input: GovernmentPhaseInput): TurnGovernmentS
   const aliveCount = agents.filter(a => a.alive).length;
   const treasuryStart = government.treasury;
 
+  // ── Fiscal injection (money creation) ──────────────────────────────────
+  // Simplified monetary expansion: government creates new money each turn,
+  // proportional to population. This is the primary money-creation channel.
+  const fiscalInjection = aliveCount * CONFIG.FISCAL_INJECTION_PER_CAPITA;
+  if (fiscalInjection > 0) {
+    government.treasury += fiscalInjection;
+    addEvent('info', te('engine.fiscalInjection', {
+      amount: fiscalInjection.toFixed(0),
+      perCapita: CONFIG.FISCAL_INJECTION_PER_CAPITA.toFixed(1),
+    }));
+  }
+
   const rate = government.taxRate;
   const prevTreasuryTax = government.treasury;
   const taxCollected = government.collectTaxes(agents);
@@ -84,7 +96,7 @@ export function runGovernmentPhase(input: GovernmentPhaseInput): TurnGovernmentS
   // Isolate stockpileChange by subtracting all known fiscal operations:
   const treasuryAfterGov = government.treasury;
   const treasuryChangeFromMarket = treasuryAfterGov - stockpileTreasurySnapshot
-    - taxCollected + welfareSpent + publicWorksSpent + liquidityInjected + autoStabilizerSpent;
+    - fiscalInjection - taxCollected + welfareSpent + publicWorksSpent + liquidityInjected + autoStabilizerSpent;
   // If negative, government spent money buying; if positive, government earned from selling
   const stockpileBuySpent = Math.max(0, -treasuryChangeFromMarket);
   const stockpileSellRevenue = Math.max(0, treasuryChangeFromMarket);
@@ -107,6 +119,7 @@ export function runGovernmentPhase(input: GovernmentPhaseInput): TurnGovernmentS
     ? (welfareSpent + liquidityInjected + autoStabilizerSpent - taxCollected) / aliveCount
     : 0;
   return {
+    fiscalInjection,
     taxCollected,
     welfareSpent,
     welfareRecipients,

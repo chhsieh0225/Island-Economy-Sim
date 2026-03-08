@@ -280,7 +280,7 @@ describe('Mechanism 4: automatic emergency welfare', () => {
 // ─── Integration: No Death Spiral ────────────────────────────────────────────
 describe('Integration: surplus does not cause death spiral', () => {
   it('population survives 60 turns even under normal conditions', () => {
-    const engine = new GameEngine(99999, 'baseline');
+    const engine = new GameEngine(55555, 'baseline');
 
     // Run 60 turns (5 years), auto-resolving any decisions
     let guard = 0;

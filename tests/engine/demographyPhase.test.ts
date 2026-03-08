@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { runAgingPhase, runLifeDeathPhase } from '../../src/engine/phases/demographyPhase';
 import { Agent } from '../../src/engine/Agent';
+import { Government } from '../../src/engine/Government';
 import { RNG } from '../../src/engine/RNG';
 import { CONFIG } from '../../src/config';
 import type { GameEvent } from '../../src/types';
@@ -77,6 +78,7 @@ describe('demographyPhase', () => {
         agents: [oldAgent],
         allAgents: [oldAgent],
         rng,
+        government: new Government(),
         createNewAgent: () => createAgent(99, new RNG(1)),
         addEvent: (_type, msg) => events.push(msg),
       });
@@ -97,6 +99,7 @@ describe('demographyPhase', () => {
         agents: [sickAgent],
         allAgents: [sickAgent],
         rng,
+        government: new Government(),
         createNewAgent: () => createAgent(99, new RNG(1)),
         addEvent: (_type, msg) => events.push(msg),
       });
@@ -120,6 +123,7 @@ describe('demographyPhase', () => {
         agents,
         allAgents: agents,
         rng,
+        government: new Government(),
         createNewAgent: () => createAgent(99, new RNG(1)),
         addEvent: (_type, msg) => events.push(msg),
       });
@@ -160,6 +164,7 @@ describe('demographyPhase', () => {
           agents: trialAgents,
           allAgents: trialAgents,
           rng: new RNG(trial),
+          government: new Government(),
           createNewAgent: () => createAgent(newId++, new RNG(newId)),
           addEvent: (_type, msg) => events.push(msg),
         });
@@ -184,6 +189,7 @@ describe('demographyPhase', () => {
         agents: allAgents,
         allAgents: allAgents,
         rng,
+        government: new Government(),
         createNewAgent: () => createAgent(newId++, new RNG(newId)),
         addEvent: (_type, msg) => events.push(msg),
       });
@@ -201,6 +207,7 @@ describe('demographyPhase', () => {
         agents,
         allAgents: agents,
         rng,
+        government: new Government(),
         createNewAgent: () => createAgent(99, new RNG(1)),
         addEvent: (_type, msg) => events.push(msg),
       });

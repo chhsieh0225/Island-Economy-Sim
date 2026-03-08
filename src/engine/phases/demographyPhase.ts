@@ -1,6 +1,7 @@
 import { CONFIG } from '../../config';
 import type { GameEvent } from '../../types';
 import type { Agent } from '../Agent';
+import type { Government } from '../Government';
 import type { RNG } from '../RNG';
 import { te } from '../engineI18n';
 
@@ -9,6 +10,7 @@ interface LifeDeathPhaseInput {
   agents: Agent[];
   allAgents: Agent[];
   rng: RNG;
+  government: Government;
   createNewAgent: (familyId?: number, ageTurns?: number, bornOnIsland?: boolean) => Agent;
   addEvent: (type: GameEvent['type'], message: string) => void;
 }
@@ -27,6 +29,9 @@ export interface DemographyPhaseSummary {
     health: number;
     left: number;
   };
+  inheritedByFamily: number;
+  inheritedByGovernment: number;
+  capitalOutflow: number;
 }
 
 export function runAgingPhase({ turn, agents, addEvent }: AgingPhaseInput): void {
@@ -40,17 +45,65 @@ export function runAgingPhase({ turn, agents, addEvent }: AgingPhaseInput): void
   }
 }
 
+/**
+ * Distribute the estate of a deceased or departed agent.
+ * - Death (age/health): money+savings go to surviving family members;
+ *   if no family exists, the estate reverts to the government treasury.
+ * - Left: the agent takes their wealth with them (capital outflow — money is destroyed).
+ */
+function distributeEstate(
+  agent: Agent,
+  allAgents: Agent[],
+  government: Government,
+  addEvent: (type: GameEvent['type'], message: string) => void,
+): { inheritedByFamily: number; inheritedByGovernment: number; capitalOutflow: number } {
+  const estate = agent.money + agent.savings;
+  agent.money = 0;
+  agent.savings = 0;
+  if (estate < 0.01) return { inheritedByFamily: 0, inheritedByGovernment: 0, capitalOutflow: 0 };
+
+  if (agent.causeOfDeath === 'left') {
+    // Capital outflow: agent takes wealth out of the system
+    addEvent('info', te('engine.capitalOutflow', { name: agent.name, amount: estate.toFixed(0) }));
+    return { inheritedByFamily: 0, inheritedByGovernment: 0, capitalOutflow: estate };
+  }
+
+  // Death: try family inheritance first
+  const familyMembers = allAgents.filter(
+    a => a.alive && a.id !== agent.id && a.familyId === agent.familyId,
+  );
+
+  if (familyMembers.length > 0) {
+    const share = estate / familyMembers.length;
+    for (const member of familyMembers) {
+      member.receiveMoney(share);
+    }
+    addEvent('info', te('engine.estateFamily', { name: agent.name, amount: estate.toFixed(0) }));
+    return { inheritedByFamily: estate, inheritedByGovernment: 0, capitalOutflow: 0 };
+  }
+
+  // No surviving family: estate reverts to government
+  government.treasury += estate;
+  addEvent('info', te('engine.estateGovernment', { name: agent.name, amount: estate.toFixed(0) }));
+  return { inheritedByFamily: 0, inheritedByGovernment: estate, capitalOutflow: 0 };
+}
+
 export function runLifeDeathPhase({
   turn,
   agents,
   allAgents,
   rng,
+  government,
   createNewAgent,
   addEvent,
 }: LifeDeathPhaseInput): DemographyPhaseSummary {
   let deaths = 0;
   const deathByCause = { age: 0, health: 0, left: 0 };
   const leaveCandidates: Agent[] = [];
+  let inheritedByFamily = 0;
+  let inheritedByGovernment = 0;
+  let capitalOutflow = 0;
+  const deceased: Agent[] = [];
 
   for (const agent of agents) {
     if (!agent.alive) continue;
@@ -61,6 +114,7 @@ export function runLifeDeathPhase({
       agent.addLifeEvent(turn, 'death', te('event.death.age.life', { age: Math.floor(agent.age / 12) }), 'warning');
       deaths++;
       deathByCause.age++;
+      deceased.push(agent);
       addEvent('warning', te('event.death.age', { name: agent.name, age: Math.floor(agent.age / 12) }));
     } else if (agent.isDead) {
       agent.alive = false;
@@ -68,6 +122,7 @@ export function runLifeDeathPhase({
       agent.addLifeEvent(turn, 'death', te('event.death.health.life'), 'critical');
       deaths++;
       deathByCause.health++;
+      deceased.push(agent);
       addEvent('critical', te('event.death.health', { name: agent.name }));
     } else if (agent.age >= CONFIG.WORKING_AGE && agent.shouldLeave) {
       leaveCandidates.push(agent);
@@ -97,12 +152,21 @@ export function runLifeDeathPhase({
       deaths++;
       deathByCause.left++;
       leftThisTurn++;
+      deceased.push(agent);
       addEvent('warning', te('event.leave', { name: agent.name }));
     }
 
     if (leaveCandidates.length > leaveCap && leftThisTurn >= leaveCap) {
       addEvent('warning', te('event.migrationWaveLimited'));
     }
+  }
+
+  // Distribute estates of all deceased/departed agents
+  for (const agent of deceased) {
+    const result = distributeEstate(agent, allAgents, government, addEvent);
+    inheritedByFamily += result.inheritedByFamily;
+    inheritedByGovernment += result.inheritedByGovernment;
+    capitalOutflow += result.capitalOutflow;
   }
 
   const aliveAgents = allAgents.filter(a => a.alive);
@@ -145,5 +209,5 @@ export function runLifeDeathPhase({
     }
   }
 
-  return { births, deaths, deathByCause };
+  return { births, deaths, deathByCause, inheritedByFamily, inheritedByGovernment, capitalOutflow };
 }

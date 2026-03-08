@@ -48,7 +48,7 @@ describe('deterministicRegression', () => {
       totals.deaths,
     ].join('|');
 
-    expect(signature).toBe('18|industrial|102|88.5|96.8|0.040|1.84|2|0');
+    expect(signature).toBe('18|industrial|102|88.3|96.8|0.049|2702.98|2|0');
   });
 
   it('progressive economy unlocks industrial stage under baseline seed', () => {
@@ -66,7 +66,8 @@ describe('deterministicRegression', () => {
 
     for (const snap of history) {
       const replay = snap.causalReplay.policy;
-      const expectedTreasuryDelta = replay.taxCollected
+      const expectedTreasuryDelta = replay.fiscalInjection
+        + replay.taxCollected
         - replay.welfarePaid
         - replay.publicWorksCost
         - replay.liquidityInjected

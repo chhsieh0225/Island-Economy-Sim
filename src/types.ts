@@ -103,6 +103,7 @@ export interface TurnSnapshot {
   fertilityRate: number; // annual births per reproductive-age woman
   laborProductivity: number; // GDP per employed worker
   dependencyRatio: number; // (children + seniors) / working-age population
+  moneySupply: number; // total circulating money: Σ(alive: money+savings) + government treasury
   causalReplay: TurnCausalReplay;
 }
 
@@ -126,6 +127,7 @@ export interface TurnCausalReplay {
 }
 
 export interface PolicyExecutionReplay {
+  fiscalInjection: number;         // new money created per turn (government money creation)
   taxCollected: number;
   welfarePaid: number;
   welfareRecipients: number;
@@ -137,7 +139,7 @@ export interface PolicyExecutionReplay {
   stockpileMaintenance: number;    // storage maintenance cost
   policyRate: number;
   perCapitaCashDelta: number; // (welfare + liquidity + autoStabilizer - tax) / population
-  treasuryDelta: number; // tax - welfare - public works - liquidity - autoStabilizer - stockpile
+  treasuryDelta: number; // fiscalInjection + tax - welfare - publicWorks - liquidity - autoStabilizer - stockpile
 }
 
 export interface GameEvent {

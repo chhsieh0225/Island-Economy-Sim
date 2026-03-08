@@ -33,6 +33,7 @@
   "dashboard.birthRate": "出生率",
   "dashboard.laborProductivity": "勞動生產率",
   "dashboard.dependency": "扶養比",
+  "dashboard.moneySupply": "貨幣供給",
   "dashboard.advancedShow": "展開進階指標",
   "dashboard.advancedHide": "收起進階指標",
   "dashboard.ageSuffix": "歲",
@@ -493,6 +494,10 @@
   "engine.liquidityBroke": "流動性支持啟用中，但國庫不足，無法注入現金。",
   "engine.autoStabilizer": "📋 自動穩定機制啟動 → {count} 人獲緊急補助 ${amount}",
   "engine.stockpileBuy": "📋 戰略儲備收購 → 支出 ${amount}",
+  "engine.fiscalInjection": "📋 財政注入 ${amount}（人均 {perCapita}）",
+  "engine.estateFamily": "{name} 的遺產 ${amount} 由家族繼承",
+  "engine.estateGovernment": "{name} 的遺產 ${amount} 歸入國庫",
+  "engine.capitalOutflow": "{name} 離島帶走財富 ${amount}",
   "engine.stockpileSell": "📋 戰略儲備釋出 → 收入 ${amount}",
   "engine.jobSwitch": "從{from}轉職到{to}。",
   "engine.jobSwitchLog": "{name} 從{from}轉職到{to}。",
@@ -808,6 +813,8 @@
   "streak.negative": "衰退連跌",
 
   "notification.policyChange": "政策調整",
+
+  "tooltip.moneySupply": "經濟體中流通的總貨幣量：全體居民現金 + 存款 + 國庫。",
 
   "error.appCrash": "應用程式發生嚴重錯誤",
   "loading.game": "載入遊戲中…"

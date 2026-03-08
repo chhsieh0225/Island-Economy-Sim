@@ -33,6 +33,7 @@
   "dashboard.birthRate": "Birth Rate",
   "dashboard.laborProductivity": "GDP/Worker",
   "dashboard.dependency": "Dependency Ratio",
+  "dashboard.moneySupply": "Money Supply",
   "dashboard.advancedShow": "Show Advanced",
   "dashboard.advancedHide": "Hide Advanced",
   "dashboard.ageSuffix": "yrs",
@@ -493,6 +494,10 @@
   "engine.liquidityBroke": "Liquidity support is active but treasury insufficient for cash injection.",
   "engine.autoStabilizer": "📋 Auto-stabilizer → {count} people received emergency aid ${amount}",
   "engine.stockpileBuy": "📋 Strategic reserve purchase → spent ${amount}",
+  "engine.fiscalInjection": "📋 Fiscal injection ${amount} ({perCapita}/capita)",
+  "engine.estateFamily": "{name}'s estate ${amount} inherited by family",
+  "engine.estateGovernment": "{name}'s estate ${amount} reverted to treasury",
+  "engine.capitalOutflow": "{name} left the island, taking ${amount} in capital",
   "engine.stockpileSell": "📋 Strategic reserve release → earned ${amount}",
   "engine.jobSwitch": "Switched from {from} to {to}.",
   "engine.jobSwitchLog": "{name} switched from {from} to {to}.",
@@ -808,6 +813,8 @@
   "streak.negative": "Decline streak",
 
   "notification.policyChange": "Policy Change",
+
+  "tooltip.moneySupply": "Total money circulating in the economy: all residents' cash + savings + government treasury.",
 
   "error.appCrash": "A critical error occurred",
   "loading.game": "Loading game…"

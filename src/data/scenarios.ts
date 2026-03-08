@@ -9,7 +9,7 @@ export const SCENARIOS: ScenarioDef[] = [
     nameEn: 'Baseline',
     description: '平衡開局，適合觀察政策與市場互動。',
     descriptionEn: 'A balanced start, ideal for observing how policies and markets interact.',
-    initialTreasury: 0,
+    initialTreasury: 500,
     openingNarrative: {
       title: '歡迎來到小島',
       titleEn: 'Welcome to the Island',
@@ -31,7 +31,7 @@ export const SCENARIOS: ScenarioDef[] = [
     nameEn: 'Inflation Crisis',
     description: '物價偏高、國庫吃緊，先穩定民生再談成長。',
     descriptionEn: 'Prices are high and the treasury is tight. Stabilize living costs before pursuing growth.',
-    initialTreasury: 120,
+    initialTreasury: 600,
     initialTaxRate: 0.08,
     priceMultiplier: { food: 1.6, goods: 1.5, services: 1.4 },
     openingNarrative: {
@@ -55,7 +55,7 @@ export const SCENARIOS: ScenarioDef[] = [
     nameEn: 'Inequality Trap',
     description: '少數富裕、多數拮据，考驗再分配策略。',
     descriptionEn: 'A wealthy few and a struggling majority — a test of redistribution strategy.',
-    initialTreasury: 260,
+    initialTreasury: 400,
     wealthSkew: {
       topPercent: 0.18,
       topMultiplier: 3.2,
@@ -82,7 +82,7 @@ export const SCENARIOS: ScenarioDef[] = [
     nameEn: 'Aging Society',
     description: '起始人口年齡偏高，健康與勞動供給更脆弱。',
     descriptionEn: 'The population starts older, making health and labor supply more fragile.',
-    initialTreasury: 200,
+    initialTreasury: 500,
     initialTaxRate: 0.12,
     enableWelfare: true,
     ageShiftTurns: 180,

@@ -454,6 +454,7 @@ export class GameEngine {
       agents,
       allAgents: this.agents,
       rng: this.rng,
+      government: this.government,
       createNewAgent: (familyId, ageTurns, bornOnIsland) => this.createNewAgent(familyId, ageTurns, bornOnIsland),
       addEvent: (type, message) => this.addEvent(type, message),
     });
@@ -484,6 +485,7 @@ export class GameEngine {
       getEconomicCalibration: () => this.getEconomicCalibration(),
     });
     if (bornOnIsland) {
+      agent.money = CONFIG.NEWBORN_INITIAL_MONEY;
       agent.addLifeEvent(this.turn, 'join', te('engine.born', { age: Math.floor(ageTurns / 12) }), 'positive');
     } else {
       agent.addLifeEvent(this.turn, 'join', te('engine.join', { sector: teSector(sector) }), 'positive');

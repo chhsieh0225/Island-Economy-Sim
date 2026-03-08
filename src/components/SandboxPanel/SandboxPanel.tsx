@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from 'react';
+import { memo, useState, useCallback, useEffect } from 'react';
 import { CONFIG } from '../../config';
 import styles from './SandboxPanel.module.css';
 
@@ -100,6 +100,11 @@ interface Props {
 export const SandboxPanel = memo(function SandboxPanel({ enabled, onToggle }: Props) {
   const [state, setState] = useState<SandboxState>({ ...DEFAULTS });
   const [collapsed, setCollapsed] = useState(true);
+
+  // Reset CONFIG to defaults when component unmounts (e.g. navigating away)
+  useEffect(() => {
+    return () => resetConfig();
+  }, []);
 
   const update = useCallback(<K extends keyof SandboxState>(key: K, value: SandboxState[K]) => {
     setState(prev => {

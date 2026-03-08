@@ -613,6 +613,7 @@
   "toast.liquidity.off": "流動性支援已停用",
   "toast.stockpile.on": "戰略儲備已啟用",
   "toast.stockpile.off": "戰略儲備已停用",
+  "toast.infra.built": "開始建造 {name}",
 
   "polRec.satDrop.tax": "觀察窗內民心或人口轉弱，先小幅降稅舒緩需求壓力。",
   "polRec.satDrop.subsidy": "觀察窗內民生變差，先提高該產業補貼，補供給缺口。",
@@ -811,6 +812,23 @@
 
   "streak.positive": "成長連勝",
   "streak.negative": "衰退連跌",
+  "streak.title": "{emoji} {count} 回合{label}！",
+  "streak.msg.pos.3": "經濟穩健成長中，持續保持！",
+  "streak.msg.pos.5": "小島欣欣向榮，施政有方！",
+  "streak.msg.pos.10": "十連勝！你是天才島主！",
+  "streak.msg.pos.15": "勢不可擋！經濟奇蹟！",
+  "streak.msg.pos.20": "傳奇島主！二十連勝！",
+  "streak.msg.pos.30": "史詩級治理！三十連勝！",
+  "streak.msg.pos.50": "不可思議！五十連勝！",
+  "streak.msg.pos.default": "持續穩定！",
+  "streak.msg.neg.3": "連續衰退中，考慮調整政策。",
+  "streak.msg.neg.5": "經濟持續惡化，需要果斷介入。",
+  "streak.msg.neg.10": "十連跌⋯島民怨聲載道。",
+  "streak.msg.neg.15": "長期低迷，考慮大幅改革。",
+  "streak.msg.neg.20": "二十連跌⋯這座島還有救嗎？",
+  "streak.msg.neg.30": "三十連跌⋯歷史的教訓。",
+  "streak.msg.neg.50": "五十連跌⋯令人心碎。",
+  "streak.msg.neg.default": "持續低迷。",
 
   "notification.policyChange": "政策調整",
 

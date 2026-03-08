@@ -280,8 +280,10 @@ export function runRandomEventsPhase({
     }
   }
 
+  // Apply price modifier only once when event first fires (turnsRemaining === duration
+  // means the event was just pushed this turn and hasn't been decremented yet).
   for (const event of nextActiveEvents) {
-    if (event.def.effects.priceModifier) {
+    if (event.def.effects.priceModifier && event.turnsRemaining === event.def.duration) {
       for (const [sector, mod] of Object.entries(event.def.effects.priceModifier)) {
         market.prices[sector as SectorType] *= mod;
       }

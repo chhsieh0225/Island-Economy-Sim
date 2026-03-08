@@ -625,11 +625,11 @@ export class GameEngine {
     if (record.agentId !== undefined) {
       const target = this.agents.find(a => a.id === record.agentId);
       if (target) {
-        target.addLifeEvent(record.turn, 'achievement', `${record.title}：${record.description}`, 'positive');
+        target.addLifeEvent(record.turn, 'achievement', `${record.title} — ${record.description}`, 'positive');
       }
     }
     // Keep a brief log entry for timeline context, but detailed browsing goes to milestone panel.
-    this.addEvent('positive', `🏅 ${record.title}：${record.description}`);
+    this.addEvent('positive', `${record.title} — ${record.description}`);
     this.markStateDirty('milestones', 'agents');
   }
 

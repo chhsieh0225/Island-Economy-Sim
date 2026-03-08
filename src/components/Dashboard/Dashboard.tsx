@@ -1,7 +1,8 @@
 import { memo, useState } from 'react';
-import type { EconomyStage, GameState, SectorType, TurnCausalReplay } from '../../types';
+import type { GameState, TurnCausalReplay } from '../../types';
 import { CONFIG } from '../../config';
 import { getEventDemandMultipliers } from '../../engine/phases/productionPhase';
+import { getUnlockedSectorsForStage } from '../../engine/modules/progressionModule';
 import { Tooltip } from '../Tooltip/Tooltip';
 import { DASHBOARD_TOOLTIPS } from '../../data/tooltipContent';
 import { useI18n } from '../../i18n/useI18n';
@@ -29,17 +30,6 @@ interface GovernorObjective {
   done: boolean;
 }
 
-function getUnlockedSectors(stage: EconomyStage): SectorType[] {
-  switch (stage) {
-    case 'agriculture':
-      return ['food'];
-    case 'industrial':
-      return ['food', 'goods'];
-    case 'service':
-      return ['food', 'goods', 'services'];
-  }
-}
-
 function buildSentimentAlert(state: GameState, t: (key: string) => string): SentimentAlert | null {
   const alive = state.agents.filter(a => a.alive);
   if (alive.length === 0) return null;
@@ -57,7 +47,7 @@ function buildSentimentAlert(state: GameState, t: (key: string) => string): Sent
   const lowSatRate = lowSatCount / alive.length;
   const nearLeaveRate = nearLeaveCount / alive.length;
 
-  const unlockedSectors = getUnlockedSectors(state.economyStage);
+  const unlockedSectors = getUnlockedSectorsForStage(state.economyStage);
   // Deflate demand by event-driven multipliers so temporary demand spikes
   // (e.g. festival servicesDemandBoost 1.3×) don't trigger false shortage alerts.
   const eventMults = getEventDemandMultipliers(state.activeRandomEvents);
@@ -252,7 +242,7 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
       )}
 
       {(() => {
-        const sectors = getUnlockedSectors(state.economyStage);
+        const sectors = getUnlockedSectorsForStage(state.economyStage);
         const hasData = sectors.some(s => state.market.supply[s] > 0 || state.market.demand[s] > 0);
         if (!hasData) return null;
         const sdEventMults = getEventDemandMultipliers(state.activeRandomEvents);

@@ -613,6 +613,7 @@
   "toast.liquidity.off": "Liquidity support disabled",
   "toast.stockpile.on": "Strategic reserve enabled",
   "toast.stockpile.off": "Strategic reserve disabled",
+  "toast.infra.built": "{name} construction started",
 
   "polRec.satDrop.tax": "Sentiment or population weakened during observation. A small tax cut may ease demand pressure.",
   "polRec.satDrop.subsidy": "Living conditions worsened. Raising this sector's subsidy can close the supply gap.",
@@ -811,6 +812,23 @@
 
   "streak.positive": "Growth streak",
   "streak.negative": "Decline streak",
+  "streak.title": "{emoji} {count}-turn {label}!",
+  "streak.msg.pos.3": "Steady economic growth — keep it up!",
+  "streak.msg.pos.5": "The island is thriving — great governance!",
+  "streak.msg.pos.10": "10-turn streak! You're a genius governor!",
+  "streak.msg.pos.15": "Unstoppable! An economic miracle!",
+  "streak.msg.pos.20": "Legendary governor! 20-turn streak!",
+  "streak.msg.pos.30": "Epic governance! 30-turn streak!",
+  "streak.msg.pos.50": "Unbelievable! 50-turn streak!",
+  "streak.msg.pos.default": "Holding steady!",
+  "streak.msg.neg.3": "Consecutive decline — consider policy adjustments.",
+  "streak.msg.neg.5": "Economy worsening — decisive action needed.",
+  "streak.msg.neg.10": "10-turn decline… residents are unhappy.",
+  "streak.msg.neg.15": "Prolonged slump — consider major reforms.",
+  "streak.msg.neg.20": "20-turn decline… is there hope for the island?",
+  "streak.msg.neg.30": "30-turn decline… a lesson for history.",
+  "streak.msg.neg.50": "50-turn decline… heartbreaking.",
+  "streak.msg.neg.default": "Continued slump.",
 
   "notification.policyChange": "Policy Change",
 

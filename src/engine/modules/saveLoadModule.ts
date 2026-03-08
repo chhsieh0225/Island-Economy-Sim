@@ -48,12 +48,26 @@ export function saveGame(data: SaveData): boolean {
   }
 }
 
+function isValidSaveData(data: unknown): data is SaveData {
+  if (typeof data !== 'object' || data === null) return false;
+  const d = data as Record<string, unknown>;
+  return (
+    d.version === SAVE_VERSION &&
+    typeof d.seed === 'number' &&
+    typeof d.scenarioId === 'string' &&
+    typeof d.turns === 'number' &&
+    typeof d.calibrationProfileId === 'string' &&
+    Array.isArray(d.policyLog) &&
+    typeof d.timestamp === 'string'
+  );
+}
+
 export function loadGame(): SaveData | null {
   try {
     const raw = window.localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as SaveData;
-    if (parsed.version !== SAVE_VERSION) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (!isValidSaveData(parsed)) return null;
     return parsed;
   } catch {
     return null;

@@ -166,18 +166,11 @@ function pushStreakMilestoneToast(milestone: StreakMilestone): void {
   const isPositive = milestone.type === 'positive';
   const emoji = isPositive ? '🔥' : '❄️';
   const label = isPositive ? te('streak.positive') : te('streak.negative');
-  const title = `${emoji} ${milestone.count} 回合${label}！`;
-  const messages: Record<number, [string, string]> = {
-    3:  ['經濟穩健成長中，持續保持！', '連續衰退中，考慮調整政策。'],
-    5:  ['小島欣欣向榮，施政有方！', '經濟持續惡化，需要果斷介入。'],
-    10: ['十連勝！你是天才島主 🏝️', '十連跌⋯島民怨聲載道。'],
-    15: ['勢不可擋！經濟奇蹟！✨', '長期低迷，考慮大幅改革。'],
-    20: ['傳奇島主！二十連勝！🎖️', '二十連跌⋯這座島還有救嗎？'],
-    30: ['史詩級治理！三十連勝！👑', '三十連跌⋯歷史的教訓。'],
-    50: ['不可思議！五十連勝！🌟', '五十連跌⋯令人心碎。'],
-  };
-  const [posMsg, negMsg] = messages[milestone.count] ?? ['持續穩定！', '持續低迷。'];
-  const message = isPositive ? posMsg : negMsg;
+  const title = te('streak.title', { emoji, count: milestone.count, label });
+  const key = `streak.msg.${isPositive ? 'pos' : 'neg'}.${milestone.count}`;
+  const fallbackKey = isPositive ? 'streak.msg.pos.default' : 'streak.msg.neg.default';
+  const raw = te(key);
+  const message = raw === key ? te(fallbackKey) : raw;
 
   useNotificationStore.getState().pushMilestoneToasts([{
     id: `streak-${milestone.type}-${milestone.count}`,
@@ -219,6 +212,7 @@ function applyPolicyAction(eng: GameEngine, action: PolicyAction): void {
     case 'publicWorks': eng.setPublicWorks(action.active); break;
     case 'policyRate': eng.setPolicyRate(action.value); break;
     case 'liquiditySupport': eng.setLiquiditySupport(action.active); break;
+    case 'stockpile': eng.setStockpile(action.enabled); break;
     case 'decision': eng.resolveDecision(action.choiceId); break;
   }
 }
@@ -428,7 +422,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const ok = engine.requestBuildInfrastructure(type);
     if (ok) {
       playSound('policy_set');
-      useNotificationStore.getState().pushPolicyToast(te('toast.publicWorks.on'));
+      useNotificationStore.getState().pushPolicyToast(te('toast.infra.built', { name: te(`infra.${type}`) }));
       set({ gameState: syncState(get().gameState) });
     }
     return ok;

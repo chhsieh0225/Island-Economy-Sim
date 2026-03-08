@@ -47,11 +47,13 @@ export interface CounterfactualResult {
 function applyPolicyAction(eng: GameEngine, action: PolicyAction): void {
   switch (action.type) {
     case 'taxRate': eng.setTaxRate(action.value); break;
+    case 'taxMode': eng.setTaxMode(action.mode); break;
     case 'subsidy': eng.setSubsidy(action.sector as SectorType, action.value); break;
     case 'welfare': eng.setWelfare(action.enabled); break;
     case 'publicWorks': eng.setPublicWorks(action.active); break;
     case 'policyRate': eng.setPolicyRate(action.value); break;
     case 'liquiditySupport': eng.setLiquiditySupport(action.active); break;
+    case 'stockpile': eng.setStockpile(action.enabled); break;
     case 'decision': eng.resolveDecision(action.choiceId); break;
   }
 }
@@ -60,11 +62,13 @@ function actionsMatch(a: PolicyAction, b: PolicyAction): boolean {
   if (a.type !== b.type) return false;
   switch (a.type) {
     case 'taxRate': return a.value === (b as typeof a).value;
+    case 'taxMode': return a.mode === (b as typeof a).mode;
     case 'subsidy': return a.sector === (b as typeof a).sector && a.value === (b as typeof a).value;
     case 'welfare': return a.enabled === (b as typeof a).enabled;
     case 'publicWorks': return a.active === (b as typeof a).active;
     case 'policyRate': return a.value === (b as typeof a).value;
     case 'liquiditySupport': return a.active === (b as typeof a).active;
+    case 'stockpile': return a.enabled === (b as typeof a).enabled;
     case 'decision': return a.choiceId === (b as typeof a).choiceId;
     default: return false;
   }

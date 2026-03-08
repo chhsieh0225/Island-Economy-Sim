@@ -25,7 +25,8 @@ export class RNG {
 
   /** Box-Muller transform for gaussian distribution */
   nextGaussian(mean: number, stddev: number): number {
-    const u1 = this.next();
+    // Guard: log(0) = -Infinity → NaN propagation. Clamp to epsilon.
+    const u1 = Math.max(Number.EPSILON, this.next());
     const u2 = this.next();
     const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
     return mean + z * stddev;

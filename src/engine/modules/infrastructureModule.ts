@@ -90,7 +90,9 @@ export const INFRASTRUCTURE_DEFS: InfrastructureDef[] = [
 ];
 
 export function getInfrastructureDef(type: InfrastructureType): InfrastructureDef {
-  return INFRASTRUCTURE_DEFS.find(d => d.type === type)!;
+  const def = INFRASTRUCTURE_DEFS.find(d => d.type === type);
+  if (!def) throw new Error(`Unknown infrastructure type: ${type}`);
+  return def;
 }
 
 export function canBuild(

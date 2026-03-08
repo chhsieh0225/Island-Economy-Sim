@@ -16,7 +16,8 @@ function firstIncomplete(items: ReturnType<typeof buildLearningJourney>['quests'
 }
 
 export const LearningJourneyPanel = memo(function LearningJourneyPanel({ state, tutorialToastsEnabled, onSetTutorialToasts }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const zh = locale === 'zh-TW';
   const [activeQuestId, setActiveQuestId] = useState<string>('turn_3');
   const [activeNodeId, setActiveNodeId] = useState<string>('market_signal');
   const { coach, quests, knowledgeNodes } = useMemo(() => buildLearningJourney(state), [state]);
@@ -46,20 +47,20 @@ export const LearningJourneyPanel = memo(function LearningJourneyPanel({ state, 
       <div className={styles.section}>
         <div className={styles.sectionHead}>
           <span>{t('learning.coach')}</span>
-          <span>{coach.phaseLabel}</span>
+          <span>{zh ? coach.phaseLabel : coach.phaseLabelEn}</span>
         </div>
-        <div className={styles.coachGoal}>{coach.phaseGoal}</div>
-        <div className={styles.coachDiagnosis}>{coach.diagnosis}</div>
+        <div className={styles.coachGoal}>{zh ? coach.phaseGoal : coach.phaseGoalEn}</div>
+        <div className={styles.coachDiagnosis}>{zh ? coach.diagnosis : coach.diagnosisEn}</div>
 
         <div className={styles.coachKeywords}>
-          {coach.keywords.map(word => (
+          {(zh ? coach.keywords : coach.keywordsEn).map(word => (
             <span key={word} className={styles.keywordChip}>{word}</span>
           ))}
         </div>
 
         <div className={styles.coachBlockTitle}>{t('learning.turnInterpretation')}</div>
         <div className={styles.coachNarrative}>
-          {coach.turnNarrative.map(line => (
+          {(zh ? coach.turnNarrative : coach.turnNarrativeEn).map(line => (
             <div key={line} className={styles.coachLine}>{line}</div>
           ))}
         </div>
@@ -70,27 +71,27 @@ export const LearningJourneyPanel = memo(function LearningJourneyPanel({ state, 
             <div key={action.id} className={styles.coachActionItem}>
               <div className={styles.coachActionHead}>
                 <span className={styles.coachActionIndex}>{index + 1}</span>
-                <span className={styles.coachActionTitle}>{action.title}</span>
+                <span className={styles.coachActionTitle}>{zh ? action.title : action.titleEn}</span>
               </div>
-              <div className={styles.coachLine}>{t('learning.reason')}: {action.rationale}</div>
-              {action.steps.map(step => (
+              <div className={styles.coachLine}>{t('learning.reason')}: {zh ? action.rationale : action.rationaleEn}</div>
+              {(zh ? action.steps : action.stepsEn).map(step => (
                 <div key={step} className={styles.coachStep}>- {step}</div>
               ))}
-              <div className={styles.coachSignal}>{t('learning.expectedSignal')}: {action.expectedSignal}</div>
+              <div className={styles.coachSignal}>{t('learning.expectedSignal')}: {zh ? action.expectedSignal : action.expectedSignalEn}</div>
             </div>
           ))}
         </div>
 
         <div className={styles.coachBlockTitle}>{t('learning.watchlist')}</div>
         <div className={styles.watchList}>
-          {coach.watchlist.map(item => (
+          {(zh ? coach.watchlist : coach.watchlistEn).map(item => (
             <div key={item} className={styles.watchItem}>{item}</div>
           ))}
         </div>
 
         <div className={styles.coachFoot}>
-          <div>{t('learning.pitfall')}: {coach.pitfall}</div>
-          <div>{t('learning.economicsLink')}: {coach.economicsLink}</div>
+          <div>{t('learning.pitfall')}: {zh ? coach.pitfall : coach.pitfallEn}</div>
+          <div>{t('learning.economicsLink')}: {zh ? coach.economicsLink : coach.economicsLinkEn}</div>
         </div>
       </div>
 
@@ -109,18 +110,18 @@ export const LearningJourneyPanel = memo(function LearningJourneyPanel({ state, 
               className={`${styles.questBtn} ${activeQuest.id === item.id ? styles.questBtnActive : ''} ${item.done ? styles.questBtnDone : ''}`}
               onClick={() => setActiveQuestId(item.id)}
             >
-              <span className={styles.questStatus}>{item.done ? '✓' : '○'}</span>
-              <span className={styles.questName}>{item.title}</span>
-              <span className={styles.questProgress}>{item.progressLabel}</span>
+              <span className={styles.questStatus}>{item.done ? '\u2713' : '\u25CB'}</span>
+              <span className={styles.questName}>{zh ? item.title : item.titleEn}</span>
+              <span className={styles.questProgress}>{zh ? item.progressLabel : item.progressLabelEn}</span>
             </button>
           ))}
         </div>
 
         <div className={styles.detailCard}>
-          <div className={styles.detailTitle}>{activeQuest.title}</div>
-          <div className={styles.detailLine}>{activeQuest.objective}</div>
-          <div className={styles.detailLine}>{t('learning.questWhy')}: {activeQuest.why}</div>
-          <div className={styles.detailLine}>{t('learning.questAction')}: {activeQuest.action}</div>
+          <div className={styles.detailTitle}>{zh ? activeQuest.title : activeQuest.titleEn}</div>
+          <div className={styles.detailLine}>{zh ? activeQuest.objective : activeQuest.objectiveEn}</div>
+          <div className={styles.detailLine}>{t('learning.questWhy')}: {zh ? activeQuest.why : activeQuest.whyEn}</div>
+          <div className={styles.detailLine}>{t('learning.questAction')}: {zh ? activeQuest.action : activeQuest.actionEn}</div>
           <div className={styles.detailBar}>
             <span style={{ width: `${Math.max(4, activeQuest.progress * 100)}%` }} />
           </div>
@@ -128,7 +129,7 @@ export const LearningJourneyPanel = memo(function LearningJourneyPanel({ state, 
 
         {nextQuest && (
           <div className={styles.nextHint}>
-            {t('learning.nextSuggestion')}: {nextQuest.title}
+            {t('learning.nextSuggestion')}: {zh ? nextQuest.title : nextQuest.titleEn}
           </div>
         )}
         {!nextQuest && (
@@ -155,23 +156,23 @@ export const LearningJourneyPanel = memo(function LearningJourneyPanel({ state, 
               disabled={!node.unlocked}
             >
               <div className={styles.nodeTitleRow}>
-                <span className={styles.nodeChain}>{node.chain}</span>
+                <span className={styles.nodeChain}>{zh ? node.chain : node.chainEn}</span>
                 <span className={node.unlocked ? styles.nodeUnlocked : styles.nodeLocked}>
                   {node.unlocked ? t('learning.unlocked') : t('learning.locked')}
                 </span>
               </div>
-              <div className={styles.nodeTitle}>{node.title}</div>
+              <div className={styles.nodeTitle}>{zh ? node.title : node.titleEn}</div>
             </button>
           ))}
         </div>
 
         {activeNode.unlocked ? (
           <div className={styles.detailCard}>
-            <div className={styles.detailTitle}>{activeNode.title}</div>
-            <div className={styles.detailLine}>{t('learning.concept')}: {activeNode.concept}</div>
-            <div className={styles.detailLine}>{t('learning.gameSignal')}: {activeNode.gameSignal}</div>
-            <div className={styles.detailLine}>{t('learning.worldLink')}: {activeNode.worldLink}</div>
-            <div className={styles.detailLine}>{t('learning.nextPrompt')}: {activeNode.nextPrompt}</div>
+            <div className={styles.detailTitle}>{zh ? activeNode.title : activeNode.titleEn}</div>
+            <div className={styles.detailLine}>{t('learning.concept')}: {zh ? activeNode.concept : activeNode.conceptEn}</div>
+            <div className={styles.detailLine}>{t('learning.gameSignal')}: {zh ? activeNode.gameSignal : activeNode.gameSignalEn}</div>
+            <div className={styles.detailLine}>{t('learning.worldLink')}: {zh ? activeNode.worldLink : activeNode.worldLinkEn}</div>
+            <div className={styles.detailLine}>{t('learning.nextPrompt')}: {zh ? activeNode.nextPrompt : activeNode.nextPromptEn}</div>
           </div>
         ) : (
           <div className={styles.lockHint}>

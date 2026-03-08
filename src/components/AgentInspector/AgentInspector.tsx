@@ -10,7 +10,8 @@ interface Props {
 }
 
 export function AgentInspector({ agent, onClose }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const en = locale === 'en';
   const incomeData = agent.incomeHistory.map((v, i) => ({ turn: i, income: v }));
   const lifeEvents = [...agent.lifeEvents].reverse();
   const ageYears = Math.floor(agent.age / 12);
@@ -74,8 +75,8 @@ export function AgentInspector({ agent, onClose }: Props) {
         <div className={styles.dialogueBubble}>
           <span className={styles.moodEmoji}>{dialogue.moodEmoji}</span>
           <div className={styles.dialogueContent}>
-            <div className={styles.speech}>{dialogue.speech}</div>
-            <div className={styles.thought}>{dialogue.thought}</div>
+            <div className={styles.speech}>{en ? dialogue.speechEn : dialogue.speech}</div>
+            <div className={styles.thought}>{en ? dialogue.thoughtEn : dialogue.thought}</div>
           </div>
         </div>
 

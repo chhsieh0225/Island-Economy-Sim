@@ -149,10 +149,12 @@ export interface GameEvent {
 export interface RandomEventDef {
   id: string;
   name: string;
+  nameEn: string;
   probability: number;
   duration: number;
   effects: RandomEventEffects;
   message: string;
+  messageEn: string;
   severity: GameEvent['type'];
 }
 
@@ -176,12 +178,15 @@ export interface DecisionImmediateEffects {
 export interface DecisionChoice {
   id: string;
   label: string;
+  labelEn: string;
   description: string;
+  descriptionEn: string;
   immediate?: DecisionImmediateEffects;
   temporary?: {
     duration: number;
     effects: RandomEventEffects;
     message: string;
+    messageEn: string;
     severity?: GameEvent['type'];
   };
 }
@@ -189,8 +194,10 @@ export interface DecisionChoice {
 export interface DecisionEventDef {
   id: string;
   name: string;
+  nameEn: string;
   probability: number;
   message: string;
+  messageEn: string;
   severity: GameEvent['type'];
   choices: [DecisionChoice, DecisionChoice];
 }
@@ -245,14 +252,19 @@ export interface PolicyTimelineEntry {
 
 export interface ScenarioNarrative {
   title: string;
+  titleEn: string;
   paragraphs: string[];
+  paragraphsEn: string[];
   challenge: string;
+  challengeEn: string;
 }
 
 export interface ScenarioDef {
   id: ScenarioId;
   name: string;
+  nameEn: string;
   description: string;
+  descriptionEn: string;
   initialTreasury?: number;
   initialTaxRate?: number;
   initialPolicyRate?: number;

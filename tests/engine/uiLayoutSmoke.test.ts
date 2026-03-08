@@ -64,8 +64,9 @@ describe('uiLayoutSmoke', () => {
   });
 
   it('island map feature union includes full industry set', () => {
-    const islandMap = readProjectFile('src/components/IslandMap/IslandMap.tsx');
-    expect(islandMap).toMatch(/MapFeatureType = 'bank' \| 'residential' \| 'farm' \| 'goods' \| 'services'/);
+    // MapFeatureType was extracted to mapHitTest.ts for maintainability
+    const mapHitTest = readProjectFile('src/components/IslandMap/mapHitTest.ts');
+    expect(mapHitTest).toMatch(/MapFeatureType = 'bank' \| 'residential' \| 'farm' \| 'goods' \| 'services'/);
   });
 
   it('island renderer shows clickable markers for all sectors', () => {

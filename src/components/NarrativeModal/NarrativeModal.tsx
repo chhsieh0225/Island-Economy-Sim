@@ -18,12 +18,16 @@ interface Props {
 }
 
 export const NarrativeModal = memo(function NarrativeModal({ narrative, onDismiss }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const trapRef = useFocusTrap<HTMLDivElement>(true);
   const [pageIdx, setPageIdx] = useState(0);
+  const en = locale === 'en';
 
   if (narrative.kind === 'scenario') {
-    const { title, paragraphs, challenge } = narrative.data;
+    const d = narrative.data;
+    const title = en ? d.titleEn : d.title;
+    const paragraphs = en ? d.paragraphsEn : d.paragraphs;
+    const challenge = en ? d.challengeEn : d.challenge;
     return (
       <div className={styles.overlay} onClick={onDismiss}>
         <div ref={trapRef} className={styles.modal} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
@@ -44,15 +48,16 @@ export const NarrativeModal = memo(function NarrativeModal({ narrative, onDismis
   }
 
   // Story narrative — multi-page with portraits
-  const { title, pages } = narrative.data;
-  const page = pages[pageIdx];
-  const isLast = pageIdx >= pages.length - 1;
+  const sd = narrative.data;
+  const storyTitle = en ? sd.titleEn : sd.title;
+  const page = sd.pages[pageIdx];
+  const isLast = pageIdx >= sd.pages.length - 1;
   const isFirst = pageIdx === 0;
 
   return (
     <div className={styles.overlay}>
       <div ref={trapRef} className={styles.modal} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
-        <h2 className={styles.title}>{title}</h2>
+        <h2 className={styles.title}>{storyTitle}</h2>
 
         <div className={styles.storyPage}>
           {page.portrait && (
@@ -62,11 +67,11 @@ export const NarrativeModal = memo(function NarrativeModal({ narrative, onDismis
               </span>
             </div>
           )}
-          <p className={styles.storyText}>{page.text}</p>
+          <p className={styles.storyText}>{en ? page.textEn : page.text}</p>
         </div>
 
         <div className={styles.pageIndicator}>
-          {pages.map((_, i) => (
+          {sd.pages.map((_, i) => (
             <span
               key={i}
               className={`${styles.dot} ${i === pageIdx ? styles.dotActive : ''}`}

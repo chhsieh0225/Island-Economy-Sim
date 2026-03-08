@@ -1,4 +1,5 @@
 import type { Infrastructure, InfrastructureType, SectorType } from '../../types';
+import type { Agent } from '../Agent';
 import { te } from '../engineI18n';
 
 export interface InfrastructureDef {
@@ -156,4 +157,21 @@ export function computeInfrastructureEffects(list: Infrastructure[]): Infrastruc
   }
 
   return combined;
+}
+
+export function applyInfrastructureEffects(infrastructure: Infrastructure[], aliveAgents: Agent[]): void {
+  const fx = computeInfrastructureEffects(infrastructure);
+  const hBoost = fx.healthBoost ?? 0;
+  const sBoost = fx.satisfactionBoost ?? 0;
+  if (hBoost <= 0 && sBoost <= 0) return;
+
+  for (const agent of aliveAgents) {
+    if (hBoost > 0) {
+      agent.health = Math.min(100, agent.health + hBoost);
+    }
+    if (sBoost > 0) {
+      agent.satisfaction = Math.min(100, agent.satisfaction + sBoost);
+    }
+  }
+  // Productivity boosts are applied via the production phase
 }

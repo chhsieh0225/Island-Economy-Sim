@@ -35,6 +35,7 @@ export const SettingsDrawer = memo(function SettingsDrawer({
   onBackToMenu,
 }: Props) {
   const { t } = useI18n();
+  const en = locale === 'en';
 
   // Audio
   const muted = useAudioStore(s => s.muted);
@@ -124,11 +125,11 @@ export const SettingsDrawer = memo(function SettingsDrawer({
             }}
           >
             {SCENARIOS.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
+              <option key={s.id} value={s.id}>{en ? s.nameEn : s.name}</option>
             ))}
           </select>
         </div>
-        <div className={styles.desc}>{selectedScenario.description}</div>
+        <div className={styles.desc}>{en ? selectedScenario.descriptionEn : selectedScenario.description}</div>
         <div className={styles.controlRow}>
           <label className={styles.label}>{t('simLab.seed')}</label>
           <input

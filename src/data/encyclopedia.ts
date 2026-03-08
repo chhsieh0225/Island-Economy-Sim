@@ -4,9 +4,12 @@ export interface EncyclopediaEntry {
   titleEn: string;
   category: 'model' | 'concept' | 'indicator' | 'policy';
   intuition: string;
+  intuitionEn: string;
   formula?: string;
   gameConnection: string;
+  gameConnectionEn: string;
   realWorldExample: string;
+  realWorldExampleEn: string;
   relatedIds: string[];
 }
 
@@ -24,14 +27,26 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '如果 α 比較大，代表資本（機器、土地）的影響力較大；' +
       '如果 β 比較大，代表勞動力的影響力較大。' +
       '把指數加起來等於 1 時，表示規模報酬恆定——工人和機器同時加倍，產出也恰好加倍。',
+    intuitionEn:
+      'Imagine a factory: you need both machines (capital K) and workers (labor L) to produce output. ' +
+      'The Cobb-Douglas function tells us that output depends on how these two inputs are combined. ' +
+      'A larger \u03B1 means capital (machines, land) has more influence; a larger \u03B2 means labor matters more. ' +
+      'When the exponents sum to 1, we have constant returns to scale\u2014doubling both workers and machines exactly doubles output.',
     formula: 'Y = A \\cdot K^{\\alpha} \\cdot L^{\\beta}',
     gameConnection:
       '在遊戲中，每位島民每回合的產出由 baseProductivity × effectiveProductivity × subsidyMultiplier × laborScale 決定。' +
       '其中 laborScale 來自 L^{α-1}，α 就是各部門的勞動彈性（食物 ≈ 0.95、商品 ≈ 0.88、服務 ≈ 0.82），' +
       '直接對應 Cobb-Douglas 的勞動指數。當某部門工人越多，每人邊際產出遞減，體現報酬遞減效果。',
+    gameConnectionEn:
+      'In the game, each islander\'s output per turn is determined by baseProductivity \u00D7 effectiveProductivity \u00D7 subsidyMultiplier \u00D7 laborScale. ' +
+      'The laborScale comes from L^(\u03B1-1), where \u03B1 is each sector\'s labor elasticity (food \u2248 0.95, goods \u2248 0.88, services \u2248 0.82), ' +
+      'directly corresponding to the Cobb-Douglas labor exponent. As more workers join a sector, each worker\'s marginal output decreases\u2014demonstrating diminishing returns.',
     realWorldExample:
       '經濟學家 Solow 用 Cobb-Douglas 分析美國 1909-1949 年資料，發現勞動份額約佔 0.7、資本佔 0.3，' +
       '至今仍是各國央行與國際貨幣基金組織估算潛在產出時的核心工具。',
+    realWorldExampleEn:
+      'Economist Robert Solow used the Cobb-Douglas function to analyze U.S. data from 1909\u20131949, finding that labor\'s share was about 0.7 and capital\'s about 0.3. ' +
+      'It remains a core tool used by central banks and the IMF to estimate potential output today.',
     relatedIds: ['solow_growth', 'supply_demand', 'employment_rate'],
   },
 
@@ -45,15 +60,27 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '扣掉這些「基本開銷」後，剩下的錢才是真正可以自由花用的。' +
       '線性支出系統就是把消費分成兩塊：必需品支出 + 剩餘所得按比例分配，' +
       '讓窮人花更多比例在吃飯，富人則把更多比例花在娛樂上。',
+    intuitionEn:
+      'Everyone has basic survival needs\u2014food, clothing\u2014that can\'t be cut. ' +
+      'After covering these "subsistence expenditures," the remaining income can be freely allocated. ' +
+      'The Linear Expenditure System splits consumption into two parts: necessities plus proportional allocation of leftover income, ' +
+      'explaining why poorer households spend a larger share on food while wealthier ones spend more on leisure.',
     formula:
       'p_i \\cdot x_i = p_i \\cdot \\gamma_i + \\beta_i \\left( M - \\sum_j p_j \\gamma_j \\right)',
     gameConnection:
       '在遊戲中，每位島民先計算「最低需求」（lesSubsistenceMultiplier × 每回合基本消耗量），' +
       '扣除此部分花費後，剩餘預算再按 Marshallian 預算份額（budgetShares）分配到食物、商品、服務三類。' +
       '健康低或滿意度低的島民會把更多預算壓在食物或服務上，正是 Stone-Geary 結構的效果。',
+    gameConnectionEn:
+      'In the game, each islander first calculates their "minimum needs" (lesSubsistenceMultiplier \u00D7 base consumption per turn). ' +
+      'After subtracting this cost, the remaining budget is allocated to food, goods, and services by Marshallian budget shares. ' +
+      'Islanders with low health or satisfaction shift more budget toward food or services\u2014exactly the Stone-Geary structure at work.',
     realWorldExample:
       '世界銀行估算開發中國家的恩格爾係數（食物佔總支出比例）時，常用 LES 模型。' +
       '例如印度家庭平均把近 45% 所得花在食物上，而美國家庭僅約 10%——正是必需品支出門檻造成的差距。',
+    realWorldExampleEn:
+      'The World Bank frequently uses LES models to estimate Engel coefficients (the share of spending on food) in developing countries. ' +
+      'Indian households spend nearly 45% of income on food, while American households spend only about 10%\u2014a gap driven by subsistence thresholds.',
     relatedIds: ['marginal_utility', 'elasticity', 'cpi'],
   },
 
@@ -66,6 +93,10 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '想像市場裡有一個「拍賣官」：他先喊一個價格，看看想買和想賣的人各有多少。' +
       '如果想買的人比想賣的人多（需求 > 供給），他就把價格往上調；反過來就往下調。' +
       '一直重複這個過程，直到供需剛好平衡——這就是「試探」（tatonnement）的意思。',
+    intuitionEn:
+      'Imagine an "auctioneer" in the market: he announces a price, then checks how many people want to buy versus sell. ' +
+      'If buyers outnumber sellers (demand > supply), he raises the price; if sellers outnumber buyers, he lowers it. ' +
+      'This process repeats until supply and demand balance\u2014that\'s what "tatonnement" (groping) means.',
     formula:
       '\\ln p_{t+1} = \\ln p_t + k \\cdot \\frac{D - S}{D + S + \\varepsilon}',
     gameConnection:
@@ -73,9 +104,17 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '計算每個部門的超額需求比率 (D-S)/(D+S)，乘以 tatonnementGain（學術模式 k ≈ 0.035），' +
       '再對 log 價格做增量調整，最後用 priceSmoothing 平滑，防止價格暴漲暴跌。' +
       '你會在市場面板看到價格曲線隨供需慢慢收斂——這就是瓦爾拉斯試探的視覺化。',
+    gameConnectionEn:
+      'The game\'s Market module runs adjustPrices() at the end of each turn, ' +
+      'computing each sector\'s excess demand ratio (D-S)/(D+S), multiplied by tatonnementGain (academic mode k \u2248 0.035), ' +
+      'then incrementally adjusting log prices with priceSmoothing to prevent wild swings. ' +
+      'You can see prices gradually converging in the Market Panel\u2014a live visualization of Walrasian tatonnement.',
     realWorldExample:
       '紐約證券交易所的開盤集合競價（Opening Auction）與此概念類似：' +
       '開市前收集買賣委託，找出讓最多單能成交的價格，再以該價一次清算。',
+    realWorldExampleEn:
+      'The New York Stock Exchange\'s Opening Auction works similarly: ' +
+      'buy and sell orders are collected before market open, the price that maximizes matched orders is found, and all orders clear at that price.',
     relatedIds: ['market_equilibrium', 'supply_demand', 'inflation'],
   },
 
@@ -89,15 +128,27 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '但長期來看，真正讓生活水準不斷提升的是「技術進步」（A 的成長）。' +
       '如果只是增加資本卻沒有新技術，每多一台機器帶來的增加量會越來越少（報酬遞減），' +
       '經濟最終會停在一個穩定狀態。只有持續創新，才能打破這個天花板。',
+    intuitionEn:
+      'How fast can an economy grow? The Solow model says that in the short run, adding more workers and machines helps, ' +
+      'but in the long run, only technological progress (growth in A) continuously raises living standards. ' +
+      'Adding capital without new technology yields diminishing returns\u2014each additional machine contributes less. ' +
+      'The economy eventually reaches a steady state. Only sustained innovation can break through that ceiling.',
     formula:
       '\\Delta k = s \\cdot f(k) - (n + \\delta) \\cdot k',
     gameConnection:
       '在遊戲中，島嶼的人口會出生和死亡（人口成長率 n），公共建設投資相當於儲蓄/資本累積（s），' +
       '而島民的生產力（productivity）與智力（intelligence）扮演技術水準 A 的角色。' +
       '你會發現只增加人口並不能永遠提升 GDP——這就是 Solow 模型所預測的報酬遞減現象。',
+    gameConnectionEn:
+      'In the game, the island\'s population grows through births and deaths (population growth rate n), public works investment acts as savings/capital accumulation (s), ' +
+      'and islanders\' productivity and intelligence play the role of technology level A. ' +
+      'You\'ll find that simply adding more population doesn\'t raise GDP forever\u2014this is exactly the diminishing returns predicted by the Solow model.',
     realWorldExample:
       '戰後日本與韓國在 1960-1990 年間經歷高速成長，一部分是靠大量資本投入，' +
       '但後期成長放緩正好符合 Solow 的預測。Robert Solow 因此模型獲得 1987 年諾貝爾經濟學獎。',
+    realWorldExampleEn:
+      'Post-war Japan and South Korea experienced rapid growth from 1960\u20131990, partly driven by massive capital investment, ' +
+      'but their later slowdown fits Solow\'s predictions perfectly. Robert Solow won the 1987 Nobel Prize in Economics for this model.',
     relatedIds: ['cobb_douglas', 'gdp', 'fiscal_policy'],
   },
 
@@ -111,15 +162,27 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '反過來，失業率高的時候，大家搶著找工作，薪水不容易漲，物價也比較穩定。' +
       '菲利浦曲線描述的就是這種通膨和失業之間的「蹺蹺板」關係——' +
       '但要注意，長期來看這個關係未必穩定，尤其當人們對通膨有了預期之後。',
+    intuitionEn:
+      'When unemployment is low, workers are hard to find, so employers raise wages, pushing prices up (higher inflation). ' +
+      'When unemployment is high, workers compete for jobs, wages stagnate, and prices stay stable. ' +
+      'The Phillips Curve describes this "seesaw" trade-off between inflation and unemployment\u2014' +
+      'though in the long run, the relationship may not hold, especially once people form inflation expectations.',
     formula:
       '\\pi = \\pi^e - \\beta (u - u^*)',
     gameConnection:
       '在遊戲中，當就業率很高時，多數島民都在生產並賺取收入，市場需求旺盛，' +
       '瓦爾拉斯調價機制會推升三個部門的價格。反之，若大量島民失業或離島，' +
       '需求萎縮，價格會回落。你可以同時觀察就業率指標和市場價格走勢，體會這種取捨關係。',
+    gameConnectionEn:
+      'In the game, when employment is high, most islanders are producing and earning income, driving strong market demand. ' +
+      'The Walrasian pricing mechanism pushes prices up across all three sectors. Conversely, if many islanders are unemployed or have departed, ' +
+      'demand shrinks and prices fall. Watch the employment rate alongside market price trends to observe this trade-off in action.',
     realWorldExample:
       '1970 年代石油危機時，美國同時出現高通膨和高失業（stagflation），' +
       '打破了原本簡單的菲利浦曲線關係，促使經濟學家加入「預期」因素來修正模型。',
+    realWorldExampleEn:
+      'During the 1970s oil crisis, the U.S. experienced both high inflation and high unemployment (stagflation), ' +
+      'breaking the simple Phillips Curve relationship and prompting economists to incorporate inflation expectations into the model.',
     relatedIds: ['inflation', 'employment_rate', 'monetary_policy'],
   },
 
@@ -134,13 +197,24 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '供給是賣家想賣的量，需求是買家想買的量。' +
       '價格太高，買的人少、賣的人多（供過於求）；價格太低，買的人多、賣的人少（供不應求）。' +
       '市場價格會自動往「兩邊剛好平衡」的方向移動——這個平衡點就是均衡價格。',
+    intuitionEn:
+      'Supply is how much sellers want to sell; demand is how much buyers want to buy. ' +
+      'When prices are too high, few buy and many sell (surplus); when too low, many buy and few sell (shortage). ' +
+      'Market prices naturally move toward balance\u2014the equilibrium price where supply equals demand.',
     gameConnection:
       '每回合，島民會根據自己的存貨和預算，向市場提交買單和賣單。' +
       '市場面板（MarketPanel）會顯示各部門的供給量（Supply）和需求量（Demand），' +
       '你可以觀察它們的差距如何驅動下一回合的價格變動。',
+    gameConnectionEn:
+      'Each turn, islanders submit buy and sell orders based on their inventory and budget. ' +
+      'The Market Panel displays each sector\'s Supply and Demand quantities\u2014' +
+      'watch how the gap between them drives price changes in the next turn.',
     realWorldExample:
       '2020 年新冠疫情初期，口罩需求暴增但供給跟不上，價格飆漲。' +
       '隨著各國工廠增產，供給追上需求後，價格便逐漸回落。',
+    realWorldExampleEn:
+      'In early 2020, demand for face masks surged during COVID-19 while supply couldn\'t keep up, causing prices to skyrocket. ' +
+      'As factories worldwide ramped up production and supply caught up with demand, prices gradually fell back.',
     relatedIds: ['market_equilibrium', 'walrasian', 'elasticity'],
   },
 
@@ -153,13 +227,24 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '通膨就是「東西整體變貴了」。不是某一樣東西漲價，而是幾乎所有東西都在漲。' +
       '溫和的通膨（每年 2-3%）被認為是正常的，但如果漲太快，' +
       '大家手上的錢就越來越不值錢，存款的購買力會被侵蝕。',
+    intuitionEn:
+      'Inflation means prices are rising across the board\u2014not just one item, but nearly everything getting more expensive. ' +
+      'Moderate inflation (2\u20133% per year) is considered normal, but if prices rise too quickly, ' +
+      'money loses value and the purchasing power of savings erodes.',
     gameConnection:
       '你可以在市場面板觀察三個部門的價格趨勢。如果所有部門價格同時持續上升，' +
       '代表島上正在發生通膨。貨幣政策利率（policyRate）是你對抗通膨的主要工具——' +
       '提高利率會抑制價格上漲速度，降低利率則刺激需求但可能加劇通膨。',
+    gameConnectionEn:
+      'Watch the price trends for all three sectors in the Market Panel. If all sector prices rise simultaneously and persistently, ' +
+      'the island is experiencing inflation. The policy interest rate (policyRate) is your main tool to fight it\u2014' +
+      'raising rates slows price increases, while lowering rates stimulates demand but may worsen inflation.',
     realWorldExample:
       '2022 年全球通膨升溫，美國 CPI 年增率一度超過 9%，聯準會連續升息試圖壓制物價。' +
       '辛巴威在 2008 年更曾出現天文數字的超級通膨，鈔票面額高達一百兆。',
+    realWorldExampleEn:
+      'In 2022, global inflation surged\u2014U.S. CPI growth exceeded 9%, prompting the Federal Reserve to raise interest rates aggressively. ' +
+      'Zimbabwe in 2008 experienced hyperinflation so extreme that banknotes were denominated in the hundreds of trillions.',
     relatedIds: ['cpi', 'monetary_policy', 'phillips_curve'],
   },
 
@@ -173,14 +258,26 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '重點是「機會成本」——你花時間做 A 就沒時間做 B。' +
       '每個人應該專注在自己「相對」最擅長的事情上，然後透過交易互通有無，' +
       '這樣整體效率最高，大家都能過得更好。',
+    intuitionEn:
+      'Even if you\'re better than everyone at everything, that doesn\'t mean you should do everything yourself. ' +
+      'The key is opportunity cost\u2014spending time on task A means less time for task B. ' +
+      'Everyone should focus on what they\'re "relatively" best at, then trade for the rest. ' +
+      'This maximizes overall efficiency and makes everyone better off.',
     gameConnection:
       '島上的工人各有不同的生產力（productivity）與智力（intelligence），' +
       '加上地形（terrain）對不同部門有加成或懲罰。例如丘陵地形適合放牧但不利農耕。' +
       '島民會根據收入情況考慮轉行（evaluateJobSwitch），專注在自己相對優勢的部門，' +
       '再透過市場交換取得其他必需品。',
+    gameConnectionEn:
+      'Islanders have varying productivity and intelligence levels, and terrain gives bonuses or penalties to different sectors (e.g., hills favor herding but hinder farming). ' +
+      'Islanders consider switching jobs (evaluateJobSwitch) based on income, gravitating toward their comparative advantage sector ' +
+      'and trading on the market for other necessities.',
     realWorldExample:
       '大衛·李嘉圖在 1817 年以英國的布和葡萄牙的酒為例，說明即使葡萄牙兩樣都做得比英國好，' +
       '雙方專注生產各自機會成本較低的商品再貿易，仍然雙贏。',
+    realWorldExampleEn:
+      'David Ricardo in 1817 used the example of English cloth and Portuguese wine to show that even if Portugal was better at producing both, ' +
+      'both countries benefit by specializing in goods where their opportunity cost is lowest and then trading.',
     relatedIds: ['opportunity_cost', 'supply_demand', 'gdp'],
   },
 
@@ -194,14 +291,27 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '在均衡時，想買的人都買到了，想賣的人也都賣出了，價格不再有上漲或下跌的壓力。' +
       '不過現實中均衡會不斷被打破——天災、政策、新科技都可能讓供需移動，' +
       '市場就會朝新的均衡去調整。',
+    intuitionEn:
+      'Market equilibrium is the point where supply exactly equals demand. ' +
+      'At equilibrium, every willing buyer has bought and every willing seller has sold\u2014there\'s no pressure for prices to rise or fall. ' +
+      'In practice, equilibrium is constantly disrupted by disasters, policies, or new technologies, ' +
+      'and the market adjusts toward a new equilibrium.',
     gameConnection:
       '遊戲的市場清算（clearMarket）每回合會撮合買單和賣單：' +
       '出價最高的買家和要價最低的賣家先成交，成交價取兩者均值。' +
       '當所有可配對的單子都撮合完畢後，就達到了該回合的短期均衡。' +
       '剩餘的超額供給或需求則透過 tatonnement 驅動下回合價格調整。',
+    gameConnectionEn:
+      'The game\'s clearMarket function matches buy and sell orders each turn: ' +
+      'the highest-bidding buyer is paired with the lowest-asking seller, transacting at their average price. ' +
+      'Once all matchable orders are filled, the turn\'s short-run equilibrium is reached. ' +
+      'Any remaining excess supply or demand drives next turn\'s price adjustment via tatonnement.',
     realWorldExample:
       '農產品批發市場每天早上開市，蔬菜價格會根據前一天的剩貨量和今天的進貨量快速調整，' +
       '直到攤販願意賣的價格與餐廳願意買的價格相符——這就是均衡的日常體現。',
+    realWorldExampleEn:
+      'Every morning at wholesale produce markets, vegetable prices quickly adjust based on yesterday\'s unsold stock and today\'s new arrivals, ' +
+      'until the price vendors will accept matches what restaurants will pay\u2014equilibrium in everyday action.',
     relatedIds: ['walrasian', 'supply_demand', 'elasticity'],
   },
 
@@ -215,15 +325,27 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '生活必需品（如米飯）的彈性很低——漲價了你還是得買；' +
       '奢侈品（如名牌包）的彈性很高——稍微漲價，很多人就不買了。' +
       '彈性越大，消費者對價格越敏感。',
+    intuitionEn:
+      'Elasticity measures how much demand changes when price changes by 1%. ' +
+      'Necessities (like rice) have low elasticity\u2014you still have to buy them even when prices rise. ' +
+      'Luxury goods (like designer bags) have high elasticity\u2014a small price increase and many people stop buying. ' +
+      'The higher the elasticity, the more sensitive consumers are to price.',
     formula:
       'E_d = \\frac{\\%\\Delta Q_d}{\\%\\Delta P}',
     gameConnection:
       '在遊戲中，食物的優先級最高（priority ≈ 1 + survival 權重），即使價格漲了島民也必須購買，' +
       '因此食物需求彈性較低。服務的優先級較低且受滿意度驅動，' +
       '價格上漲時島民會優先削減服務支出——體現了較高的需求彈性。',
+    gameConnectionEn:
+      'In the game, food has the highest priority (priority \u2248 1 + survival weight)\u2014islanders must buy it even when prices rise, ' +
+      'so food demand elasticity is low. Services have lower priority and are driven by satisfaction, ' +
+      'so islanders cut service spending first when prices rise\u2014demonstrating higher demand elasticity.',
     realWorldExample:
       '汽油是典型的低彈性商品：油價漲 10%，開車的人可能只少加 2-3% 的油。' +
       '相反，串流影音平台訂閱的彈性較高——漲價時退訂率明顯上升。',
+    realWorldExampleEn:
+      'Gasoline is a classic low-elasticity good: a 10% price increase might only reduce consumption by 2\u20133%. ' +
+      'In contrast, streaming service subscriptions are highly elastic\u2014cancellation rates jump noticeably when prices rise.',
     relatedIds: ['supply_demand', 'les_demand', 'cpi'],
   },
 
@@ -236,13 +358,24 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '做一個選擇的「機會成本」就是你因此放棄的最好替代方案的價值。' +
       '例如你花一小時打電動，機會成本不是電費，而是那一小時你本來可以打工賺到的薪水。' +
       '每個決定都有看不見的代價——真正的成本永遠包含你放棄的東西。',
+    intuitionEn:
+      'The "opportunity cost" of a choice is the value of the best alternative you gave up. ' +
+      'For example, if you spend an hour playing video games, the opportunity cost isn\'t the electricity bill\u2014' +
+      'it\'s the wages you could have earned working that hour. Every decision has a hidden cost\u2014the true cost always includes what you forgo.',
     gameConnection:
       '島民在考慮轉職（evaluateJobSwitch）時，會比較留在目前部門的預期收入和轉去其他部門的預期收入。' +
       '轉職有直接成本（JOB_SWITCH_COST）和短期生產力懲罰（JOB_SWITCH_PRODUCTIVITY_PENALTY），' +
       '這些都是決策時需要權衡的機會成本。留在不適合的行業，機會成本可能更高。',
+    gameConnectionEn:
+      'When islanders consider switching jobs (evaluateJobSwitch), they compare expected income in their current sector versus other sectors. ' +
+      'Switching has direct costs (JOB_SWITCH_COST) and a short-term productivity penalty (JOB_SWITCH_PRODUCTIVITY_PENALTY)\u2014' +
+      'these are the opportunity costs to weigh. Staying in the wrong sector may carry an even higher opportunity cost.',
     realWorldExample:
       '比爾蓋茲從哈佛輟學創辦微軟。他的機會成本是一張哈佛文憑和可能的穩定工作，' +
       '但他判斷創業的預期回報遠高於繼續讀書。',
+    realWorldExampleEn:
+      'Bill Gates dropped out of Harvard to found Microsoft. His opportunity cost was a Harvard degree and a potentially stable career, ' +
+      'but he judged that the expected return from entrepreneurship far outweighed staying in school.',
     relatedIds: ['comparative_advantage', 'marginal_utility', 'employment_rate'],
   },
 
@@ -256,13 +389,24 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '每多消費一單位帶來的額外滿足感就是「邊際效用」，而且通常是遞減的。' +
       '這解釋了為什麼人不會把所有錢都花在同一種東西上——' +
       '分散消費才能讓總滿足感最大化。',
+    intuitionEn:
+      'The first slice of pizza brings great joy, the second is still good, the third is just okay, and by the fourth you can\'t eat any more. ' +
+      'The additional satisfaction from consuming one more unit is called "marginal utility," and it typically diminishes. ' +
+      'This explains why people don\'t spend all their money on one thing\u2014diversifying consumption maximizes total satisfaction.',
     gameConnection:
       '島民的預算分配邏輯正是邊際效用遞減的體現：即使食物最重要，' +
       '當食物庫存已經充足時（超過 targetStock），島民不會繼續狂買食物，' +
       '而是把預算轉向商品和服務，追求整體滿意度最大化。',
+    gameConnectionEn:
+      'Islanders\' budget allocation logic embodies diminishing marginal utility: even though food is most important, ' +
+      'once food inventory exceeds targetStock, islanders stop buying more food ' +
+      'and shift their budget toward goods and services to maximize overall satisfaction.',
     realWorldExample:
       '自助餐定價就利用了邊際效用遞減：餐廳知道你吃到後面會越吃越少，' +
       '所以敢用固定價格讓你「吃到飽」，因為多數人的實際食量有限。',
+    realWorldExampleEn:
+      'All-you-can-eat buffet pricing exploits diminishing marginal utility: the restaurant knows you\'ll eat less and less as you go, ' +
+      'so they can charge a flat fee because most people\'s actual consumption is limited.',
     relatedIds: ['les_demand', 'elasticity', 'opportunity_cost'],
   },
 
@@ -276,13 +420,25 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '工廠排放廢氣讓附近居民生病——這是「負外部性」；' +
       '你家養蜜蜂幫鄰居的果園授粉——這是「正外部性」。' +
       '外部性的存在代表市場自己無法達到最佳效率，需要政府介入。',
+    intuitionEn:
+      'An externality occurs when someone\'s actions affect unrelated parties, and those effects aren\'t reflected in prices. ' +
+      'A factory\'s pollution making nearby residents sick is a "negative externality"; ' +
+      'your beehives pollinating a neighbor\'s orchard is a "positive externality." ' +
+      'When externalities exist, the market alone can\'t achieve optimal efficiency\u2014government intervention may be needed.',
     gameConnection:
       '遊戲中的隨機事件（如瘟疫、暴風雨）對全體島民造成健康傷害或生產力下降，' +
       '模擬了負外部性的效果。公共建設（publicWorks）則是正外部性的例子——' +
       '政府花錢投資，所有部門的生產力都會提升，受益者不只是出錢的人。',
+    gameConnectionEn:
+      'Random events in the game (like plagues and storms) inflict health damage or productivity losses on all islanders, ' +
+      'simulating negative externalities. Public works (publicWorks) are an example of positive externalities\u2014' +
+      'the government invests funds and all sectors gain a productivity boost, benefiting everyone, not just those who paid.',
     realWorldExample:
       '碳排放是典型的負外部性：你開車排放的 CO2 加劇全球暖化，但油價並沒有包含這個社會成本。' +
       '歐盟推行碳排放交易制度（ETS），就是試圖把外部性「內部化」。',
+    realWorldExampleEn:
+      'Carbon emissions are a classic negative externality: driving emits CO2 that worsens global warming, but the gas price doesn\'t include this social cost. ' +
+      'The EU\'s Emissions Trading System (ETS) attempts to "internalize" the externality by putting a price on carbon.',
     relatedIds: ['public_goods', 'fiscal_policy', 'subsidy_policy'],
   },
 
@@ -295,14 +451,26 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '公共財有兩個特徵：用了不會少（非競爭性）、沒辦法排除別人用（非排他性）。' +
       '國防、路燈、公共公園都是典型例子。問題是，如果大家都想「搭便車」——' +
       '讓別人出錢自己享用——那就沒人願意主動提供，所以通常需要政府來出面。',
+    intuitionEn:
+      'Public goods have two defining features: one person\'s use doesn\'t reduce availability (non-rivalrous) and nobody can be excluded from using them (non-excludable). ' +
+      'National defense, streetlights, and public parks are classic examples. ' +
+      'The problem is free-riding\u2014if everyone wants to enjoy without paying, nobody provides the good voluntarily, so governments typically step in.',
     gameConnection:
       '遊戲中的「公共建設」（Public Works）就是公共財的設計：' +
       '政府每回合從國庫支出固定成本（PUBLIC_WORKS_COST_PER_TURN），' +
       '為全島所有部門提供生產力加成（PUBLIC_WORKS_PRODUCTIVITY_BOOST）。' +
       '沒有任何單一島民會自願出這筆錢，必須透過稅收集體負擔。',
+    gameConnectionEn:
+      'The game\'s "Public Works" is designed as a public good: ' +
+      'the government spends a fixed cost each turn (PUBLIC_WORKS_COST_PER_TURN) ' +
+      'to provide a productivity boost (PUBLIC_WORKS_PRODUCTIVITY_BOOST) to all sectors island-wide. ' +
+      'No individual islander would voluntarily pay for this\u2014it must be funded collectively through taxes.',
     realWorldExample:
       'GPS 衛星導航系統由美國政府花費數十億美元建置和維護，全球任何人都可以免費使用，' +
       '是現代公共財的經典案例。',
+    realWorldExampleEn:
+      'The GPS satellite navigation system was built and maintained by the U.S. government at a cost of billions of dollars, ' +
+      'yet anyone in the world can use it for free\u2014a classic modern public good.',
     relatedIds: ['externality', 'fiscal_policy', 'tax_policy'],
   },
 
@@ -315,14 +483,26 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '當有人幫你「兜底」的時候，你可能就不會那麼小心了。' +
       '買了保險之後開車更大膽、知道政府會紓困就冒更大的風險——' +
       '這就是道德風險。問題的根源是：承擔後果的人和做決定的人不是同一個。',
+    intuitionEn:
+      'When someone else bears the downside for you, you tend to be less careful. ' +
+      'After buying insurance, you might drive more recklessly; knowing the government will bail you out, you take bigger risks\u2014' +
+      'that\'s moral hazard. The root problem: the person making the decision isn\'t the one bearing the consequences.',
     gameConnection:
       '當你開啟福利政策（welfare）後，最窮的島民會收到補助金。' +
       '但仔細觀察，部分島民可能因為有補助保底而不積極工作或轉行，' +
       '持續待在低收入狀態（lowIncomeTurns 累積）。這就是遊戲中的道德風險——' +
       '安全網太舒適可能降低個人的努力動機。',
+    gameConnectionEn:
+      'When you enable welfare policy, the poorest islanders receive cash transfers. ' +
+      'But look closely\u2014some islanders may become less motivated to work hard or switch to better jobs, ' +
+      'staying in low-income status (lowIncomeTurns accumulating). This is the game\'s moral hazard\u2014' +
+      'a too-comfortable safety net can reduce individual effort incentives.',
     realWorldExample:
       '2008 年金融海嘯後，美國政府紓困大型銀行（Too Big to Fail），' +
       '引發廣泛批評：銀行知道政府會救，所以敢冒更大風險，形成「賺錢歸自己、虧損歸全民」的道德風險。',
+    realWorldExampleEn:
+      'After the 2008 financial crisis, the U.S. government bailed out major banks ("Too Big to Fail"), ' +
+      'sparking widespread criticism: banks took excessive risks knowing the government would rescue them, creating a moral hazard of "profits privatized, losses socialized."',
     relatedIds: ['welfare_policy', 'public_goods', 'fiscal_policy'],
   },
 
@@ -337,6 +517,10 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       'GDP 就是一個國家（或一座島）在一段時間內生產的所有商品和服務的總市場價值。' +
       '它是衡量經濟規模最常用的指標。GDP 成長代表經濟在擴張，' +
       '但 GDP 不能告訴你財富分配是否公平、環境是否被破壞。',
+    intuitionEn:
+      'GDP is the total market value of all goods and services produced by a country (or an island) over a period of time. ' +
+      'It\'s the most widely used measure of economic size. GDP growth means the economy is expanding, ' +
+      'but GDP can\'t tell you whether wealth is distributed fairly or whether the environment is being harmed.',
     formula:
       'GDP = \\sum_{i} P_i \\times Q_i',
     gameConnection:
@@ -344,9 +528,16 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '每回合把三個部門的「市場價格 × 成交量」加總就得到 GDP。' +
       '你可以在儀表板（Dashboard）看到 GDP 的歷史走勢圖，' +
       '它會隨著人口、價格和交易量的變化而波動。',
+    gameConnectionEn:
+      'The game calculates GDP in Statistics.ts via computeGDP(): ' +
+      'each turn, it sums up "market price \u00D7 transaction volume" across all three sectors. ' +
+      'You can see GDP\'s historical trend on the Dashboard\u2014it fluctuates with population, prices, and trade volumes.',
     realWorldExample:
       '美國 2023 年 GDP 約 27.4 兆美元，是全球最大經濟體。' +
       '中國以約 17.8 兆美元排名第二。台灣人均 GDP 約 33,000 美元。',
+    realWorldExampleEn:
+      'U.S. GDP in 2023 was approximately $27.4 trillion, making it the world\'s largest economy. ' +
+      'China ranked second at about $17.8 trillion. Taiwan\'s GDP per capita was approximately $33,000.',
     relatedIds: ['cpi', 'employment_rate', 'solow_growth'],
   },
 
@@ -359,6 +550,10 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '吉尼係數衡量一個社會的貧富差距，數值在 0 到 1 之間。' +
       '0 表示完全平等（每個人擁有一樣多的財富），1 表示極端不平等（一個人擁有所有財富）。' +
       '一般來說，0.3 以下算比較平等，0.4 以上就算差距偏大。',
+    intuitionEn:
+      'The Gini coefficient measures wealth inequality in a society, ranging from 0 to 1. ' +
+      '0 means perfect equality (everyone has the same wealth); 1 means extreme inequality (one person owns everything). ' +
+      'Generally, below 0.3 is considered relatively equal, while above 0.4 indicates significant disparity.',
     formula:
       'G = \\frac{2 \\sum_{i=1}^{n} i \\cdot x_i}{n \\sum_{i=1}^{n} x_i} - \\frac{n+1}{n}',
     gameConnection:
@@ -366,9 +561,17 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '以每位島民的現金加存款（money + savings）排序後套用公式。' +
       '你可以在儀表板追蹤吉尼係數——開啟福利或調高稅率通常會讓它下降，' +
       '放任自由市場運作則可能讓它上升。',
+    gameConnectionEn:
+      'The game computes the island\'s Gini coefficient each turn using computeGini(), ' +
+      'sorting all islanders by total wealth (money + savings) and applying the formula. ' +
+      'Track the Gini on the Dashboard\u2014enabling welfare or raising taxes typically lowers it, ' +
+      'while a laissez-faire approach may push it higher.',
     realWorldExample:
       '北歐國家（如瑞典、丹麥）的吉尼係數約 0.25-0.28，屬全球最平等。' +
       '南非的吉尼係數約 0.63，是全球最不平等的國家之一。',
+    realWorldExampleEn:
+      'Nordic countries (like Sweden and Denmark) have Gini coefficients around 0.25\u20130.28, among the world\'s most equal. ' +
+      'South Africa\'s Gini of about 0.63 makes it one of the most unequal countries in the world.',
     relatedIds: ['welfare_policy', 'tax_policy', 'gdp'],
   },
 
@@ -381,15 +584,26 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '就業率是「有工作的人」佔「想工作且能工作的人」的比例。' +
       '高就業率通常代表經濟狀況好，大家都有收入可以消費。' +
       '但如果就業率太高（接近 100%），代表勞動力很緊繃，企業可能找不到人。',
+    intuitionEn:
+      'The employment rate is the proportion of people who have jobs among those who are willing and able to work. ' +
+      'High employment usually means the economy is healthy and people have income to spend. ' +
+      'But if employment is too high (near 100%), labor markets are extremely tight and businesses may struggle to find workers.',
     formula:
       '\\text{就業率} = \\frac{\\text{就業人數}}{\\text{勞動力}} \\times 100\\%',
     gameConnection:
       '遊戲中，「勞動力」是達到工作年齡且健康值達標（≥ LABOR_FORCE_HEALTH_THRESHOLD）的島民。' +
       '其中本回合產出 > 0.01 的才算「就業」。Statistics 每回合計算就業率和失業率，' +
       '你可以在儀表板和工作面板（JobsPanel）追蹤各部門的勞動力分布。',
+    gameConnectionEn:
+      'In the game, the "labor force" consists of islanders who are of working age and have health above LABOR_FORCE_HEALTH_THRESHOLD. ' +
+      'Those with output > 0.01 in the current turn count as "employed." Statistics computes employment and unemployment rates each turn\u2014' +
+      'track labor distribution across sectors on the Dashboard and Jobs Panel.',
     realWorldExample:
       '台灣的失業率長期維持在 3.5-4% 左右，算是相當穩定。' +
       '而西班牙 2013 年的失業率曾高達 26%，青年失業率更超過 55%。',
+    realWorldExampleEn:
+      'Taiwan\'s unemployment rate has long been steady at around 3.5\u20134%, considered quite stable. ' +
+      'Spain\'s unemployment rate hit 26% in 2013, with youth unemployment exceeding 55%.',
     relatedIds: ['phillips_curve', 'gdp', 'dependency_ratio'],
   },
 
@@ -402,15 +616,26 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '扶養比就是「需要被照顧的人」對「正在工作養家的人」的比例。' +
       '需要被照顧的人包括小孩和老人。如果扶養比太高，' +
       '代表每個工作的人要養更多人，壓力就更大，經濟負擔也更重。',
+    intuitionEn:
+      'The dependency ratio is the ratio of "people who need to be supported" to "working-age people supporting them." ' +
+      'Dependents include children and the elderly. A high dependency ratio means each worker must support more people, ' +
+      'creating greater pressure and heavier economic burdens.',
     formula:
       '\\text{扶養比} = \\frac{\\text{兒童人數} + \\text{老年人數}}{\\text{青壯年工作人口}}',
     gameConnection:
       '遊戲每回合計算扶養比（dependencyRatio），分子是未達工作年齡的兒童加上超過 SENIOR_DEPENDENCY_AGE 的長者，' +
       '分母是介於之間的青壯年人口。育兒還會降低父母的生產力（caregiverPenalty），' +
       '模擬真實世界中照顧小孩對工作效率的影響。',
+    gameConnectionEn:
+      'The game calculates the dependency ratio each turn: the numerator is children below working age plus seniors above SENIOR_DEPENDENCY_AGE; ' +
+      'the denominator is the working-age population between those thresholds. ' +
+      'Childcare also reduces parents\' productivity (caregiverPenalty), simulating the real-world impact of parenting on work efficiency.',
     realWorldExample:
       '日本是全球老齡化最嚴重的國家之一，扶養比持續攀升，每 2.1 個工作人口就要養一個退休老人。' +
       '這也是日本推動延後退休年齡與自動化的重要原因。',
+    realWorldExampleEn:
+      'Japan is one of the world\'s most rapidly aging societies, with a rising dependency ratio\u2014only 2.1 working-age people per retiree. ' +
+      'This is a key reason Japan has been pushing later retirement ages and automation.',
     relatedIds: ['employment_rate', 'gdp', 'welfare_policy'],
   },
 
@@ -423,6 +648,10 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       'CPI 追蹤一籃子日常消費品（食物、交通、房租等）的平均價格變化。' +
       '如果 CPI 上升，代表生活成本增加了，你的錢能買到的東西變少了。' +
       '每月公布的 CPI 年增率就是大家常說的「通膨率」。',
+    intuitionEn:
+      'CPI tracks the average price change of a basket of everyday consumer goods (food, transportation, rent, etc.). ' +
+      'A rising CPI means the cost of living has increased and your money buys less. ' +
+      'The year-over-year CPI growth rate is what people commonly call the "inflation rate."',
     formula:
       'CPI_t = \\frac{\\sum P_t^i \\cdot Q_0^i}{\\sum P_0^i \\cdot Q_0^i} \\times 100',
     gameConnection:
@@ -430,9 +659,17 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '三個部門的加權平均價格變化趨勢就是島上的「物價水準」。' +
       '當你調整貨幣政策利率時，價格調整速度（tatonnement gain）會受到影響，' +
       '這就是央行透過利率控制通膨的機制在遊戲中的對應。',
+    gameConnectionEn:
+      'While the game doesn\'t have an explicit CPI indicator, you can track the price history of all three goods in the Market Panel. ' +
+      'The weighted average price trend across the three sectors represents the island\'s "price level." ' +
+      'When you adjust the monetary policy rate, the price adjustment speed (tatonnement gain) is affected\u2014' +
+      'this is the game\'s analog of central banks controlling inflation through interest rates.',
     realWorldExample:
       '台灣的 CPI 由主計總處每月公布。2022 年台灣 CPI 年增率約 2.95%，' +
       '創下 14 年新高，主要受能源和食物價格推動。',
+    realWorldExampleEn:
+      'Taiwan\'s CPI is published monthly by the Directorate-General of Budget. In 2022, Taiwan\'s CPI growth reached about 2.95%, ' +
+      'a 14-year high driven primarily by energy and food prices.',
     relatedIds: ['inflation', 'monetary_policy', 'gdp'],
   },
 
@@ -448,14 +685,27 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '經濟不景氣時，政府可以減稅或增加支出來刺激消費和投資（擴張性財政）；' +
       '經濟過熱時，政府可以加稅或減少支出來降溫（緊縮性財政）。' +
       '這就像調節水龍頭——控制流進經濟裡的錢多還是少。',
+    intuitionEn:
+      'Fiscal policy is how a government influences the economy through taxing and spending. ' +
+      'During recessions, the government can cut taxes or increase spending to stimulate consumption and investment (expansionary fiscal policy); ' +
+      'when the economy overheats, it can raise taxes or cut spending to cool things down (contractionary fiscal policy). ' +
+      'It\'s like adjusting a faucet\u2014controlling how much money flows into the economy.',
     gameConnection:
       '你身為島長，可以設定稅率（setTaxRate）、開啟公共建設（publicWorks）、' +
       '啟用福利政策（welfare）和部門補貼（subsidies）。' +
       '稅收會進入國庫（treasury），再用來支付各項公共支出。' +
       '如果支出超過收入，國庫就會見底，公共建設會被迫關閉。',
+    gameConnectionEn:
+      'As island governor, you can set tax rates (setTaxRate), enable public works (publicWorks), ' +
+      'activate welfare policy, and set sector subsidies. ' +
+      'Tax revenue enters the treasury and funds public expenditures. ' +
+      'If spending exceeds revenue, the treasury runs dry and public works shut down.',
     realWorldExample:
       '2020 年疫情期間，美國政府推出超過 5 兆美元的財政刺激方案，' +
       '包括直接發放現金支票和企業紓困貸款，是史上最大規模的財政政策之一。',
+    realWorldExampleEn:
+      'During the 2020 pandemic, the U.S. government launched over $5 trillion in fiscal stimulus packages, ' +
+      'including direct cash payments and business relief loans\u2014one of the largest fiscal policy interventions in history.',
     relatedIds: ['tax_policy', 'subsidy_policy', 'welfare_policy', 'gdp'],
   },
 
@@ -469,15 +719,27 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '利率降低→借錢更便宜→消費和投資增加→經濟加速；' +
       '利率提高→借錢更貴→消費和投資減少→經濟降溫。' +
       '央行的主要目標通常是穩定物價和促進就業。',
+    intuitionEn:
+      'Monetary policy is the central bank\'s tool for influencing the economy by adjusting interest rates or controlling the money supply. ' +
+      'Lower rates \u2192 cheaper borrowing \u2192 more consumption and investment \u2192 economic acceleration. ' +
+      'Higher rates \u2192 costlier borrowing \u2192 less consumption and investment \u2192 economic cooling. ' +
+      'Central banks typically aim to stabilize prices and promote employment.',
     formula:
       '\\text{有效調價幅度} = k \\times \\max(0.55,\\; 1 - \\Delta r \\cdot \\text{sensitivity})',
     gameConnection:
       '你可以在政策面板調整「政策利率」（policyRate）和「流動性支持」（liquiditySupport）。' +
       '利率影響市場的 tatonnement 增益倍數（gainMultiplier）：升息讓價格調整更慢，壓抑通膨；' +
       '降息加速價格調整並搭配流動性支持可以擴大價格波動範圍，刺激經濟活動。',
+    gameConnectionEn:
+      'In the Policy Panel, you can adjust the policy interest rate (policyRate) and liquidity support (liquiditySupport). ' +
+      'The interest rate affects the market\'s tatonnement gain multiplier: raising rates slows price adjustment, suppressing inflation; ' +
+      'lowering rates speeds up price adjustment and, combined with liquidity support, can widen price swings and stimulate economic activity.',
     realWorldExample:
       '台灣央行每季召開理事會決議政策利率。2022-2023 年為抑制通膨，' +
       '連續多次升息。美國聯準會（Fed）的利率決策更是全球矚目。',
+    realWorldExampleEn:
+      'Taiwan\'s central bank meets quarterly to set policy interest rates. In 2022\u20132023, it raised rates multiple times to curb inflation. ' +
+      'The U.S. Federal Reserve\'s rate decisions draw worldwide attention.',
     relatedIds: ['inflation', 'phillips_curve', 'cpi', 'fiscal_policy'],
   },
 
@@ -490,14 +752,26 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '補貼就是政府給生產者或消費者的「額外補助」，讓某樣東西變得更便宜或更容易生產。' +
       '目的通常是鼓勵特定行為（如推廣綠能）或保護弱勢產業（如農業）。' +
       '但補貼也有缺點：花的是納稅人的錢，而且可能扭曲市場，讓效率降低。',
+    intuitionEn:
+      'A subsidy is an "extra boost" the government gives to producers or consumers, making something cheaper or easier to produce. ' +
+      'The goal is usually to encourage specific behaviors (like promoting green energy) or protect vulnerable industries (like agriculture). ' +
+      'But subsidies have downsides: they cost taxpayers money and may distort markets, reducing efficiency.',
     gameConnection:
       '你可以對食物、商品、服務三個部門分別設定補貼百分比（0-100%）。' +
       '補貼會直接提高該部門的生產力倍數（getSubsidyMultiplier），' +
       '例如補貼 50% 就等於產量變 1.5 倍。但補貼不會從國庫扣款（簡化設計），' +
       '所以你可以觀察純粹的供給面效果。',
+    gameConnectionEn:
+      'You can set subsidy percentages (0\u2013100%) for each of the three sectors: food, goods, and services. ' +
+      'Subsidies directly increase the sector\'s productivity multiplier (getSubsidyMultiplier)\u2014' +
+      'for example, a 50% subsidy makes output 1.5x. Subsidies don\'t draw from the treasury (simplified design), ' +
+      'so you can observe pure supply-side effects.',
     realWorldExample:
       '歐盟每年花超過 550 億歐元補貼農業（共同農業政策 CAP），' +
       '確保糧食自給率並維持農村經濟。但批評者認為這讓歐洲農產品在國際市場上不公平競爭。',
+    realWorldExampleEn:
+      'The EU spends over 55 billion euros annually on agricultural subsidies (Common Agricultural Policy/CAP) ' +
+      'to ensure food self-sufficiency and sustain rural economies. Critics argue this gives European farm products an unfair competitive advantage internationally.',
     relatedIds: ['fiscal_policy', 'supply_demand', 'externality'],
   },
 
@@ -510,13 +784,24 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '社會福利是政府為保障弱勢群體基本生活所提供的援助，' +
       '例如低收入補助、失業救濟、健保等。目標是確保每個人都有最低限度的生活品質。' +
       '但福利要花錢，錢從稅收來，所以常有「公平 vs 效率」的辯論。',
+    intuitionEn:
+      'Social welfare is government assistance to ensure vulnerable groups meet basic living standards\u2014' +
+      'low-income subsidies, unemployment benefits, healthcare, etc. The goal is to guarantee a minimum quality of life for everyone. ' +
+      'But welfare costs money, funded by taxes, leading to the classic "equity vs. efficiency" debate.',
     gameConnection:
       '開啟福利政策後，政府每回合會找出最窮的一群島民（WELFARE_THRESHOLD_PERCENTILE），' +
       '從國庫發放定額補助金（WELFARE_AMOUNT）。這會降低吉尼係數，' +
       '但也消耗國庫資金。如果國庫不夠，福利就發不出去——你需要搭配稅收來維持。',
+    gameConnectionEn:
+      'When welfare is enabled, the government identifies the poorest islanders each turn (WELFARE_THRESHOLD_PERCENTILE) ' +
+      'and distributes a fixed transfer (WELFARE_AMOUNT) from the treasury. This lowers the Gini coefficient ' +
+      'but drains treasury funds. If the treasury runs out, welfare payments stop\u2014you need tax revenue to sustain them.',
     realWorldExample:
       '北歐國家以「從搖籃到墳墓」的高福利聞名：免費教育、全民健保、慷慨的產假和失業救濟。' +
       '代價是高稅率——瑞典的最高邊際稅率超過 50%。',
+    realWorldExampleEn:
+      'Nordic countries are famous for "cradle-to-grave" welfare: free education, universal healthcare, generous parental leave, and unemployment benefits. ' +
+      'The trade-off is high taxes\u2014Sweden\'s top marginal tax rate exceeds 50%.',
     relatedIds: ['gini', 'fiscal_policy', 'tax_policy', 'moral_hazard'],
   },
 
@@ -529,15 +814,26 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       '稅是政府的主要收入來源，用來支付公共服務和基礎建設。' +
       '稅率太低，政府沒錢做事；稅率太高，人民工作動力下降，經濟可能萎縮。' +
       '找到「最佳稅率」是每個政府的難題——經濟學上的拉弗曲線就描述了這個取捨。',
+    intuitionEn:
+      'Taxes are the government\'s primary revenue source, funding public services and infrastructure. ' +
+      'If tax rates are too low, the government can\'t do much; if too high, work incentives decline and the economy may shrink. ' +
+      'Finding the "optimal tax rate" is every government\'s challenge\u2014the Laffer Curve in economics describes this trade-off.',
     formula:
       '\\text{稅額} = \\text{本回合收入} \\times \\text{稅率}',
     gameConnection:
       '每回合結束時，政府會對每位島民的「本回合收入」（incomeThisTurn）課稅（payTax）。' +
       '稅收進入國庫，你可以在政策面板調整稅率（0% 到 MAX_TAX_RATE）。' +
       '稅率過高會讓島民可支配所得減少，消費力下降，進而影響市場需求和 GDP。',
+    gameConnectionEn:
+      'At the end of each turn, the government taxes every islander\'s income (incomeThisTurn) via payTax. ' +
+      'Tax revenue enters the treasury. You can adjust the rate (0% to MAX_TAX_RATE) in the Policy Panel. ' +
+      'Rates set too high reduce disposable income, weaken consumer spending, and ultimately drag down market demand and GDP.',
     realWorldExample:
       '愛爾蘭以 12.5% 的低企業稅率吸引了 Google、Apple 等跨國企業將歐洲總部設在當地，' +
       '帶動經濟高速成長。但也引發其他歐盟國家對「稅務競爭」的批評。',
+    realWorldExampleEn:
+      'Ireland attracted Google, Apple, and other multinationals to base their European headquarters there with its low 12.5% corporate tax rate, ' +
+      'driving rapid economic growth. But it also sparked criticism from other EU countries over "tax competition."',
     relatedIds: ['fiscal_policy', 'welfare_policy', 'gdp', 'gini'],
   },
 ];

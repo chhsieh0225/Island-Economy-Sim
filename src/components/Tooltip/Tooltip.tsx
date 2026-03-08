@@ -1,18 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useI18n } from '../../i18n/useI18n';
 import styles from './Tooltip.module.css';
 
 interface Props {
+  /** Chinese content */
   content: string;
+  /** English content (shown as primary when locale=en, secondary detail when locale=zh) */
   detail?: string;
+  /** Chinese real-world reference */
   realWorldRef?: string;
+  /** English real-world reference */
+  realWorldRefEn?: string;
   children: React.ReactNode;
 }
 
 const SHOW_DELAY = 300;
 const TOOLTIP_GAP = 8;
 
-export function Tooltip({ content, detail, realWorldRef, children }: Props) {
+export function Tooltip({ content, detail, realWorldRef, realWorldRefEn, children }: Props) {
+  const { locale } = useI18n();
+  const zh = locale === 'zh-TW';
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState<{ top: number; left: number; above: boolean } | null>(null);
   const wrapperRef = useRef<HTMLSpanElement>(null);
@@ -88,9 +96,11 @@ export function Tooltip({ content, detail, realWorldRef, children }: Props) {
                 : { visibility: 'hidden', top: 0, left: 0 }
             }
           >
-            <div className={styles.content}>{content}</div>
-            {detail && <div className={styles.detail}>{detail}</div>}
-            {realWorldRef && <div className={styles.realWorldRef}>{realWorldRef}</div>}
+            <div className={styles.content}>{zh ? content : (detail ?? content)}</div>
+            {zh && detail && <div className={styles.detail}>{detail}</div>}
+            {(zh ? realWorldRef : realWorldRefEn) && (
+              <div className={styles.realWorldRef}>{zh ? realWorldRef : realWorldRefEn}</div>
+            )}
             <div
               className={`${styles.arrow} ${position?.above ? styles.arrowDown : styles.arrowUp}`}
             />

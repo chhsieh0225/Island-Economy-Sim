@@ -17,7 +17,8 @@ function fmtDelta(value: number, digits: number = 0): string {
 }
 
 export const SimulationLab = memo(function SimulationLab({ scenarioId, seed, runHistory, onStartRun }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const en = locale === 'en';
   const [seedInput, setSeedInput] = useState(String(seed));
   const [scenarioInput, setScenarioInput] = useState<ScenarioId>(scenarioId);
   const [seedDirty, setSeedDirty] = useState(false);
@@ -64,12 +65,12 @@ export const SimulationLab = memo(function SimulationLab({ scenarioId, seed, run
           }}
         >
           {SCENARIOS.map(s => (
-            <option key={s.id} value={s.id}>{s.name}</option>
+            <option key={s.id} value={s.id}>{en ? s.nameEn : s.name}</option>
           ))}
         </select>
       </div>
 
-      <div className={styles.desc}>{selectedScenario.description}</div>
+      <div className={styles.desc}>{en ? selectedScenario.descriptionEn : selectedScenario.description}</div>
 
       <div className={styles.controlRow}>
         <label className={styles.label}>Seed</label>

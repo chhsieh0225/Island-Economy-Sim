@@ -6,14 +6,15 @@ import styles from './EncyclopediaPanel.module.css';
 const CATEGORY_ORDER: EncyclopediaEntry['category'][] = ['concept', 'model', 'indicator', 'policy'];
 
 function EntryCard({ entry, onNavigate }: { entry: EncyclopediaEntry; onNavigate: (id: string) => void }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const zh = locale === 'zh-TW';
   const [expanded, setExpanded] = useState(false);
 
   return (
     <div className={styles.card}>
       <button className={styles.cardHeader} onClick={() => setExpanded(!expanded)}>
-        <span className={styles.cardTitle}>{entry.title}</span>
-        <span className={styles.cardTitleEn}>{entry.titleEn}</span>
+        <span className={styles.cardTitle}>{zh ? entry.title : entry.titleEn}</span>
+        {zh && <span className={styles.cardTitleEn}>{entry.titleEn}</span>}
         <span className={`${styles.cardChevron} ${expanded ? styles.cardChevronOpen : ''}`}>▾</span>
       </button>
 
@@ -21,7 +22,7 @@ function EntryCard({ entry, onNavigate }: { entry: EncyclopediaEntry; onNavigate
         <div className={styles.cardBody}>
           <div className={styles.section}>
             <div className={styles.sectionLabel}>{t('encyclopedia.section.intuition')}</div>
-            <p className={styles.sectionText}>{entry.intuition}</p>
+            <p className={styles.sectionText}>{zh ? entry.intuition : entry.intuitionEn}</p>
           </div>
 
           {entry.formula && (
@@ -33,12 +34,12 @@ function EntryCard({ entry, onNavigate }: { entry: EncyclopediaEntry; onNavigate
 
           <div className={styles.section}>
             <div className={styles.sectionLabel}>{t('encyclopedia.section.gameConnection')}</div>
-            <p className={styles.sectionText}>{entry.gameConnection}</p>
+            <p className={styles.sectionText}>{zh ? entry.gameConnection : entry.gameConnectionEn}</p>
           </div>
 
           <div className={styles.section}>
             <div className={styles.sectionLabel}>{t('encyclopedia.section.realWorld')}</div>
-            <p className={styles.sectionText}>{entry.realWorldExample}</p>
+            <p className={styles.sectionText}>{zh ? entry.realWorldExample : entry.realWorldExampleEn}</p>
           </div>
 
           {entry.relatedIds.length > 0 && (
@@ -54,7 +55,7 @@ function EntryCard({ entry, onNavigate }: { entry: EncyclopediaEntry; onNavigate
                       className={styles.relatedLink}
                       onClick={() => onNavigate(id)}
                     >
-                      {related.title}
+                      {zh ? related.title : related.titleEn}
                     </button>
                   );
                 })}

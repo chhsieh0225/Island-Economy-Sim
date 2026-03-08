@@ -127,14 +127,18 @@ function buildNarrativeContext(state: GameState): NarrativeContext {
     gov.welfareEnabled ||
     gov.publicWorksActive;
 
-  // Compute food coverage: fraction of agents with enough food
-  const aliveAgents = state.agents.filter(a => a.alive);
-  const fedCount = aliveAgents.filter(a => a.inventory.food >= 0.8).length;
-  const foodCoverage = aliveAgents.length > 0 ? fedCount / aliveAgents.length : 1;
+  // Compute food coverage using market supply/demand ratio (same as Dashboard).
+  // Previously used per-agent inventory check (food >= 0.8), but that requires
+  // ~2.6 units at turn start due to spoilage, diverging from market indicators.
+  const foodDemand = latest?.market.demand.food ?? state.market.demand.food;
+  const foodSupply = latest?.market.supply.food ?? state.market.supply.food;
+  const foodCoverage = foodDemand > 0.01 ? Math.min(1, foodSupply / foodDemand) : 1;
+
+  const aliveCount = latest?.population ?? state.agents.filter(a => a.alive).length;
 
   return {
     turn: state.turn,
-    population: latest?.population ?? aliveAgents.length,
+    population: aliveCount,
     gdp: latest?.gdp ?? 0,
     avgSatisfaction: latest?.avgSatisfaction ?? 100,
     giniCoefficient: latest?.giniCoefficient ?? 0,

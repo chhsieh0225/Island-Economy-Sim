@@ -10,7 +10,7 @@ import type {
   SectorType,
 } from '../../types';
 import type { Agent } from '../Agent';
-import { te } from '../engineI18n';
+import { te, pickL } from '../engineI18n';
 import type { Government } from '../Government';
 import type { Market } from '../Market';
 import type { RNG } from '../RNG';
@@ -228,19 +228,21 @@ export function runRandomEventsPhase({
     for (const eventDef of DECISION_EVENTS) {
       const { probability, chainReason } = getDecisionEventProbability(eventDef, market, nextSignals);
       if (rng.next() < probability) {
+        const dName = pickL(eventDef.name, eventDef.nameEn);
+        const dMsg = pickL(eventDef.message, eventDef.messageEn);
         nextPendingDecision = {
           id: eventDef.id,
-          name: eventDef.name,
-          message: eventDef.message,
+          name: dName,
+          message: dMsg,
           severity: eventDef.severity,
           choices: eventDef.choices,
           turnIssued: turn,
         };
         nextLastDecisionTurn = turn;
         if (chainReason) {
-          addEvent('info', te('event.chainCausedDecision', { reason: chainReason, name: eventDef.name }));
+          addEvent('info', te('event.chainCausedDecision', { reason: chainReason, name: dName }));
         }
-        addEvent(eventDef.severity, `${eventDef.name}：${eventDef.message}`);
+        addEvent(eventDef.severity, `${dName}：${dMsg}`);
         addEvent('info', te('event.decisionAwaiting'));
         break;
       }
@@ -266,10 +268,12 @@ export function runRandomEventsPhase({
             registerEventChainSignal(nextSignals, eventDef.id);
             registerChainProgressByEvent(nextSignals, eventDef.id);
           }
+          const rName = pickL(eventDef.name, eventDef.nameEn);
+          const rMsg = pickL(eventDef.message, eventDef.messageEn);
           if (chainReason) {
-            addEvent('info', te('event.chainTriggeredRandom', { reason: chainReason, name: eventDef.name }));
+            addEvent('info', te('event.chainTriggeredRandom', { reason: chainReason, name: rName }));
           }
-          addEvent(eventDef.severity, eventDef.message);
+          addEvent(eventDef.severity, rMsg);
           break;
         }
       }
@@ -334,16 +338,19 @@ export function applyDecisionChoiceEffects({
   }
 
   if (choice.temporary) {
+    const tMsg = pickL(choice.temporary.message, choice.temporary.messageEn);
     const tempDef: RandomEventDef = {
       id: `decision_${turn}_${choice.id}_${rng.nextInt(1, 1_000_000)}`,
       name: choice.label,
+      nameEn: choice.labelEn,
       probability: 0,
       duration: choice.temporary.duration,
       effects: choice.temporary.effects,
       message: choice.temporary.message,
+      messageEn: choice.temporary.messageEn,
       severity: choice.temporary.severity ?? 'info',
     };
     activeRandomEvents.push({ def: tempDef, turnsRemaining: tempDef.duration });
-    addEvent(tempDef.severity, tempDef.message);
+    addEvent(tempDef.severity, tMsg);
   }
 }

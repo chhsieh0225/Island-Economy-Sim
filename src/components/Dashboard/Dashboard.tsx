@@ -471,7 +471,7 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
         </div>
       </div>
       <div className={styles.stat}>
-        <Tooltip content={DASHBOARD_TOOLTIPS.gdp.content} detail={DASHBOARD_TOOLTIPS.gdp.detail} realWorldRef={DASHBOARD_TOOLTIPS.gdp.realWorldRef}>
+        <Tooltip content={DASHBOARD_TOOLTIPS.gdp.content} detail={DASHBOARD_TOOLTIPS.gdp.detail} realWorldRef={DASHBOARD_TOOLTIPS.gdp.realWorldRef} realWorldRefEn={DASHBOARD_TOOLTIPS.gdp.realWorldRefEn}>
           <span className={styles.label}>{t('dashboard.gdp')}</span>
         </Tooltip>
         <div className={styles.value}>
@@ -498,7 +498,7 @@ export const Dashboard = memo(function Dashboard({ state }: Props) {
         </div>
       </div>
       <div className={styles.stat}>
-        <Tooltip content={DASHBOARD_TOOLTIPS.gini.content} detail={DASHBOARD_TOOLTIPS.gini.detail} realWorldRef={DASHBOARD_TOOLTIPS.gini.realWorldRef}>
+        <Tooltip content={DASHBOARD_TOOLTIPS.gini.content} detail={DASHBOARD_TOOLTIPS.gini.detail} realWorldRef={DASHBOARD_TOOLTIPS.gini.realWorldRef} realWorldRefEn={DASHBOARD_TOOLTIPS.gini.realWorldRefEn}>
           <span className={styles.label}>{t('dashboard.gini')}</span>
         </Tooltip>
         <div className={styles.value}>

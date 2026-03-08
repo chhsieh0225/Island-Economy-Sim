@@ -1,4 +1,4 @@
-import { t as i18nT, tSector as i18nSector } from '../i18n/i18n';
+import { t as i18nT, tSector as i18nSector, useLocaleStore } from '../i18n/i18n';
 
 /**
  * Engine-friendly translation with parameter interpolation.
@@ -20,4 +20,14 @@ export function te(key: string, params?: Record<string, string | number>): strin
 /** Shorthand for sector label in current locale. */
 export function teSector(sector: string): string {
   return i18nSector(sector);
+}
+
+/** Return true when current locale is English. */
+export function isEn(): boolean {
+  return useLocaleStore.getState().locale === 'en';
+}
+
+/** Pick the locale-appropriate string from a zh/en pair. */
+export function pickL(zh: string, en: string): string {
+  return isEn() ? en : zh;
 }

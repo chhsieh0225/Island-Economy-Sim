@@ -26,8 +26,9 @@ function buildImpactTags(choice: DecisionChoice, t: (key: string) => string): { 
 }
 
 export function DecisionPanel({ decision, onChoose }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const trapRef = useFocusTrap<HTMLDivElement>(true);
+  const en = locale === 'en';
 
   return (
     <div className={styles.overlay}>
@@ -44,8 +45,8 @@ export function DecisionPanel({ decision, onChoose }: Props) {
                 className={styles.choice}
                 onClick={() => onChoose(choice.id)}
               >
-                <span className={styles.choiceLabel}>{choice.label}</span>
-                <span className={styles.choiceDesc}>{choice.description}</span>
+                <span className={styles.choiceLabel}>{en ? choice.labelEn : choice.label}</span>
+                <span className={styles.choiceDesc}>{en ? choice.descriptionEn : choice.description}</span>
                 {impactTags.length > 0 && (
                   <div className={styles.impactPreview}>
                     {impactTags.map((tag, i) => (

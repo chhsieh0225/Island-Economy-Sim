@@ -60,7 +60,7 @@ function interpolate(template: string, params?: Record<string, string | number>)
 
 /* ── Single suggestion card ─────────────────────────────────────────────── */
 
-function SuggestionCard({ suggestion }: { suggestion: AdvisorSuggestion }) {
+const SuggestionCard = memo(function SuggestionCard({ suggestion }: { suggestion: AdvisorSuggestion }) {
   const { t } = useI18n();
   const dismiss = useAdvisorStore(s => s.dismiss);
 
@@ -124,7 +124,7 @@ function SuggestionCard({ suggestion }: { suggestion: AdvisorSuggestion }) {
       )}
     </div>
   );
-}
+});
 
 /* ── Main component ─────────────────────────────────────────────────────── */
 

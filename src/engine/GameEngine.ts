@@ -29,6 +29,7 @@ import { generateName } from '../data/names';
 import { DEFAULT_SCENARIO } from '../data/scenarios';
 import { runSpoilagePhase, runProductionPhase, runMarketPostingPhase } from './phases/productionPhase';
 import { runConsumptionPhase } from './phases/consumptionPhase';
+import { runGovernmentPhase } from './phases/governmentPhase';
 import type { ConsumptionPhaseSummary } from './phases/consumptionPhase';
 import { runAgingPhase, runLifeDeathPhase } from './phases/demographyPhase';
 import type { DemographyPhaseSummary } from './phases/demographyPhase';
@@ -75,6 +76,7 @@ import {
   computeInfrastructureEffects,
   canBuild as canBuildInfrastructure,
   getInfrastructureDef,
+  applyInfrastructureEffects,
 } from './modules/infrastructureModule';
 
 export class GameEngine {
@@ -196,14 +198,16 @@ export class GameEngine {
     this._newMilestonesThisTurn = [];
     this.applyPendingPolicies();
     this.infrastructure = tickInfrastructure(this.infrastructure);
-    this.applyInfrastructureEffects();
-    this.market.clearOrders();
 
+    // Cache alive agents once per turn (avoids repeated .filter(a => a.alive))
     const aliveAgents = this.agents.filter(a => a.alive);
+    applyInfrastructureEffects(this.infrastructure, aliveAgents);
+    this.market.clearOrders();
     this.market.setAgents(aliveAgents);
 
     const pipeline = runTurnPipeline({
       aliveAgents,
+      // Re-filter only when birth/death may have changed the set
       getAliveAgents: () => this.agents.filter(a => a.alive),
       averageMetric: (agents, accessor) => this.averageAgentMetric(agents, accessor),
       phaseRollLuck: agents => this.phaseRollLuck(agents),
@@ -295,24 +299,6 @@ export class GameEngine {
       { births: 0, deaths: 0 },
       buildZeroCausalReplay(),
     );
-  }
-
-  private applyInfrastructureEffects(): void {
-    const fx = computeInfrastructureEffects(this.infrastructure);
-    const hBoost = fx.healthBoost ?? 0;
-    const sBoost = fx.satisfactionBoost ?? 0;
-    if (hBoost <= 0 && sBoost <= 0) return;
-
-    const aliveAgents = this.agents.filter(a => a.alive);
-    for (const agent of aliveAgents) {
-      if (hBoost > 0) {
-        agent.health = Math.min(100, agent.health + hBoost);
-      }
-      if (sBoost > 0) {
-        agent.satisfaction = Math.min(100, agent.satisfaction + sBoost);
-      }
-    }
-    // Productivity boosts are applied via the production phase
   }
 
   private phaseRollLuck(agents: Agent[]): void {
@@ -431,113 +417,12 @@ export class GameEngine {
   }
 
   private phaseGovernment(agents: Agent[]): TurnGovernmentSummary {
-    const aliveCount = agents.filter(a => a.alive).length;
-    const treasuryStart = this.government.treasury;
-
-    const rate = this.government.taxRate;
-    const prevTreasuryTax = this.government.treasury;
-    const taxCollected = this.government.collectTaxes(agents);
-    if (taxCollected > 0) {
-      const newTreasuryTax = this.government.treasury;
-      this.addEvent('info', te('engine.taxCollected', { rate: (rate * 100).toFixed(0), amount: taxCollected.toFixed(0), before: prevTreasuryTax.toFixed(0), after: newTreasuryTax.toFixed(0) }));
-    }
-
-    const prevTreasuryWelfare = this.government.treasury;
-    const welfareResult = this.government.distributeWelfare(agents);
-    const welfareSpent = welfareResult.totalSpent;
-    const welfareRecipients = welfareResult.recipients;
-    if (welfareSpent > 0) {
-      const afterTreasuryWelfare = this.government.treasury;
-      this.addEvent('info', te('engine.welfarePaid', { count: welfareRecipients, before: prevTreasuryWelfare.toFixed(0), after: afterTreasuryWelfare.toFixed(0) }));
-    }
-
-    const prevTreasuryPW = this.government.treasury;
-    const pwPaid = this.government.payPublicWorks();
-    const publicWorksSpent = pwPaid ? CONFIG.PUBLIC_WORKS_COST_PER_TURN : 0;
-    if (pwPaid) {
-      this.addEvent('info', te('engine.publicWorks', { cost: CONFIG.PUBLIC_WORKS_COST_PER_TURN }));
-    } else if (this.government.publicWorksActive === false && prevTreasuryPW < CONFIG.PUBLIC_WORKS_COST_PER_TURN && prevTreasuryPW > 0) {
-      // Public works was auto-disabled due to insufficient funds
-      this.addEvent('warning', te('engine.publicWorksDisabled', { treasury: prevTreasuryPW.toFixed(0), cost: CONFIG.PUBLIC_WORKS_COST_PER_TURN }));
-    }
-
-    const prevTreasuryLiquidity = this.government.treasury;
-    let liquidityInjected = 0;
-    let liquidityRecipients = 0;
-    if (this.government.liquiditySupportActive) {
-      const eligible = agents
-        .filter(a => a.alive)
-        .sort((a, b) => (a.money + a.savings) - (b.money + b.savings));
-      const targetCount = Math.max(1, Math.floor(eligible.length * CONFIG.MONETARY_LIQUIDITY_TARGET_PERCENTILE));
-      for (const agent of eligible.slice(0, targetCount)) {
-        const transfer = Math.min(CONFIG.MONETARY_LIQUIDITY_TRANSFER_PER_AGENT, this.government.treasury);
-        if (transfer <= 0) break;
-        agent.receiveMoney(transfer);
-        agent.satisfaction = Math.min(100, agent.satisfaction + CONFIG.MONETARY_LIQUIDITY_SAT_BOOST);
-        this.government.treasury -= transfer;
-        liquidityInjected += transfer;
-        liquidityRecipients++;
-      }
-
-      if (liquidityInjected > 0) {
-        this.addEvent(
-          'info',
-          te('engine.liquidityInjected', { count: liquidityRecipients, before: prevTreasuryLiquidity.toFixed(0), after: this.government.treasury.toFixed(0) }),
-        );
-      } else if (prevTreasuryLiquidity <= 0.1) {
-        this.addEvent('warning', te('engine.liquidityBroke'));
-      }
-    }
-
-    // Automatic fiscal stabilizer: emergency welfare when economy is in distress
-    const autoStabilizerResult = this.government.distributeEmergencyWelfare(agents);
-    const autoStabilizerSpent = autoStabilizerResult.totalSpent;
-    if (autoStabilizerSpent > 0) {
-      this.addEvent('info', te('engine.autoStabilizer', { count: autoStabilizerResult.recipients, amount: autoStabilizerSpent.toFixed(0) }));
-    }
-
-    // Strategic stockpile: compute trade amounts, maintenance & spoilage
-    // Treasury now = snapshot + stockpileChange + tax - welfare - pw - liquidity - auto
-    // Isolate stockpileChange by subtracting all known fiscal operations:
-    const treasuryAfterGov = this.government.treasury;
-    const treasuryChangeFromMarket = treasuryAfterGov - this.stockpileTreasurySnapshot
-      - taxCollected + welfareSpent + publicWorksSpent + liquidityInjected + autoStabilizerSpent;
-    // If negative, government spent money buying; if positive, government earned from selling
-    const stockpileBuySpent = Math.max(0, -treasuryChangeFromMarket);
-    const stockpileSellRevenue = Math.max(0, treasuryChangeFromMarket);
-
-    const stockpileMaintenance = this.government.payStockpileMaintenance();
-    this.government.applySpoilage();
-
-    if (stockpileBuySpent > 0.1) {
-      this.addEvent('info', te('engine.stockpileBuy', { amount: stockpileBuySpent.toFixed(0) }));
-    }
-    if (stockpileSellRevenue > 0.1) {
-      this.addEvent('info', te('engine.stockpileSell', { amount: stockpileSellRevenue.toFixed(0) }));
-    }
-    if (stockpileMaintenance > 0 && this.government.stockpileEnabled) {
-      // Only log if still enabled (not auto-disabled due to insufficient funds)
-    }
-
-    const treasuryDelta = this.government.treasury - treasuryStart;
-    const perCapitaCashDelta = aliveCount > 0
-      ? (welfareSpent + liquidityInjected + autoStabilizerSpent - taxCollected) / aliveCount
-      : 0;
-    return {
-      taxCollected,
-      welfareSpent,
-      welfareRecipients,
-      publicWorksSpent,
-      liquidityInjected,
-      liquidityRecipients,
-      autoStabilizerSpent,
-      stockpileBuySpent,
-      stockpileSellRevenue,
-      stockpileMaintenance,
-      policyRate: this.government.policyRate,
-      treasuryDelta,
-      perCapitaCashDelta,
-    };
+    return runGovernmentPhase({
+      agents,
+      government: this.government,
+      stockpileTreasurySnapshot: this.stockpileTreasurySnapshot,
+      addEvent: (type, message) => this.addEvent(type, message),
+    });
   }
 
   private phaseHouseholdFinance(agents: Agent[]): number {

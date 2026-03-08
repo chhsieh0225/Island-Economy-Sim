@@ -10,8 +10,9 @@ interface Props {
 }
 
 export function EventLog({ events, activeRandomEvents }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const logRef = useRef<HTMLDivElement>(null);
+  const en = locale === 'en';
 
   useEffect(() => {
     if (logRef.current) {
@@ -30,7 +31,7 @@ export function EventLog({ events, activeRandomEvents }: Props) {
         <div className={styles.activeEvents}>
           {activeRandomEvents.map((e, i) => (
             <div key={i} className={styles.activeEventItem}>
-              {e.def.name} — {t('eventLog.turnsRemaining').replace('{n}', String(e.turnsRemaining))}
+              {en ? e.def.nameEn : e.def.name} — {t('eventLog.turnsRemaining').replace('{n}', String(e.turnsRemaining))}
             </div>
           ))}
         </div>

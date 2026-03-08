@@ -11,6 +11,7 @@ export const DASHBOARD_TOOLTIPS = {
     content: '本回合所有市場交易總額，反映經濟活躍度。',
     detail: 'GDP = \u03A3(price \u00D7 volume) per sector.',
     realWorldRef: 'GDP 不代表人民幸福，只衡量經濟活動量。',
+    realWorldRefEn: 'GDP measures economic activity, not well-being.',
   },
   satisfaction: {
     content: '居民平均滿意度。接近 10 時離島風險會快速上升，但有每回合外流上限。',
@@ -24,6 +25,7 @@ export const DASHBOARD_TOOLTIPS = {
     content: '基尼係數衡量財富不平等程度。0=完全平等, 1=完全不平等。',
     detail: 'Gini coefficient measures wealth inequality.',
     realWorldRef: '台灣\u22480.34, 美國\u22480.39, 北歐\u22480.27, 巴西\u22480.48',
+    realWorldRefEn: 'Taiwan≈0.34, USA≈0.39, Nordics≈0.27, Brazil≈0.48',
   },
   treasury: {
     content: '政府國庫餘額。來自稅收，用於福利和公共建設支出。',
